@@ -1,0 +1,214 @@
+Abacus AI Agent
+Entendido! Vou buscar referências reais de búzios (conchas cowrie) e jogadas para criar algo verdadeiramente premium e disruptivo. Vamos elevar o nível!
+
+Searchingcowrie shell búzios jogo realistic illustration reference
+Searchingbúzios candomblé shells open closed photo reference
+Searchingcowrie shell 3D realistic mobile app game design
+Searchinghand throwing cowrie shells divination animation reference
+Searchingreact native SVG realistic shell texture gradient illustration technique
+SearchingSVG cowrie shell detailed illustration code example
+Searchingrealistic hand illustration SVG mobile app premium design
+Excelente pesquisa! Agora vou buscar imagens reais de referência para criar os componentes ultra-realistas.
+
+Searchingcowrie shell open mouth teeth
+Searchingcowrie shell back smooth dome
+Searchinghand throwing cowrie shells buzios divination
+Agora tenho todas as referências. Vou criar componentes ultra-realistas baseados na anatomia real dos búzios (Monetaria moneta). Vou redesenhar completamente:
+
+BuzioIcon — Com textura realista, sombras múltiplas, reflexos de luz, detalhes anatômicos da concha cowrie
+MaoLancando — Mão com detalhes anatômicos, unhas, articulações, pulseiras rituais, movimento fluido
+Written~/oraculo_vivo/react_native_space/components/BuzioIcon.tsx
+Written~/oraculo_vivo/react_native_space/components/MaoLancando.tsx
+Agora vou atualizar o jogo de búzios para usar tamanhos maiores e melhorar a experiência visual:
+
+Agora vou aumentar o tamanho dos búzios e da área de jogo para que os detalhes realistas fiquem mais visíveis:
+
+Updated~/oraculo_vivo/react_native_space/app/consulta/buzios-jogo.tsx
+Agora vou melhorar a legenda com tamanho maior:
+
+Updated~/oraculo_vivo/react_native_space/app/consulta/buzios-jogo.tsx
+Agora vamos testar:
+
+Build bem-sucedido! Vou verificar visualmente no browser:
+
+Running:cd /home/ubuntu/oraculo_vivo/react_native_space && yarn expo export --platform web 2>&1 | tail -5
+Running:cd /home/ubuntu/oraculo_vivo/react_native_space && npx kill-port 8081 2>/dev/null; yarn dlx serve dist -s -l 8081 &
+Running:sleep 3 && curl -s -o /dev/null -w "%{http_code}" http://localhost:8081
+Computer Actions
+App carregou. Vou navegar até o jogo de búzios para verificar visualmente os novos componentes:
+
+Computer Actions
+Vou navegar direto para o jogo de búzios:
+
+Computer Actions
+A tela do jogo está carregada. Vou clicar em "Lançar" para ver a animação da mão e os búzios:
+
+Computer Actions
+Excelente! A mão está aparecendo com os detalhes realistas — dedos, unhas, pulseira! Vou esperar a animação completar para ver os búzios:
+
+Computer Actions
+Os búzios estão muito mais realistas! Vejo claramente:
+
+Búzios abertos (claros/marfim) com a fenda dentada visível e textura detalhada
+Búzios fechados (marrom escuro) com padrão mosqueado e brilho polido
+Legenda com os ícones menores mostrando a diferença claramente
+A mão apareceu com dedos, unhas, pulseira dourada
+Vou dar um zoom para ver os detalhes mais de perto:
+
+Computer Actions
+Os búzios estão com qualidade visual excelente! Posso ver:
+
+✅ Conchas claras (abertas) — com fenda central, dentes laterais, brilho especular, tonalidade marfim
+✅ Conchas escuras (fechadas) — cúpula marrom mosqueada com reflexo polido, linha dorsal
+✅ Sombras projetadas realistas em cada búzio
+✅ Variação de rotação natural
+Tudo funcionando perfeitamente. Vou salvar o checkpoint:
+
+Version:
+Búzios ultra-realistas: ícones SVG com anatomia de concha cowrie real (fenda dentada, padrão mosqueado, reflexos), mão detalhada com dedos/unhas/pulseiras rituais, tamanhos aumentados para impacto visual
+Restore
+Perfeito! ✅ Checkpoint salvo com sucesso!
+
+Aqui está o que foi aprimorado para um nível premium e disruptivo:
+
+🐚 Búzio Aberto (Realista)
+Forma orgânica assimétrica como concha real (não oval perfeita)
+Fenda central sinuosa com 12 dentes de cada lado (anatomia real da Monetaria moneta)
+5 camadas de gradiente — marfim → rosado → bege (interior côncavo)
+Estrias laterais sutis nas bordas
+Brilho especular + ponto dourado de axé
+🐚 Búzio Fechado (Realista)
+Cúpula convexa polida com gradiente multi-tom marrom
+Padrão mosqueado — manchas grandes, médias e pequenas como cowrie real
+Linha dorsal (sulco central típico)
+Reflexo de concha polida — como luz refletindo em porcelana
+✋ Mão Ultra-Realista
+Anatomia completa — 5 dedos com articulações, unhas com lúnula, linhas da palma
+Pulseira dourada com gravuras + guias de contas (vermelhas e brancas = Xangô/Iansã)
+Mini búzios na palma antes de lançar
+Animação em 6 fases — sobe → pausa dramática → prepara → LANÇA! → recuo → desce
+Tamanho aumentado (150px) para impacto visual
+Quer continuar melhorando algo ou partir para outra feature? 🔮
+
+Credits Used: 1,389
+
+resuma o projeto para iniciarmos em outro cham sem perder o contexto
+
+Abacus AI Agent
+Running:cd /home/ubuntu/oraculo_vivo/react_native_space && find app -name "*.tsx" -o -name "*.ts" | sort && echo "---" && cat package.json | grep -A5 '"dependencies"' | head -20
+Running:cd /home/ubuntu/oraculo_vivo/react_native_space && cat package.json | python3 -c "import json,sys; d=json.load(sys.stdin); deps=d.get('dependencies',{}); [print(f' - {k}: {v}') for k,v in sorted(deps.items())]"
+Running:cd /home/ubuntu/oraculo_vivo/react_native_space && find components -name "*.tsx" | sort && echo "---" && find constants -name "*.ts" | sort && echo "---" && find utils -name "*.ts" | sort && echo "---" && find data -name "*.ts" | sort && echo "---" && find hooks -name "*.ts" 2>/dev/null | sort && echo "---" && find contexts -name "*.tsx" 2>/dev/null | sort
+Running:cd /home/ubuntu/oraculo_vivo/react_native_space && head -30 constants/colors.ts
+Agora tenho tudo. Aqui está o resumo completo para continuar em outro chat:
+
+📱 ORÁCULO VIVO — Resumo Completo do Projeto
+Visão Geral
+App de oráculos/consultas espirituais combinando IA com práticas tradicionais. Produto disruptivo e vendável — target: mercado brasileiro de espiritualidade digital.
+
+Caminho do projeto: /home/ubuntu/oraculo_vivo (React Native em /home/ubuntu/oraculo_vivo/react_native_space/)
+Idioma: Todo o app em Português Brasileiro (variáveis, componentes, textos)
+Framework: Expo SDK 54 + expo-router + TypeScript
+Tema Visual: "Wellness Moderno com Toques Místicos"
+🎨 Design System (tudo em português)
+Paleta: Verde sálvia (#7C9A82), Dourado (#D4AF37), Azul céu (#87CEEB), Roxo místico (#4B0082), Bege (#F5F0E8), Fundo escuro (#1A1A2E)
+
+Fontes: Playfair Display 700 (títulos) + Nunito 400/600/700 (corpo)
+
+Constantes (nomes em PT-BR):
+
+Cores (colors.ts) — cores, gradientes, transparências
+Fontes (typography.ts) — .titulo, .corpo, .corpoSemiBold, .corpoNegrito
+Espacamento (spacing.ts) — .xs, .sm, .md, .lg, .xl
+RaioBorda (spacing.ts) — .sm:8, .md:12, .lg:16, .xl:24
+Hapticos (utils/haptics.ts) — .impactoLeve(), .impactoMedio(), .impactoPesado()
+📂 Estrutura de Arquivos
+Telas (app/)
+app/_layout.tsx          → Root layout (fonts, splash, error boundary)
+app/index.tsx            → Router inicial (redireciona welcome ou tabs)
+app/welcome.tsx          → Tela de boas-vindas
+
+app/onboarding/
+  _layout.tsx, index.tsx, intencao.tsx, formato.tsx, caminho.tsx
+  → 3 telas de onboarding com OnboardingContext
+
+app/(tabs)/
+  _layout.tsx            → Tab Navigator (4 tabs)
+  index.tsx              → 🏠 Home (saudação, leitura do dia, grid 6 oráculos, IA, rituais)
+  consultas.tsx          → 📋 Consultas (5 oraculistas, agendamento, histórico)
+  jornada.tsx            → 🌟 Jornada (XP/nível, streak, stats, gráfico semanal, timeline)
+  perfil.tsx             → 👤 Perfil (avatar, plano, preferências, configurações)
+
+app/consulta/            → Fluxo Tarot
+  _layout.tsx, index.tsx (seleção tipo), preparo.tsx, cartas.tsx, resultado.tsx
+
+app/consulta/            → Fluxo Búzios
+  buzios-preparo.tsx, buzios-jogo.tsx, buzios-resultado.tsx
+
+app/ia/                  → Análise IA (Café + Quiromancia)
+  _layout.tsx, index.tsx (seleção), captura.tsx (câmera), processando.tsx, resultado.tsx
+
+app/numerologia/         → Numerologia
+  _layout.tsx, index.tsx (formulário), calculando.tsx (animação), resultado.tsx
+
+app/mapa-astral/         → Mapa Astral
+  _layout.tsx, index.tsx (formulário), gerando.tsx (roda zodiacal), resultado.tsx
+
+app/planos.tsx           → Planos de assinatura (R$29.90/79.90/199.90)
+Componentes (components/)
+Button.tsx               → Botão com variantes (primary/secondary/outline), gradiente, ícone
+Card.tsx                 → Card glassmorphism
+GradientBackground.tsx   → Fundo gradiente padrão do app
+Input.tsx                → Campo de entrada estilizado
+Loading.tsx              → Skeleton/loading
+ProgressIndicator.tsx    → Indicador de progresso
+SelectionCard.tsx        → Card de seleção com ícone
+ErrorBoundary.tsx        → Captura de erros
+BuzioIcon.tsx            → ★ SVG ultra-realista de concha cowrie (aberto/fechado)
+MaoLancando.tsx          → ★ Mão animada SVG com dedos/unhas/pulseiras rituais
+Dados Simulados (data/) — TUDO MOCK, sem backend real
+tarot.ts                 → Cartas, spreads, interpretações
+buzios.ts                → jogarBuzios(), Odus, interpretações
+numerologia.ts           → Cálculos numerológicos, significados
+astrologia.ts            → Signos, planetas, casas, mapa astral
+ia-analise.ts            → Análise simulada de café/quiromancia
+consultas.ts             → Oraculistas, horários, agendamentos
+jornada.ts               → Sistema XP/nível, conquistas, histórico
+Outros
+contexts/OnboardingContext.tsx  → Estado do onboarding
+hooks/useAnimatedEntry.ts      → Hook de animação de entrada
+✅ 12 Etapas Completadas
+#	Etapa	Descrição
+1	Base	Expo Router, fonts, theme, splash, welcome
+2	Onboarding	3 telas interativas + context
+3	Home + Tabs	4 tabs, dashboard com grid de oráculos
+4	Planos	3 planos de assinatura
+5	Tarot	Preparação → 3 cartas flip → leitura
+6	Búzios	Orixá → 12 búzios animados → Odu
+7	IA Visual	Câmera → processamento → resultado (café + quiromancia)
+8	Numerologia	Formulário → animação → 5 números
+9	Mapa Astral	Dados nascimento → roda zodiacal → Sol/Lua/Asc
+10	Consultas	5 oraculistas, modal agendamento, histórico
+11	Jornada	Nível/XP, streak, gráfico, timeline
+12	Perfil	Avatar, plano, preferências, config, suporte
+Aprimoramento Extra
+Búzios ultra-realistas: SVG com anatomia de concha cowrie real (fenda dentada, padrão mosqueado, reflexos especulares, sombras multi-camada)
+Mão realista: Dedos anatômicos com articulações, unhas com lúnula, pulseira dourada com gravuras, guias de contas (vermelho/branco = Xangô/Iansã), mini búzios na palma, animação 6 fases
+⚠️ O que NÃO existe ainda (futuro)
+❌ Backend / API real (tudo é mock/simulado)
+❌ Autenticação / login
+❌ Pagamento real (Stripe/Mercado Pago)
+❌ Leitura do Dia (card existe no Home mas sem funcionalidade)
+❌ Áudio/Vídeo/PDF (marcados "Em breve")
+❌ Push notifications reais
+❌ WhatsApp integration
+❌ IA real (GPT/Claude) para análises
+🔧 Dependências Principais
+expo@54, expo-router@6, react-native-svg, expo-camera, expo-haptics, expo-linear-gradient, react-native-reanimated, react-native-paper, react-native-chart-kit, @shopify/react-native-skia, react-native-circular-progress, date-fns, axios, @tanstack/react-query
+
+👤 Preferências do Usuário
+UMA etapa por vez — confirmar antes de prosseguir
+Produto disruptivo e vendável — qualidade premium
+Visual impactante — não aceita designs genéricos
+Modelo de negócio: Hybrid (freemium + planos + pay-per-use + consultas ao vivo)
+Target: Todas as idades, perfil duplo (praticantes avançados + curiosos iniciantes)
+Copie este resumo e cole no início do próximo chat para manter todo o contexto! 🚀

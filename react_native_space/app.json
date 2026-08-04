@@ -1,0 +1,75 @@
+{
+  "expo": {
+    "name": "Oraculo Vivo",
+    "slug": "abacusai-mobile-apps",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.abacusai.oraculovivo.t1782140273",
+      "buildNumber": "1"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.abacusai.oraculovivo.t1782140273",
+      "versionCode": 1,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "oraculovivo",
+              "host": "*"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-secure-store",
+      [
+        "expo-camera",
+        { "cameraPermission": "O Oráculo Vivo precisa da câmera para analisar borra de café e quiromância." }
+      ],
+      [
+        "expo-image-picker",
+        { "photosPermission": "O Oráculo Vivo acessa suas fotos para análise espiritual." }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#D4AF37",
+          "sounds": []
+        }
+      ]
+    ],
+    "scheme": "oraculovivo",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "a52132e3-7b24-4c1b-9315-46625e580b8a"
+      }
+    },
+    "owner": "abacus.ai"
+  }
+}

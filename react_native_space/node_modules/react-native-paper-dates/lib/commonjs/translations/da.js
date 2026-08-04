@@ -1,0 +1,26 @@
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+const da = {
+  save: 'Gem',
+  selectSingle: 'Vælg dato',
+  selectMultiple: 'Vælg datoer',
+  selectRange: 'Vælg periode',
+  notAccordingToDateFormat: inputFormat => `Dato formatet skal være ${inputFormat}`,
+  mustBeHigherThan: date => `Skal ligge efter ${date}`,
+  mustBeLowerThan: date => `Skal ligge før ${date}`,
+  mustBeBetween: (startDate, endDate) => `Skal være mellem ${startDate} - ${endDate}`,
+  dateIsDisabled: 'Denne dag er ikke gyldig',
+  previous: 'Forrige',
+  next: 'Næste',
+  typeInDate: 'Indtast dato',
+  pickDateFromCalendar: 'Vælg en dato fra kalender',
+  close: 'Luk',
+  minute: 'Minut',
+  hour: 'Time'
+};
+var _default = exports.default = da;
+//# sourceMappingURL=da.js.map
