@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+.expo/
+test-results/
+playwright-report/
+node_modules/
+
+**/.claude/settings.local.json
+
+.vercel
+.env*
