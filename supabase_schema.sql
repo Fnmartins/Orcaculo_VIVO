@@ -44,6 +44,24 @@ create table public.perfis (
   atualizado_em timestamptz default now()
 );
 
+-- Função auxiliar: true se o usuário atual é super_admin.
+-- SECURITY DEFINER lê perfis sem disparar o RLS (evita recursão infinita 42P17).
+create or replace function public.is_super_admin()
+returns boolean
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select coalesce(
+    (select p.is_super_admin from public.perfis p where p.id = auth.uid()),
+    false
+  );
+$$;
+
+revoke all on function public.is_super_admin() from public;
+grant execute on function public.is_super_admin() to authenticated, anon, service_role;
+
 -- RLS para perfis: usuário vê/edita o próprio perfil;
 -- super_admin vê e edita todos os perfis
 alter table public.perfis enable row level security;
@@ -51,19 +69,13 @@ alter table public.perfis enable row level security;
 create policy "Usuário vê só o próprio perfil"
   on public.perfis for select using (
     auth.uid() = id
-    or exists (
-      select 1 from public.perfis p
-      where p.id = auth.uid() and p.is_super_admin = true
-    )
+    or public.is_super_admin()
   );
 
 create policy "Usuário edita só o próprio perfil"
   on public.perfis for update using (
     auth.uid() = id
-    or exists (
-      select 1 from public.perfis p
-      where p.id = auth.uid() and p.is_super_admin = true
-    )
+    or public.is_super_admin()
   );
 
 -- Trigger para criar perfil automaticamente ao cadastrar
@@ -194,39 +206,27 @@ create index perfis_is_super_admin_idx on public.perfis(is_super_admin);
 create policy "Super admin vê todas as consultas"
   on public.consultas for select using (
     auth.uid() = usuario_id
-    or exists (
-      select 1 from public.perfis p
-      where p.id = auth.uid() and p.is_super_admin = true
-    )
+    or public.is_super_admin()
   );
 
 create policy "Super admin deleta qualquer consulta"
   on public.consultas for delete using (
     auth.uid() = usuario_id
-    or exists (
-      select 1 from public.perfis p
-      where p.id = auth.uid() and p.is_super_admin = true
-    )
+    or public.is_super_admin()
   );
 
 -- Assinaturas: super_admin vê todas
 create policy "Super admin vê todas as assinaturas"
   on public.assinaturas for select using (
     auth.uid() = usuario_id
-    or exists (
-      select 1 from public.perfis p
-      where p.id = auth.uid() and p.is_super_admin = true
-    )
+    or public.is_super_admin()
   );
 
 -- Desejos: super_admin vê todos
 create policy "Super admin vê todos os desejos"
   on public.desejos for select using (
     auth.uid() = usuario_id
-    or exists (
-      select 1 from public.perfis p
-      where p.id = auth.uid() and p.is_super_admin = true
-    )
+    or public.is_super_admin()
   );
 
 -- ============================================================
