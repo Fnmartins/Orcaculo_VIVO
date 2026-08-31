@@ -63,9 +63,35 @@ Para o remetente virar a marca do Oráculo Vivo e liberar volume:
 4. **Save** e mande um e-mail de teste.
 
 > 🔒 **Credenciais SMTP são você quem preenche** — eu (assistente) não insiro
-> senhas/tokens em formulários. Me avise o provedor escolhido que eu te passo o
-> passo-a-passo específico (ex.: no Resend, criar API key e usar `resend` como
-> usuário SMTP).
+> senhas/tokens em formulários.
+
+### 3.1 Passo a passo com o Resend (provedor escolhido)
+
+1. Crie a conta em **resend.com**.
+2. **Domains** → **Add Domain** → informe seu domínio (ex.: `oraculovivo.com`
+   ou o remetente que quiser). O Resend mostra registros DNS (**SPF**, **DKIM**
+   e às vezes um CNAME de tracking).
+3. No painel do seu domínio (Registro.br, Cloudflare, GoDaddy, etc.), adicione
+   esses registros DNS **exatamente** como o Resend indica. Volte ao Resend e
+   clique em **Verify** — espere ficar **Verified** (pode levar de minutos a
+   algumas horas de propagação).
+   - *Ainda não tem domínio próprio?* Dá pra testar antes com o domínio de teste
+     do Resend (`onboarding@resend.dev`), mas o ideal p/ produção é domínio seu.
+4. **API Keys** → **Create API Key** (permissão de envio). Copie a key
+   `re_...` — ela aparece **uma vez só**.
+5. No Supabase → **Authentication** → **Emails** → **SMTP Settings** →
+   **Enable Custom SMTP**:
+   - **Host**: `smtp.resend.com`
+   - **Port**: `465` (SSL) ou `587` (TLS)
+   - **Username**: `resend`
+   - **Password**: a sua API key `re_...`
+   - **Sender email**: um endereço **no domínio verificado**
+     (ex.: `contato@oraculovivo.com` ou `noreply@oraculovivo.com`)
+   - **Sender name**: `Oráculo Vivo`
+6. **Save** e crie uma conta de teste no app pra confirmar o remetente novo.
+
+> A API key `re_...` é um segredo: vai **só** no campo Password do Supabase,
+> nunca no `.env`/`EXPO_PUBLIC_*` nem no git.
 
 ## 4. Boas-vindas (pós-confirmação)
 
