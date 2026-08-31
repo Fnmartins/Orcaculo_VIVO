@@ -10,13 +10,17 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Text as SvgText, Defs, RadialGradient as SvgRadial, Stop, Path } from 'react-native-svg';
 import { GradientBackground } from '../../components/GradientBackground';
+import { EstadoTela } from '../../components/EstadoTela';
+import { NotaReflexiva } from '../../components/NotaReflexiva';
 import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
+import { dataConsultaValida, textoConsultaValido } from '../../utils/validacaoConsulta';
 import { Hapticos } from '../../utils/haptics';
 import { gerarNumerologiaCompleta, type ResultadoNumerologia } from '../../data/numerologia';
 
@@ -69,7 +73,7 @@ function RodaNumerologica({ secoes }: { secoes: Array<{ numero: number; cor: str
       {/* Número central — Caminho de Vida */}
       <Circle cx={cx} cy={cy} r={rInt + 4} fill={secoes[0].cor + '20'} />
       <Circle cx={cx} cy={cy} r={rInt} fill={secoes[0].cor + '30'} stroke={secoes[0].cor} strokeWidth={1.5} />
-      <SvgText x={cx} y={cy + 1} textAnchor="middle" dominantBaseline="middle"
+      <SvgText x={cx} y={cy + rInt * 0.32} textAnchor="middle"
         fontSize={rInt * 0.9} fill={secoes[0].cor} fontWeight="700">{secoes[0].numero}</SvgText>
       {/* 5 nós do pentágono */}
       {secoes.map(({ numero, cor, label }, i) => {
@@ -83,11 +87,11 @@ function RodaNumerologica({ secoes }: { secoes: Array<{ numero: number; cor: str
           <React.Fragment key={i}>
             <Circle cx={nx} cy={ny} r={r + 3} fill={cor + '15'} />
             <Circle cx={nx} cy={ny} r={r} fill={cor + '25'} stroke={cor} strokeWidth={1.5} />
-            <SvgText x={nx} y={ny + 1} textAnchor="middle" dominantBaseline="middle"
+            <SvgText x={nx} y={ny + r * 0.38} textAnchor="middle"
               fontSize={r * 1.1} fill={cor} fontWeight="700">{numero}</SvgText>
             {/* Label externo */}
-            <SvgText x={lx} y={ly} textAnchor="middle" dominantBaseline="middle"
-              fontSize={7.5} fill="rgba(245,240,232,0.5)">{label.split(' ')[0]}</SvgText>
+            <SvgText x={lx} y={ly + 2.5} textAnchor="middle"
+              fontSize={7.5} fill="rgba(36,49,45,0.55)">{label.split(' ')[0]}</SvgText>
           </React.Fragment>
         );
       })}
@@ -119,6 +123,25 @@ export default function TelaNumerologiaResultado() {
     ]).start();
   }, [fadeAnim, slideAnim]);
 
+  const parametrosValidos = textoConsultaValido(params.nome)
+    && dataConsultaValida(params.dia, params.mes, params.ano);
+
+  if (!parametrosValidos) {
+    return (
+      <GradientBackground>
+        <SafeAreaView style={estilos.safeArea}>
+          <EstadoTela
+            tipo="erro"
+            titulo="Faltam dados para a numerologia"
+            descricao="Informe seu nome e uma data de nascimento válida para gerar uma leitura pessoal."
+            acaoLabel="Preencher novamente"
+            onAcao={() => router.back()}
+          />
+        </SafeAreaView>
+      </GradientBackground>
+    );
+  }
+
   const secoes = [
     { label: 'Caminho de Vida', icone: 'compass-outline', desc: 'Sua missão principal', dado: resultado.caminhoVida },
     { label: 'Expressão', icone: 'megaphone-outline', desc: 'Seus talentos naturais', dado: resultado.expressao },
@@ -136,16 +159,19 @@ export default function TelaNumerologiaResultado() {
         >
           {/* Header */}
           <Animated.View style={[estilos.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-            <Pressable onPress={() => router.back()} style={estilos.voltarBotao}>
+            <Pressable
+              onPress={() => router.back()}
+              style={estilos.voltarBotao}
+              accessibilityRole="button"
+              accessibilityLabel="Voltar"
+            >
               <Ionicons name="arrow-back" size={22} color={Cores.textoClaro} />
             </Pressable>
             <View style={estilos.headerCenter}>
               <Text style={estilos.headerTitulo}>Sua Numerologia</Text>
               <Text style={estilos.headerSubtitulo}>{params.nome}</Text>
             </View>
-            <Pressable onPress={() => Hapticos.impactoLeve()} style={estilos.voltarBotao}>
-              <Ionicons name="share-outline" size={20} color={Cores.textoClaro} />
-            </Pressable>
+            <View style={estilos.voltarBotaoEspaco} />
           </Animated.View>
 
           {/* Hero pitagórico */}
@@ -225,6 +251,7 @@ export default function TelaNumerologiaResultado() {
           </Animated.View>
 
           {/* Botões */}
+          <NotaReflexiva />
           <Animated.View style={[estilos.botoesFinais, { opacity: fadeAnim }]}>
             <Pressable
               onPress={() => { Hapticos.impactoLeve(); router.replace('/(tabs)'); }}
@@ -274,7 +301,7 @@ function CardNumero(props: CardNumeroProps) {
   return (
     <View style={estilos.cardNumero}>
       <LinearGradient
-        colors={[props.cor + '15', 'rgba(26,26,46,0.3)'] as const}
+        colors={[props.cor + '15', 'rgba(255,252,246,0.94)'] as const}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={estilos.cardNumeroGradiente}
@@ -358,13 +385,14 @@ const estilos = StyleSheet.create({
     paddingBottom: Espacamento.sm,
   },
   voltarBotao: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: RaioBorda.full,
     backgroundColor: Cores.cardFundo,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  voltarBotaoEspaco: { width: 44, height: 44 },
   headerCenter: { flex: 1, alignItems: 'center' },
   headerTitulo: {
     fontFamily: Fontes.titulo,

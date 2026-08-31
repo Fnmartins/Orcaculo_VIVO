@@ -10,18 +10,23 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GradientBackground } from '../../components/GradientBackground';
 import { Button } from '../../components/Button';
+import { EstadoTela } from '../../components/EstadoTela';
 import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
 import { Hapticos } from '../../utils/haptics';
 import type { ResultadoBuzios } from '../../data/buzios';
-import { gerarInterpretacaoBuzios, type InterpretacaoBuzios } from '../../services/ia';
+import { gerarInterpretacaoBuzios, IA_REMOTA_DISPONIVEL, type InterpretacaoBuzios } from '../../services/ia';
 import { compartilharBuzios } from '../../services/compartilhar';
 import { RatingConsulta } from '../../components/RatingConsulta';
+import { ConviteHistorico } from '../../components/ConviteHistorico';
+import { BuzioIcon } from '../../components/BuzioIcon';
+import { NotaReflexiva } from '../../components/NotaReflexiva';
 
 const FORMATOS = [
   { id: 'texto', icone: 'document-text-outline', titulo: 'Texto', disponivel: true },
@@ -59,9 +64,9 @@ export default function TelaBuziosResultado() {
     try {
       const res = await gerarInterpretacaoBuzios({
         nome: resultado.odu.nome,
-        numero: resultado.odu.numero,
-        descricao: resultado.odu.descricao,
-        orixas: resultado.odu.orixas,
+        numero: resultado.odu.abertos,
+        descricao: resultado.odu.significado,
+        orixas: [resultado.odu.regente],
         intenção: intencao || 'Orientação geral',
       });
       setInterpretacaoIA(res);
@@ -76,10 +81,13 @@ export default function TelaBuziosResultado() {
     return (
       <GradientBackground>
         <SafeAreaView style={estilos.safeArea}>
-          <View style={estilos.erroContainer}>
-            <Text style={estilos.erroTexto}>Não foi possível carregar o resultado</Text>
-            <Button variante="outline" label="Voltar" onPress={() => router.back()} />
-          </View>
+          <EstadoTela
+            tipo="erro"
+            titulo="A leitura não carregou"
+            descricao="Volte ao jogo para lançar os búzios novamente."
+            acaoLabel="Voltar ao jogo"
+            onAcao={() => router.back()}
+          />
         </SafeAreaView>
       </GradientBackground>
     );
@@ -110,21 +118,25 @@ export default function TelaBuziosResultado() {
             <Pressable
               onPress={() => router.dismissTo('/(tabs)')}
               style={estilos.voltarBotao}
+              accessibilityRole="button"
+              accessibilityLabel="Fechar leitura"
             >
               <Ionicons name="close" size={22} color={Cores.textoClaro} />
             </Pressable>
             <Text style={estilos.headerTitulo}>Leitura dos Búzios</Text>
-            <View style={{ width: 40 }} />
+            <View style={{ width: 44 }} />
           </Animated.View>
 
           {/* Formatos */}
           <Animated.View style={[estilos.formatosContainer, { opacity: fadeAnim }]}>
-            <Text style={estilos.formatosTitulo}>Receba em outros formatos</Text>
+            <Text style={estilos.formatosTitulo}>Formato da leitura</Text>
             <View style={estilos.formatosGrid}>
               {FORMATOS.map((f) => (
-                <Pressable
+                <View
                   key={f.id}
-                  onPress={() => Hapticos.impactoLeve()}
+                  accessible
+                  accessibilityLabel={`${f.titulo}${f.disponivel ? ', selecionado' : ', em breve'}`}
+                  accessibilityState={{ disabled: !f.disponivel, selected: f.id === 'texto' }}
                   style={[
                     estilos.formatoItem,
                     f.id === 'texto' && estilos.formatoAtivo,
@@ -139,7 +151,8 @@ export default function TelaBuziosResultado() {
                   <Text style={[estilos.formatoTexto, f.id === 'texto' && { color: Cores.acento }]}>
                     {f.titulo}
                   </Text>
-                </Pressable>
+                  {!f.disponivel && <Text style={estilos.formatoBreve}>Em breve</Text>}
+                </View>
               ))}
             </View>
           </Animated.View>
@@ -147,7 +160,7 @@ export default function TelaBuziosResultado() {
           {/* Card do Odu */}
           <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
             <LinearGradient
-              colors={[odu.cor + '20', 'rgba(26,26,46,0.4)'] as const}
+              colors={[odu.cor + '20', 'rgba(255,252,246,0.95)'] as const}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={estilos.oduCard}
@@ -167,13 +180,13 @@ export default function TelaBuziosResultado() {
               {/* Estatísticas */}
               <View style={estilos.statsContainer}>
                 <View style={estilos.statItem}>
-                  <MaterialCommunityIcons name="grain" size={20} color={Cores.acento} />
+                  <BuzioIcon aberto tamanho={24} />
                   <Text style={estilos.statNum}>{numAbertos}</Text>
                   <Text style={estilos.statLabel}>Abertos</Text>
                 </View>
                 <View style={estilos.statDivisor} />
                 <View style={estilos.statItem}>
-                  <MaterialCommunityIcons name="circle" size={18} color={Cores.textoSecundario} />
+                  <BuzioIcon aberto={false} tamanho={24} />
                   <Text style={estilos.statNum}>{numFechados}</Text>
                   <Text style={estilos.statLabel}>Fechados</Text>
                 </View>
@@ -214,26 +227,22 @@ export default function TelaBuziosResultado() {
                   estilos.buzioMini,
                   aberto ? estilos.buzioMiniAberto : estilos.buzioMiniFechado,
                 ]}>
-                  <Text style={[
-                    estilos.buzioMiniTexto,
-                    { color: aberto ? Cores.acento : '#8B7355' },
-                  ]}>
-                    {aberto ? '○' : '●'}
-                  </Text>
+                  <BuzioIcon aberto={aberto} tamanho={30} />
                 </View>
               ))}
             </View>
           </Animated.View>
 
           {/* Bloco IA — Interpretação Aprofundada */}
-          <Animated.View style={[estilos.iaContainer, { opacity: fadeAnim }]}>
+          {IA_REMOTA_DISPONIVEL && (
+            <Animated.View style={[estilos.iaContainer, { opacity: fadeAnim }]}> 
             {!interpretacaoIA && !carregandoIA && (
               <Pressable
                 onPress={() => { Hapticos.impactoMedio(); aprofundarComIA(); }}
                 style={({ pressed }) => [{ transform: [{ scale: pressed ? 0.97 : 1 }] }]}
               >
                 <LinearGradient
-                  colors={['rgba(124,154,130,0.12)', 'rgba(75,0,130,0.10)'] as const}
+                  colors={['rgba(88,117,101,0.12)', 'rgba(110,131,144,0.10)'] as const}
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                   style={estilos.iaBotaoCard}
                 >
@@ -253,16 +262,22 @@ export default function TelaBuziosResultado() {
 
             {carregandoIA && (
               <LinearGradient
-                colors={['rgba(124,154,130,0.08)', 'rgba(75,0,130,0.06)'] as const}
+                colors={['rgba(88,117,101,0.08)', 'rgba(110,131,144,0.06)'] as const}
                 style={estilos.iaCarregando}
+                accessibilityRole="progressbar"
+                accessibilityLabel="Gerando interpretação aprofundada dos búzios"
               >
                 <ActivityIndicator color="#7C9A82" />
-                <Text style={estilos.iaCarregandoTexto}>Os Orixás falam através da IA...</Text>
+                <Text style={estilos.iaCarregandoTexto}>Interpretando os símbolos do jogo...</Text>
               </LinearGradient>
             )}
 
             {erroIA && !carregandoIA && (
-              <Pressable onPress={aprofundarComIA}>
+              <Pressable
+                onPress={aprofundarComIA}
+                accessibilityRole="button"
+                accessibilityLabel="Tentar gerar a interpretação novamente"
+              >
                 <View style={estilos.iaErro}>
                   <Ionicons name="refresh-outline" size={16} color={Cores.textoSecundario} />
                   <Text style={estilos.iaErroTexto}>Falha ao conectar. Tocar para tentar novamente.</Text>
@@ -272,7 +287,7 @@ export default function TelaBuziosResultado() {
 
             {interpretacaoIA && (
               <LinearGradient
-                colors={['rgba(124,154,130,0.10)', 'rgba(75,0,130,0.08)'] as const}
+                colors={['rgba(88,117,101,0.10)', 'rgba(110,131,144,0.08)'] as const}
                 style={estilos.iaResultado}
               >
                 <View style={estilos.iaResultadoHeader}>
@@ -294,10 +309,22 @@ export default function TelaBuziosResultado() {
                 ))}
               </LinearGradient>
             )}
-          </Animated.View>
+            </Animated.View>
+          )}
+
+          <NotaReflexiva />
 
           {/* Rating */}
           <RatingConsulta />
+
+          <ConviteHistorico
+            consulta={{
+              tipo: 'buzios',
+              pergunta: intencao || undefined,
+              resultado,
+              resumo: `${odu.nome}: ${odu.significado}`,
+            }}
+          />
 
           {/* Ações */}
           <View style={estilos.acoesContainer}>
@@ -306,7 +333,7 @@ export default function TelaBuziosResultado() {
                 onPress={() => {
                   Hapticos.impactoLeve();
                   if (resultado?.odu) {
-                    compartilharBuzios({ nomeOdu: resultado.odu.nome, descricao: resultado.odu.descricao });
+                    compartilharBuzios({ nomeOdu: resultado.odu.nome, descricao: resultado.odu.significado });
                   }
                 }}
                 style={estilos.compartilharBotao}
@@ -356,7 +383,7 @@ const estilos = StyleSheet.create({
     paddingBottom: Espacamento.md,
   },
   voltarBotao: {
-    width: 40, height: 40, borderRadius: 20,
+    width: 44, height: 44, borderRadius: 22,
     backgroundColor: Cores.cardFundo,
     borderWidth: 1, borderColor: Cores.cardBorda,
     alignItems: 'center', justifyContent: 'center',
@@ -376,12 +403,13 @@ const estilos = StyleSheet.create({
   formatoAtivo: { borderColor: Cores.acento, backgroundColor: 'rgba(212, 175, 55, 0.08)' },
   formatoDesabilitado: { opacity: 0.5 },
   formatoTexto: { fontFamily: Fontes.corpo, fontSize: 11, color: Cores.textoSecundario, marginTop: 4 },
+  formatoBreve: { fontFamily: Fontes.corpo, fontSize: 9, color: Cores.textoSecundario, marginTop: 2 },
 
   oduCard: {
     borderRadius: RaioBorda.xl,
     padding: Espacamento.lg,
     borderWidth: 1,
-    borderColor: 'rgba(245, 240, 232, 0.06)',
+    borderColor: 'rgba(88, 117, 101, 0.12)',
     marginBottom: Espacamento.lg,
   },
   oduHeader: {
@@ -407,14 +435,14 @@ const estilos = StyleSheet.create({
 
   statsContainer: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around',
-    backgroundColor: 'rgba(245, 240, 232, 0.04)',
+    backgroundColor: 'rgba(88, 117, 101, 0.07)',
     borderRadius: RaioBorda.lg, padding: Espacamento.md,
     marginBottom: Espacamento.lg,
   },
   statItem: { alignItems: 'center', flex: 1 },
   statNum: { fontFamily: Fontes.corpoNegrito, fontSize: 14, color: Cores.textoClaro, marginTop: 4 },
   statLabel: { fontFamily: Fontes.corpo, fontSize: 10, color: Cores.textoSecundario, marginTop: 2 },
-  statDivisor: { width: 1, height: 30, backgroundColor: 'rgba(245, 240, 232, 0.08)' },
+  statDivisor: { width: 1, height: 30, backgroundColor: 'rgba(88, 117, 101, 0.14)' },
 
   secao: { marginBottom: Espacamento.md },
   secaoLabel: {
@@ -438,12 +466,11 @@ const estilos = StyleSheet.create({
     flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8,
   },
   buzioMini: {
-    width: 32, height: 32, borderRadius: 16,
+    width: 38, height: 38, borderRadius: 19,
     alignItems: 'center', justifyContent: 'center',
   },
-  buzioMiniAberto: { backgroundColor: '#F5F0E8', borderWidth: 1, borderColor: Cores.acento },
-  buzioMiniFechado: { backgroundColor: '#3D2B1F', borderWidth: 1, borderColor: '#5C4033' },
-  buzioMiniTexto: { fontSize: 14 },
+  buzioMiniAberto: { backgroundColor: 'rgba(88,117,101,0.10)' },
+  buzioMiniFechado: { backgroundColor: 'rgba(61,43,31,0.18)' },
 
   acoesContainer: { paddingVertical: Espacamento.md },
   acoesLinha: {

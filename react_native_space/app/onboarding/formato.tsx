@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { GradientBackground } from '../../components/GradientBackground';
 import { Button } from '../../components/Button';
 import { ProgressIndicator } from '../../components/ProgressIndicator';
@@ -202,7 +202,7 @@ const estilos = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(245, 240, 232, 0.06)',
+    backgroundColor: 'rgba(88, 117, 101, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: Espacamento.md,

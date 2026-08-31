@@ -6,6 +6,15 @@ test-results/
 playwright-report/
 node_modules/
 
+# Build output (a Vercel rebuilda no servidor via buildCommand)
+dist/
+
+# Estado local do Yarn (por maquina)
+.yarn/install-state.gz
+
+# Estado local do CLI Supabase
+supabase/.temp/
+
 **/.claude/settings.local.json
 
 .vercel

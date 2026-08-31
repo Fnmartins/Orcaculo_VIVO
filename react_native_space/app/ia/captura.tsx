@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { GradientBackground } from '../../components/GradientBackground';
@@ -224,7 +224,7 @@ const estilos = StyleSheet.create({
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: 'rgba(26, 26, 46, 0.8)',
+    backgroundColor: 'rgba(255, 252, 246, 0.90)',
     borderRadius: 14,
   },
   placeholderContainer: {

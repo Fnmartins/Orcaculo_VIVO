@@ -10,13 +10,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
+import { ResizeMode, Video } from 'expo-av';
 import { GradientBackground } from '../../components/GradientBackground';
 import { Button } from '../../components/Button';
 import { BuzioIcon } from '../../components/BuzioIcon';
-import { MaoLancando } from '../../components/MaoLancando';
 import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
@@ -37,6 +37,7 @@ interface BuzioAnimado {
 }
 
 const MESA_IMG = require('../../assets/mesa-buzios.jpg');
+const VIDEO_LANCAMENTO = require('../../assets/buzios-lancamento.mp4');
 
 // Gera uma posição aleatória DENTRO do círculo da mesa (distribuição uniforme).
 // Como usa Math.random() a cada chamada, a disposição dos búzios muda a cada jogada.
@@ -62,6 +63,10 @@ export default function TelaBuziosJogo() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
   const brilhoArea = useRef(new Animated.Value(0)).current;
+  const videoOpacidade = useRef(new Animated.Value(0)).current;
+  const videoRef = useRef<Video>(null);
+  const lancamentoConcluido = useRef(false);
+  const videoSaidaIniciada = useRef(false);
 
   // 12 búzios com animações
   const buziosAnims = useRef<BuzioAnimado[]>(
@@ -146,9 +151,33 @@ export default function TelaBuziosJogo() {
   const realizarJogada = useCallback(() => {
     if (jogou) return;
     Hapticos.impactoMedio();
+    lancamentoConcluido.current = false;
+    videoSaidaIniciada.current = false;
+    videoOpacidade.setValue(0);
     setJogou(true);
     setMaoVisivel(true);
-  }, [jogou]);
+  }, [jogou, videoOpacidade]);
+
+  const concluirVideoLancamento = useCallback(() => {
+    if (lancamentoConcluido.current) return;
+    lancamentoConcluido.current = true;
+    setMaoVisivel(false);
+    lancarBuzios();
+  }, [lancarBuzios]);
+
+  const iniciarVideoLancamento = useCallback(async () => {
+    try {
+      await videoRef.current?.setPositionAsync(2200);
+      Animated.timing(videoOpacidade, {
+        toValue: 1,
+        duration: 260,
+        useNativeDriver: true,
+      }).start();
+      await videoRef.current?.playAsync();
+    } catch {
+      concluirVideoLancamento();
+    }
+  }, [concluirVideoLancamento, videoOpacidade]);
 
   const verResultado = useCallback(() => {
     if (!resultado) return;
@@ -226,21 +255,51 @@ export default function TelaBuziosJogo() {
                 );
               })}
 
-              {/* Mão lançando */}
-              <MaoLancando
-                visivel={maoVisivel}
-                tamanho={190}
-                onAnimacaoCompleta={() => {
-                  setMaoVisivel(false);
-                  lancarBuzios();
-                }}
-              />
+              {/* Lançamento real — vídeo fornecido pelo projeto */}
+              {maoVisivel && (
+                <Animated.View style={[estilos.videoLancamento, { opacity: videoOpacidade }]} pointerEvents="none">
+                  <View style={estilos.videoMoldura}>
+                    <Video
+                      ref={videoRef}
+                      source={VIDEO_LANCAMENTO}
+                      style={estilos.video}
+                      resizeMode={ResizeMode.CONTAIN}
+                      isMuted
+                      isLooping={false}
+                      useNativeControls={false}
+                      progressUpdateIntervalMillis={100}
+                      onLoad={iniciarVideoLancamento}
+                      onPlaybackStatusUpdate={(status) => {
+                        if (status.isLoaded && status.durationMillis && !videoSaidaIniciada.current) {
+                          const restante = status.durationMillis - status.positionMillis;
+                          if (restante > 0 && restante <= 400) {
+                            videoSaidaIniciada.current = true;
+                            Animated.timing(videoOpacidade, {
+                              toValue: 0,
+                              duration: restante,
+                              useNativeDriver: true,
+                            }).start();
+                          }
+                        }
+                        if (status.isLoaded && status.didJustFinish) concluirVideoLancamento();
+                      }}
+                      onError={concluirVideoLancamento}
+                    />
+                    <LinearGradient
+                      colors={['rgba(8,4,12,0.12)', 'transparent', 'rgba(8,4,12,0.18)'] as const}
+                      style={StyleSheet.absoluteFillObject}
+                    />
+                  </View>
+                </Animated.View>
+              )}
 
               {/* Botão de jogar (antes de jogar) */}
               {!jogou && (
                 <Pressable
                   onPress={realizarJogada}
                   style={estilos.botaoJogarOverlay}
+                  accessibilityRole="button"
+                  accessibilityLabel="Lançar búzios"
                 >
                   <LinearGradient
                     colors={Cores.gradienteAcento}
@@ -304,7 +363,7 @@ const estilos = StyleSheet.create({
     paddingBottom: Espacamento.sm,
     zIndex: 20,
     position: 'relative',
-    backgroundColor: 'rgba(26,26,46,0.95)',
+    backgroundColor: 'rgba(255,252,246,0.96)',
     paddingHorizontal: Espacamento.lg,
     marginHorizontal: -Espacamento.lg,
     paddingLeft: Espacamento.lg,
@@ -360,6 +419,25 @@ const estilos = StyleSheet.create({
     backgroundColor: Cores.acento,
     borderRadius: RaioBorda.xl,
   },
+  videoLancamento: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(9,6,12,0.34)',
+  },
+  videoMoldura: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    overflow: 'hidden',
+    backgroundColor: '#09060C',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: 'rgba(212,175,55,0.32)',
+  },
+  video: {
+    ...StyleSheet.absoluteFillObject,
+  },
   buzio: {
     position: 'absolute',
     width: TAMANHO_BUZIO,
@@ -372,12 +450,8 @@ const estilos = StyleSheet.create({
         shadowRadius: 4,
       },
       android: { elevation: 6 },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.5,
-        shadowRadius: 4,
-      },
+      // No navegador, box-shadow acompanha a caixa retangular do SVG.
+      default: {},
     }),
   },
 
@@ -425,7 +499,7 @@ const estilos = StyleSheet.create({
     paddingVertical: Espacamento.md,
     zIndex: 20,
     position: 'relative',
-    backgroundColor: 'rgba(26,26,46,0.95)',
+    backgroundColor: 'rgba(255,252,246,0.96)',
     marginHorizontal: -Espacamento.lg,
     paddingHorizontal: Espacamento.lg,
   },
@@ -446,7 +520,7 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     zIndex: 20,
     position: 'relative',
-    backgroundColor: 'rgba(26,26,46,0.95)',
+    backgroundColor: 'rgba(255,252,246,0.96)',
     marginHorizontal: -Espacamento.lg,
     paddingHorizontal: Espacamento.lg,
   },

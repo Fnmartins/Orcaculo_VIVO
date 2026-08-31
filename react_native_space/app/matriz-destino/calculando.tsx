@@ -8,7 +8,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import Svg, { Polygon, Circle as SvgCircle, Line, Defs, RadialGradient, Stop } from 'react-native-svg';
 import { GradientBackground } from '../../components/GradientBackground';
 import { Cores } from '../../constants/colors';

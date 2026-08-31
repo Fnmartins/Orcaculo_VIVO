@@ -14,7 +14,8 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GradientBackground } from '../../components/GradientBackground';
 import { Cores } from '../../constants/colors';
@@ -23,7 +24,6 @@ import { Espacamento, RaioBorda } from '../../constants/spacing';
 import { Hapticos } from '../../utils/haptics';
 import {
   ORACULISTAS,
-  CONSULTAS_DEMO,
   gerarHorarios,
   type Oraculista,
   type HorarioDisponivel,
@@ -31,6 +31,7 @@ import {
 } from '../../data/consultas';
 import { useAuth } from '../../contexts/AuthContext';
 import { DatabaseServico, type Consulta } from '../../services/database';
+import { EstadoTela } from '../../components/EstadoTela';
 
 type Aba = 'oraculistas' | 'agendadas' | 'historico';
 type FormatoConsulta = 'video' | 'chat' | 'audio';
@@ -50,12 +51,13 @@ const ICONES_TIPO: Record<string, { icone: string; lib: 'ionicons' | 'material';
 export default function TelaConsultas() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const [abaAtiva, setAbaAtiva] = useState<Aba>('oraculistas');
-  const [consultas, setConsultas] = useState<ConsultaAgendada[]>(CONSULTAS_DEMO);
+  const [consultas, setConsultas] = useState<ConsultaAgendada[]>([]);
   const { perfil, logado } = useAuth();
 
   // Histórico
   const [historico, setHistorico] = useState<Consulta[]>([]);
   const [carregandoHistorico, setCarregandoHistorico] = useState(false);
+  const [erroHistorico, setErroHistorico] = useState(false);
   const [atualizandoHistorico, setAtualizandoHistorico] = useState(false);
   const [filtroHistorico, setFiltroHistorico] = useState<FiltroHistorico>('todos');
 
@@ -75,11 +77,13 @@ export default function TelaConsultas() {
     if (!logado || !perfil?.id) return;
     if (!silencioso) setCarregandoHistorico(true);
     else setAtualizandoHistorico(true);
+    setErroHistorico(false);
     try {
       const dados = await DatabaseServico.listarConsultas(perfil.id, 30);
       setHistorico(dados);
     } catch (erro) {
       console.error('[Histórico]', erro);
+      setErroHistorico(true);
     } finally {
       setCarregandoHistorico(false);
       setAtualizandoHistorico(false);
@@ -104,12 +108,10 @@ export default function TelaConsultas() {
 
   const abrirAgendamento = useCallback((orac: Oraculista) => {
     Hapticos.impactoLeve();
-    setOraculistaSelecionado(orac);
-    setDataSelecionada(new Date());
-    setHorarioSelecionado(null);
-    setFormatoSelecionado('video');
-    setEtapaModal('data');
-    setModalVisivel(true);
+    Alert.alert(
+      'Agendamento em preparação',
+      `A agenda de ${orac.nome} ainda não está disponível. Esta área é uma prévia e nenhuma consulta foi marcada.`
+    );
   }, []);
 
   const confirmarAgendamento = useCallback(() => {
@@ -186,6 +188,12 @@ export default function TelaConsultas() {
           {/* Conteúdo */}
           {abaAtiva === 'oraculistas' && (
             <ScrollView contentContainerStyle={estilos.listaContent} showsVerticalScrollIndicator={false}>
+              <View style={estilos.previaAviso} accessible accessibilityRole="text">
+                <Ionicons name="information-circle-outline" size={18} color={Cores.acento} />
+                <Text style={estilos.previaAvisoTexto}>
+                  Prévia do atendimento humano. Perfis, horários e pagamentos ainda não estão ativos.
+                </Text>
+              </View>
               {ORACULISTAS.map((orac) => (
                 <CardOraculista key={orac.id} oraculista={orac} onAgendar={() => abrirAgendamento(orac)} />
               ))}
@@ -234,10 +242,15 @@ export default function TelaConsultas() {
               )}
 
               {carregandoHistorico ? (
-                <View style={estilos.vazioContainer}>
-                  <ActivityIndicator color={Cores.acento} size="large" />
-                  <Text style={estilos.vazioTexto}>Carregando histórico...</Text>
-                </View>
+                <EstadoTela tipo="carregando" titulo="Carregando seu histórico" />
+              ) : erroHistorico ? (
+                <EstadoTela
+                  tipo="erro"
+                  titulo="Seu histórico não carregou"
+                  descricao="Verifique sua conexão e tente novamente. Suas consultas continuam seguras."
+                  acaoLabel="Tentar novamente"
+                  onAcao={() => carregarHistorico()}
+                />
               ) : !logado ? (
                 <View style={estilos.vazioContainer}>
                   <Ionicons name="lock-closed-outline" size={48} color={Cores.textoSecundario} />
@@ -379,7 +392,7 @@ function CardHistorico({ consulta, onFavoritar }: { consulta: Consulta; onFavori
   return (
     <View style={estilos.cardHistorico}>
       <LinearGradient
-        colors={[meta.cor + '18', 'rgba(26,26,46,0.5)'] as const}
+        colors={[meta.cor + '18', 'rgba(255,252,246,0.96)'] as const}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         style={estilos.cardHistoricoGradiente}
       >
@@ -429,7 +442,7 @@ function CardOraculista({ oraculista, onAgendar }: { oraculista: Oraculista; onA
   return (
     <View style={estilos.cardOra}>
       <LinearGradient
-        colors={[oraculista.cor + '15', 'rgba(26,26,46,0.4)'] as const}
+        colors={[oraculista.cor + '15', 'rgba(255,252,246,0.95)'] as const}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={estilos.cardOraGradiente}
@@ -481,7 +494,7 @@ function CardOraculista({ oraculista, onAgendar }: { oraculista: Oraculista; onA
             >
               <Ionicons name="calendar-outline" size={16} color="#fff" />
               <Text style={estilos.agendarBotaoTexto}>
-                {oraculista.disponivel ? 'Agendar' : 'Indisponível'}
+                {oraculista.disponivel ? 'Em breve' : 'Indisponível'}
               </Text>
             </LinearGradient>
           </Pressable>
@@ -849,6 +862,24 @@ const estilos = StyleSheet.create({
   listaContent: {
     padding: Espacamento.md,
     paddingBottom: 40,
+  },
+  previaAviso: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Espacamento.sm,
+    padding: Espacamento.md,
+    marginBottom: Espacamento.md,
+    borderRadius: RaioBorda.md,
+    borderWidth: 1,
+    borderColor: Cores.cardBorda,
+    backgroundColor: Cores.cardFundo,
+  },
+  previaAvisoTexto: {
+    flex: 1,
+    fontFamily: Fontes.corpo,
+    fontSize: 13,
+    lineHeight: 19,
+    color: Cores.textoSecundario,
   },
   // Card Oraculista
   cardOra: {
@@ -1355,7 +1386,7 @@ const estilos = StyleSheet.create({
   cardHistoricoGradiente: {
     borderRadius: RaioBorda.lg,
     borderWidth: 1,
-    borderColor: 'rgba(245,240,232,0.07)',
+    borderColor: 'rgba(88,117,101,0.14)',
     padding: Espacamento.md,
   },
   cardHistoricoTop: {
@@ -1407,7 +1438,7 @@ const estilos = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(245,240,232,0.06)',
+    backgroundColor: 'rgba(88,117,101,0.08)',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: RaioBorda.full,

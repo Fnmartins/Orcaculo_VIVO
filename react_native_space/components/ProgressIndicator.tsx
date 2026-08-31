@@ -42,7 +42,7 @@ const estilos = StyleSheet.create({
   },
   pontoInativo: {
     width: 16,
-    backgroundColor: 'rgba(245, 240, 232, 0.2)',
+    backgroundColor: 'rgba(88, 117, 101, 0.18)',
   },
   pontoConcluido: {
     backgroundColor: 'rgba(212, 175, 55, 0.5)',

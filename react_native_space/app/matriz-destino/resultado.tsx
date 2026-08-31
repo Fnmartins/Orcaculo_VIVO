@@ -9,14 +9,18 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GradientBackground } from '../../components/GradientBackground';
+import { EstadoTela } from '../../components/EstadoTela';
+import { NotaReflexiva } from '../../components/NotaReflexiva';
 import { Octograma } from '../../components/Octograma';
 import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
 import { Hapticos } from '../../utils/haptics';
+import { dataConsultaValida, textoConsultaValido } from '../../utils/validacaoConsulta';
 import { calcularMatriz, obterArcano, type ResultadoMatriz } from '../../data/matriz-destino';
 
 interface PontoSelecionado {
@@ -60,6 +64,25 @@ export default function TelaMatrizResultado() {
     Animated.timing(detalheFade, { toValue: 1, duration: 400, useNativeDriver: true }).start();
   }
 
+  const parametrosValidos = textoConsultaValido(params.nome)
+    && dataConsultaValida(params.dia, params.mes, params.ano);
+
+  if (!parametrosValidos) {
+    return (
+      <GradientBackground>
+        <SafeAreaView style={estilos.safeArea}>
+          <EstadoTela
+            tipo="erro"
+            titulo="Não foi possível calcular sua matriz"
+            descricao="Informe seu nome e uma data de nascimento válida para gerar a Matriz do Destino."
+            acaoLabel="Revisar dados"
+            onAcao={() => router.back()}
+          />
+        </SafeAreaView>
+      </GradientBackground>
+    );
+  }
+
   const arcanoSel = selecionado ? obterArcano(selecionado.valor) : null;
 
   return (
@@ -71,7 +94,12 @@ export default function TelaMatrizResultado() {
         >
           {/* Header */}
           <Animated.View style={[estilos.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-            <Pressable onPress={() => router.back()} style={estilos.iconeBotao}>
+            <Pressable
+              onPress={() => router.back()}
+              style={estilos.iconeBotao}
+              accessibilityRole="button"
+              accessibilityLabel="Voltar"
+            >
               <Ionicons name="arrow-back" size={22} color={Cores.textoClaro} />
             </Pressable>
             <View style={estilos.headerCenter}>
@@ -80,9 +108,7 @@ export default function TelaMatrizResultado() {
                 {params.nome || `${params.dia}/${params.mes}/${params.ano}`}
               </Text>
             </View>
-            <Pressable onPress={() => Hapticos.impactoLeve()} style={estilos.iconeBotao}>
-              <Ionicons name="share-outline" size={20} color={Cores.textoClaro} />
-            </Pressable>
+            <View style={estilos.iconeBotaoEspaco} />
           </Animated.View>
 
           {/* Octograma */}
@@ -220,6 +246,8 @@ export default function TelaMatrizResultado() {
             </View>
           </Animated.View>
 
+          <NotaReflexiva />
+
           {/* Ações */}
           <Animated.View style={[estilos.secao, { opacity: fadeAnim }]}>
             <Pressable
@@ -279,13 +307,14 @@ const estilos = StyleSheet.create({
     paddingBottom: Espacamento.sm,
   },
   iconeBotao: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: RaioBorda.full,
     backgroundColor: Cores.cardFundo,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  iconeBotaoEspaco: { width: 44, height: 44 },
   headerCenter: { flex: 1, alignItems: 'center' },
   headerTitulo: {
     fontFamily: Fontes.titulo,

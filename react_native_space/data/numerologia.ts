@@ -1,5 +1,13 @@
 // Dados de Numerologia do Oráculo Vivo
 
+import {
+  calcularAlma as calcularAlmaDetalhado,
+  calcularAnoPessoal as calcularAnoPessoalDetalhado,
+  calcularCaminhoVida as calcularCaminhoVidaDetalhado,
+  calcularExpressao as calcularExpressaoDetalhado,
+  calcularPersonalidade as calcularPersonalidadeDetalhado,
+} from './mapa-numerologico';
+
 export interface NumeroSignificado {
   numero: number;
   titulo: string;
@@ -88,8 +96,8 @@ export const NUMEROS: NumeroSignificado[] = [
   {
     numero: 8,
     titulo: 'O Realizador',
-    essencia: 'Poder e Abundância',
-    descricao: 'Você nasceu para realizar e prosperar. Sua energia é de poder, ambição e capacidade de materializar sonhos. Você veio para administrar recursos e gerar abundância.',
+    essencia: 'Gestão e Realização',
+    descricao: 'A tradição associa este número a gestão, ambição e responsabilidade material. Use a leitura como reflexão, não como previsão de prosperidade.',
     qualidades: ['Ambição', 'Poder', 'Visão estratégica', 'Resiliência'],
     desafios: ['Materialismo', 'Autoritarismo', 'Workaholic'],
     cor: '#34495E', planeta: 'Saturno', elemento: 'Terra',
@@ -98,28 +106,37 @@ export const NUMEROS: NumeroSignificado[] = [
     numero: 9,
     titulo: 'O Humanitário',
     essencia: 'Compaixão e Universalidade',
-    descricao: 'Você é a alma compassiva, o servo do coletivo. Sua energia é de amor universal, generosidade e idealismo. Você veio para inspirar, curar e servir à humanidade.',
+    descricao: 'A tradição associa este número a compaixão, generosidade e visão coletiva. Reflita sobre contribuição e limites sem atribuir capacidade de cura.',
     qualidades: ['Compaixão', 'Idealismo', 'Generosidade', 'Sabedoria'],
     desafios: ['Utopismo', 'Autossacrifício', 'Dificuldade em soltar'],
     cor: '#8E44AD', planeta: 'Marte', elemento: 'Fogo',
   },
   {
     numero: 11,
-    titulo: 'O Iluminado',
-    essencia: 'Inspiração e Visão Espiritual',
-    descricao: 'Número mestre! Você carrega uma vibração elevada de inspiração e intuição. Sua missão é iluminar caminhos e trazer mensagens do plano superior para o mundo material.',
-    qualidades: ['Intuição elevada', 'Inspiração', 'Carisma espiritual', 'Sensibilidade'],
+    titulo: 'O Inspirador',
+    essencia: 'Inspiração e Sensibilidade',
+    descricao: 'Algumas escolas preservam o 11 e o associam a inspiração e sensibilidade. Isso é uma convenção simbólica, não evidência de poderes especiais.',
+    qualidades: ['Percepção', 'Inspiração', 'Criatividade', 'Sensibilidade'],
     desafios: ['Ansiedade', 'Hipersensibilidade', 'Pressão interna'],
     cor: '#D4AF37', planeta: 'Plutão', elemento: 'Ar',
   },
   {
     numero: 22,
     titulo: 'O Mestre Construtor',
-    essencia: 'Visão e Realização Global',
-    descricao: 'Número mestre supremo! Você tem o poder de transformar sonhos em realidade em escala grandiosa. Sua energia combina visão espiritual com capacidade prática extraordinária.',
-    qualidades: ['Visão grandiosa', 'Poder de realização', 'Liderança mundial', 'Praticidade elevada'],
+    essencia: 'Visão e Construção',
+    descricao: 'Algumas escolas preservam o 22 e o associam à combinação entre visão e execução. Use a leitura para refletir sobre planejamento, colaboração e limites.',
+    qualidades: ['Visão', 'Realização', 'Coordenação', 'Praticidade'],
     desafios: ['Pressão extrema', 'Perfeccionismo', 'Dificuldade em delegar'],
     cor: '#C49B30', planeta: 'Sol/Urano', elemento: 'Terra',
+  },
+  {
+    numero: 33,
+    titulo: 'O Cuidador Mestre',
+    essencia: 'Cuidado e Ensino',
+    descricao: 'Algumas escolas preservam o 33 e o associam a cuidado e ensino. Isso não indica capacidade médica ou terapêutica.',
+    qualidades: ['Cuidado', 'Ensino', 'Escuta', 'Responsabilidade'],
+    desafios: ['Autossacrifício', 'Idealização', 'Sobrecarga'],
+    cor: '#B58C45', planeta: 'Vênus/Netuno', elemento: 'Água',
   },
 ];
 
@@ -127,67 +144,29 @@ function obterSignificado(n: number): NumeroSignificado {
   return NUMEROS.find(num => num.numero === n) ?? NUMEROS[n > 9 ? 0 : n - 1] ?? NUMEROS[0];
 }
 
-// Reduz número a um dígito (preservando mestres 11, 22)
-function reduzir(n: number): number {
-  if (n === 11 || n === 22) return n;
-  while (n > 9) {
-    n = String(n).split('').reduce((s, d) => s + parseInt(d, 10), 0);
-    if (n === 11 || n === 22) return n;
-  }
-  return n;
-}
-
-// Tabela pitagórica: letras → números
-const TABELA: Record<string, number> = {
-  a: 1, b: 2, c: 3, d: 4, e: 5, f: 6, g: 7, h: 8, i: 9,
-  j: 1, k: 2, l: 3, m: 4, n: 5, o: 6, p: 7, q: 8, r: 9,
-  s: 1, t: 2, u: 3, v: 4, w: 5, x: 6, y: 7, z: 8,
-};
-
-const VOGAIS = new Set(['a', 'e', 'i', 'o', 'u']);
-
-function normalizarNome(nome: string): string {
-  return nome
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z]/g, '');
-}
-
 // Caminho de Vida: soma de dia + mês + ano
 export function calcularCaminhoVida(dia: number, mes: number, ano: number): number {
-  const somaD = reduzir(dia);
-  const somaM = reduzir(mes);
-  const somaA = reduzir(ano);
-  return reduzir(somaD + somaM + somaA);
+  return calcularCaminhoVidaDetalhado(dia, mes, ano).numeroFinal;
 }
 
 // Expressão: soma de todas as letras do nome completo
 export function calcularExpressao(nome: string): number {
-  const letras = normalizarNome(nome);
-  const soma = letras.split('').reduce((s, c) => s + (TABELA[c] ?? 0), 0);
-  return reduzir(soma);
+  return calcularExpressaoDetalhado(nome).numeroFinal;
 }
 
 // Número da Alma (Almico): soma das vogais
 export function calcularAlmico(nome: string): number {
-  const letras = normalizarNome(nome);
-  const soma = letras.split('').filter(c => VOGAIS.has(c)).reduce((s, c) => s + (TABELA[c] ?? 0), 0);
-  return reduzir(soma);
+  return calcularAlmaDetalhado(nome).numeroFinal;
 }
 
 // Personalidade: soma das consoantes
 export function calcularPersonalidade(nome: string): number {
-  const letras = normalizarNome(nome);
-  const soma = letras.split('').filter(c => !VOGAIS.has(c) && TABELA[c]).reduce((s, c) => s + (TABELA[c] ?? 0), 0);
-  return reduzir(soma);
+  return calcularPersonalidadeDetalhado(nome).numeroFinal;
 }
 
 // Ano Pessoal
 export function calcularAnoPessoal(dia: number, mes: number): number {
-  const anoAtual = new Date().getFullYear();
-  const soma = reduzir(dia) + reduzir(mes) + reduzir(anoAtual);
-  return reduzir(soma);
+  return calcularAnoPessoalDetalhado(dia, mes).numeroFinal;
 }
 
 export function gerarNumerologiaCompleta(nome: string, dia: number, mes: number, ano: number): ResultadoNumerologia {
@@ -203,11 +182,11 @@ export function gerarNumerologiaCompleta(nome: string, dia: number, mes: number,
   const personalidade = obterSignificado(pers);
   const anosPessoais = obterSignificado(ap);
 
-  const resumo = `Seu Caminho de Vida ${cv} (${caminhoVida.titulo}) revela sua missão principal: ${caminhoVida.essencia.toLowerCase()}. ` +
-    `Com a Expressão ${exp} (${expressao.titulo}), você manifesta seus talentos através de ${expressao.qualidades[0].toLowerCase()} e ${expressao.qualidades[1].toLowerCase()}. ` +
-    `Seu Número da Alma ${alm} (${almico.titulo}) mostra que interiormente busca ${almico.essencia.toLowerCase()}, ` +
-    `enquanto sua Personalidade ${pers} (${personalidade.titulo}) é percebida pelos outros como ${personalidade.qualidades[0].toLowerCase()} e ${personalidade.qualidades[2].toLowerCase()}. ` +
-    `Em ${new Date().getFullYear()}, seu Ano Pessoal ${ap} traz energia de ${anosPessoais.essencia.toLowerCase()}.`;
+  const resumo = `Na tradição adotada, o Caminho de Vida ${cv} (${caminhoVida.titulo}) é associado a ${caminhoVida.essencia.toLowerCase()}. ` +
+    `A Expressão ${exp} (${expressao.titulo}) convida a observar ${expressao.qualidades[0].toLowerCase()} e ${expressao.qualidades[1].toLowerCase()}. ` +
+    `O Número da Alma ${alm} (${almico.titulo}) simboliza ${almico.essencia.toLowerCase()}, ` +
+    `enquanto a Personalidade ${pers} (${personalidade.titulo}) é tradicionalmente relacionada a ${personalidade.qualidades[0].toLowerCase()} e ${personalidade.qualidades[2].toLowerCase()}. ` +
+    `Em ${new Date().getFullYear()}, o Ano Pessoal ${ap} oferece o tema simbólico de ${anosPessoais.essencia.toLowerCase()}.`;
 
   return { caminhoVida, expressao, almico, personalidade, anosPessoais, resumo };
 }

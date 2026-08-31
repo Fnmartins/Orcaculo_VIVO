@@ -8,11 +8,10 @@ import {
   AccessibilityInfo,
 } from 'react-native';
 import { router } from 'expo-router';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { GradientBackground } from '../components/GradientBackground';
 import { Cores } from '../constants/colors';
 import { Fontes } from '../constants/typography';
-import { AuthServico } from '../services/auth';
 
 const { width: LARGURA_TELA } = Dimensions.get('window');
 
@@ -68,7 +67,7 @@ export default function TelaSplash() {
       subtituloOpacidade.setValue(1);
 
       const timer = setTimeout(() => {
-        router.replace('/welcome');
+        router.replace('/(tabs)');
       }, 2900);
       return () => clearTimeout(timer);
     }
@@ -165,17 +164,8 @@ export default function TelaSplash() {
         toValue: 0,
         duration: 400,
         useNativeDriver: true,
-      }).start(async () => {
-        try {
-          const sessao = await AuthServico.sessaoAtual();
-          if (sessao) {
-            router.replace('/(tabs)');
-          } else {
-            router.replace('/welcome');
-          }
-        } catch {
-          router.replace('/welcome');
-        }
+      }).start(() => {
+        router.replace('/(tabs)');
       });
     }, 2500);
 

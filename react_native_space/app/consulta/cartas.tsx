@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Rect, Polygon, Circle, Path, G, Line } from 'react-native-svg';
 import { Button } from '../../components/Button';
@@ -43,10 +43,10 @@ function VersoCartaSVG({ largura, altura }: { largura: number; altura: number })
   return (
     <Svg width={largura} height={altura}>
       {/* Fundo */}
-      <Rect x={0} y={0} width={largura} height={altura} rx={raio} ry={raio} fill="#110820" />
+      <Rect x={0} y={0} width={largura} height={altura} rx={raio} ry={raio} fill="#365247" />
       {/* Borda externa dourada */}
       <Rect x={margem} y={margem} width={largura - margem * 2} height={altura - margem * 2}
-        rx={raio - 1} ry={raio - 1} fill="none" stroke="#D4AF37" strokeWidth={1.2} />
+        rx={raio - 1} ry={raio - 1} fill="none" stroke="#C5A365" strokeWidth={1.2} />
       {/* Borda interna dourada */}
       <Rect x={margemInterna} y={margemInterna} width={largura - margemInterna * 2} height={altura - margemInterna * 2}
         rx={raio - 3} ry={raio - 3} fill="none" stroke="rgba(212,175,55,0.35)" strokeWidth={0.7} />
@@ -56,7 +56,7 @@ function VersoCartaSVG({ largura, altura }: { largura: number; altura: number })
       <Line x1={mx + estrelaR + 4} y1={my} x2={largura - margemInterna - 4} y2={my}
         stroke="rgba(212,175,55,0.2)" strokeWidth={0.5} />
       {/* Estrela de 8 pontas central */}
-      <Polygon points={pontosEstrela} fill="none" stroke="#D4AF37" strokeWidth={0.9} />
+      <Polygon points={pontosEstrela} fill="none" stroke="#C5A365" strokeWidth={0.9} />
       {/* Círculo no centro da estrela */}
       <Circle cx={mx} cy={my} r={estrelaR * 0.2} fill="rgba(212,175,55,0.5)" />
       {/* Ornamentos nos cantos */}
@@ -196,7 +196,7 @@ export default function TelaCartas() {
 
   return (
     <LinearGradient
-      colors={['#0B0915', '#110D20', '#0B0915']}
+      colors={['#F7F3EA', '#F1EEE5', '#F7F3EA']}
       style={{ flex: 1 }}
     >
       <SafeAreaView style={estilos.safeArea}>
@@ -222,13 +222,13 @@ export default function TelaCartas() {
         {/* Mesa de tarot */}
         <Animated.View style={[estilos.mesaWrapper, { opacity: fadeAnim }]}>
           <LinearGradient
-            colors={['#1C0D35', '#130920', '#1C0D35']}
+            colors={['#E7EEE5', '#DCE7DE', '#E7EEE5']}
             start={{ x: 0, y: 0.5 }}
             end={{ x: 1, y: 0.5 }}
             style={estilos.mesa}
           >
             <LinearGradient
-              colors={['rgba(0,0,0,0.5)', 'transparent', 'rgba(0,0,0,0.5)']}
+              colors={['rgba(54,82,71,0.10)', 'transparent', 'rgba(54,82,71,0.08)']}
               start={{ x: 0.5, y: 0 }}
               end={{ x: 0.5, y: 1 }}
               style={StyleSheet.absoluteFillObject}
@@ -310,7 +310,7 @@ export default function TelaCartas() {
                         {revelada ? (
                           // Carta revelada — frente
                           <LinearGradient
-                            colors={[carta.cor + '40', '#110D20', carta.cor + '15'] as const}
+                            colors={[carta.cor + '24', '#FFFCF6', carta.cor + '12'] as const}
                             start={{ x: 0.5, y: 0 }}
                             end={{ x: 0.5, y: 1 }}
                             style={estilos.cartaFrente}
@@ -446,11 +446,11 @@ const estilos = StyleSheet.create({
     borderRadius: 28,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(212,175,55,0.18)',
+    borderColor: 'rgba(88,117,101,0.22)',
     ...Platform.select({
-      ios: { shadowColor: '#D4AF37', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.2, shadowRadius: 20 },
+      ios: { shadowColor: '#365247', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.10, shadowRadius: 18 },
       android: { elevation: 10 },
-      default: { shadowColor: '#D4AF37', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.2, shadowRadius: 20 },
+      default: { shadowColor: '#365247', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.10, shadowRadius: 18 },
     }),
   },
   mesa: {
@@ -604,9 +604,9 @@ const estilos = StyleSheet.create({
     marginBottom: Espacamento.sm,
   },
   resumoInner: {
-    backgroundColor: 'rgba(28,13,53,0.8)',
+    backgroundColor: 'rgba(255,252,246,0.94)',
     borderWidth: 1,
-    borderColor: 'rgba(212,175,55,0.2)',
+    borderColor: 'rgba(88,117,101,0.18)',
     borderRadius: RaioBorda.lg,
     paddingHorizontal: Espacamento.md,
     paddingVertical: Espacamento.sm,

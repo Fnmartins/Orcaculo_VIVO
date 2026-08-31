@@ -7,7 +7,7 @@ export default function MatrizDestinoLayout() {
       screenOptions={{
         headerShown: false,
         animation: 'slide_from_right',
-        contentStyle: { backgroundColor: '#1A1A2E' },
+        contentStyle: { backgroundColor: '#F7F3EA' },
       }}
     />
   );

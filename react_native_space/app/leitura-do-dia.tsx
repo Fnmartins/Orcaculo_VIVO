@@ -9,12 +9,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GradientBackground } from '../components/GradientBackground';
 import { Button } from '../components/Button';
+import { ConviteHistorico } from '../components/ConviteHistorico';
+import { CartaTarotVisual } from '../components/CartaTarotVisual';
 import { Cores } from '../constants/colors';
 import { Fontes } from '../constants/typography';
 import { Espacamento, RaioBorda } from '../constants/spacing';
@@ -154,7 +156,7 @@ export default function TelaLeituraDia() {
                 /* Verso da carta */
                 <Pressable onPress={revelarCarta} style={estilos.cartaVerso}>
                   <LinearGradient
-                    colors={['rgba(75,0,130,0.6)', 'rgba(26,26,46,0.9)'] as const}
+                    colors={['rgba(128,107,136,0.16)', 'rgba(255,252,246,0.96)'] as const}
                     style={estilos.cartaVersoGradiente}
                   >
                     <Animated.View style={{ transform: [{ rotate: spin }] }}>
@@ -168,12 +170,10 @@ export default function TelaLeituraDia() {
                 /* Frente da carta */
                 <Animated.View style={{ opacity: revelarFade }}>
                   <LinearGradient
-                    colors={[carta.cor + '25', 'rgba(26,26,46,0.8)'] as const}
+                    colors={[carta.cor + '18', 'rgba(255,252,246,0.96)'] as const}
                     style={estilos.cartaFrente}
                   >
-                    <View style={[estilos.cartaIconeCirculo, { backgroundColor: carta.cor + '20' }]}>
-                      <Ionicons name={carta.icone as any} size={48} color={carta.cor} />
-                    </View>
+                    <CartaTarotVisual icone={carta.icone} cor={carta.cor} largura={104} />
                     <Text style={[estilos.cartaNome, { color: carta.cor }]}>{carta.nomeCompleto}</Text>
                     <View style={estilos.divisorCarta} />
 
@@ -207,13 +207,24 @@ export default function TelaLeituraDia() {
             </Animated.View>
           )}
 
+          {revelada && carta && (
+            <ConviteHistorico
+              consulta={{
+                tipo: 'tarot',
+                pergunta: 'Leitura do Dia',
+                resultado: { carta, data: obterDataHoje() },
+                resumo: `${carta.nomeCompleto}: ${carta.significado}`,
+              }}
+            />
+          )}
+
           {/* Ações */}
           {revelada && (
             <Animated.View style={[estilos.acoesContainer, { opacity: revelarFade }]}>
               <Button
                 variante="primary"
                 label="Consulta Completa com Tarot"
-                icone="cards-outline"
+                icone="card-outline"
                 posicaoIcone="left"
                 larguraTotal
                 onPress={() => { Hapticos.impactoLeve(); router.push('/consulta'); }}
@@ -332,7 +343,7 @@ const estilos = StyleSheet.create({
     borderRadius: RaioBorda.xl,
     padding: Espacamento.xl,
     borderWidth: 1,
-    borderColor: 'rgba(245,240,232,0.08)',
+    borderColor: 'rgba(88,117,101,0.14)',
     alignItems: 'center',
   },
   cartaIconeCirculo: {

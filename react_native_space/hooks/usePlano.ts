@@ -37,7 +37,7 @@ const NOME_PLANO: Record<string, string> = {
 };
 
 export function usePlano() {
-  const { perfil, logado } = useAuth();
+  const { perfil } = useAuth();
 
   const planoAtual = perfil?.plano ?? 'gratuito';
   const consultasRestantes = perfil?.consultas_restantes ?? 0;
@@ -49,10 +49,11 @@ export function usePlano() {
   }, [planoAtual, isSuperAdmin]);
 
   const podeFazerConsulta = useCallback((): boolean => {
+    if (!perfil) return true; // modo livre (sem login)
     if (isSuperAdmin) return true;
     if (planoAtual === 'explorador' || planoAtual === 'mestre') return true;
     return consultasRestantes > 0;
-  }, [planoAtual, consultasRestantes, isSuperAdmin]);
+  }, [perfil, planoAtual, consultasRestantes, isSuperAdmin]);
 
   /**
    * Verifica se o usuário pode acessar o recurso.
@@ -60,19 +61,6 @@ export function usePlano() {
    * Use antes de navegar para uma tela premium.
    */
   const verificarAcesso = useCallback((recurso: RecursoPlano): boolean => {
-    if (!logado) {
-      Alert.alert(
-        'Entre para continuar',
-        'Crie uma conta gratuita para acessar os oráculos.',
-        [
-          { text: 'Criar conta', onPress: () => router.push('/auth/cadastro') },
-          { text: 'Entrar', onPress: () => router.push('/auth/login') },
-          { text: 'Cancelar', style: 'cancel' },
-        ]
-      );
-      return false;
-    }
-
     if (!temAcesso(recurso)) {
       const planoNecessario = PLANO_MINIMO[recurso];
       Alert.alert(
@@ -101,7 +89,7 @@ export function usePlano() {
     }
 
     return true;
-  }, [logado, temAcesso, podeFazerConsulta]);
+  }, [temAcesso, podeFazerConsulta]);
 
   return {
     planoAtual,

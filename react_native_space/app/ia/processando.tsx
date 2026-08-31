@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { GradientBackground } from '../../components/GradientBackground';
 import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
@@ -223,7 +223,7 @@ const estilos = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: 'rgba(245, 240, 232, 0.15)',
+    backgroundColor: 'rgba(88, 117, 101, 0.15)',
   },
   etapaPontoAtivo: {
     backgroundColor: Cores.acento,
@@ -231,7 +231,7 @@ const estilos = StyleSheet.create({
   progressoContainer: {
     width: '80%',
     height: 3,
-    backgroundColor: 'rgba(245, 240, 232, 0.1)',
+    backgroundColor: 'rgba(88, 117, 101, 0.10)',
     borderRadius: 2,
     overflow: 'hidden',
   },

@@ -8,8 +8,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { GradientBackground } from '../../components/GradientBackground';
+import { BuzioIcon } from '../../components/BuzioIcon';
+import { ResizeMode, Video } from 'expo-av';
 import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
 import { Espacamento } from '../../constants/spacing';
@@ -22,46 +23,16 @@ const FRASES = [
   'A sabedoria ancestral se manifesta...',
 ];
 
+const VIDEO_PREPARACAO = require('../../assets/buzios-preparacao.mp4');
+
 export default function TelaBuziosPreparo() {
   const [fraseIndex, setFraseIndex] = useState(0);
   const fadeTexto = useRef(new Animated.Value(0)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const rotacaoAnim = useRef(new Animated.Value(0)).current;
   const progressoAnim = useRef(new Animated.Value(0)).current;
-
-  // Animações de fundo
-  const anel1 = useRef(new Animated.Value(0.8)).current;
-  const anel2 = useRef(new Animated.Value(0.6)).current;
+  const videoOpacidade = useRef(new Animated.Value(0)).current;
+  const videoRef = useRef<Video>(null);
 
   useEffect(() => {
-    // Pulso do ícone
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.1, duration: 1500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1, duration: 1500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-      ])
-    ).start();
-
-    // Rotação
-    Animated.loop(
-      Animated.timing(rotacaoAnim, { toValue: 1, duration: 12000, easing: Easing.linear, useNativeDriver: true })
-    ).start();
-
-    // Anéis pulsantes
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(anel1, { toValue: 1, duration: 2000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(anel1, { toValue: 0.8, duration: 2000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-      ])
-    ).start();
-
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(anel2, { toValue: 0.9, duration: 2500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(anel2, { toValue: 0.6, duration: 2500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-      ])
-    ).start();
-
     // Progresso
     Animated.timing(progressoAnim, {
       toValue: 1,
@@ -69,7 +40,7 @@ export default function TelaBuziosPreparo() {
       easing: Easing.linear,
       useNativeDriver: false,
     }).start();
-  }, [pulseAnim, rotacaoAnim, anel1, anel2, progressoAnim]);
+  }, [progressoAnim]);
 
   // Ciclo de frases
   useEffect(() => {
@@ -91,11 +62,6 @@ export default function TelaBuziosPreparo() {
     mostrarFrase(0);
   }, [fadeTexto]);
 
-  const rotacao = rotacaoAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
-
   const larguraProgresso = progressoAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ['0%', '100%'],
@@ -105,24 +71,43 @@ export default function TelaBuziosPreparo() {
     <GradientBackground>
       <SafeAreaView style={estilos.safeArea}>
         <View style={estilos.container}>
-          {/* Ícone central com anéis */}
-          <View style={estilos.iconeCentral}>
-            {/* Anel externo */}
-            <Animated.View style={[
-              estilos.anel, estilos.anelExterno,
-              { transform: [{ scale: anel1 }, { rotate: rotacao }], opacity: anel1 },
-            ]} />
-            {/* Anel interno */}
-            <Animated.View style={[
-              estilos.anel, estilos.anelInterno,
-              { transform: [{ scale: anel2 }], opacity: anel2 },
-            ]} />
-
-            <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-              <View style={estilos.iconeContainer}>
-                <MaterialCommunityIcons name="grain" size={64} color={Cores.acento} />
-              </View>
+          {/* Abertura ritual em vídeo amplo; o búzio funciona como fallback */}
+          <View style={estilos.videoCentral}>
+            <View style={estilos.videoFallback}>
+              <BuzioIcon aberto tamanho={76} />
+            </View>
+            <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: videoOpacidade }]}>
+              <Video
+                ref={videoRef}
+                source={VIDEO_PREPARACAO}
+                style={StyleSheet.absoluteFillObject}
+                resizeMode={ResizeMode.CONTAIN}
+                isMuted
+                useNativeControls={false}
+                progressUpdateIntervalMillis={250}
+                onLoad={async () => {
+                  try {
+                    await videoRef.current?.setPositionAsync(1800);
+                    Animated.timing(videoOpacidade, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+                    await videoRef.current?.playAsync();
+                  } catch {
+                    videoOpacidade.setValue(0);
+                  }
+                }}
+                onPlaybackStatusUpdate={(status) => {
+                  if (status.isLoaded && status.didJustFinish) {
+                    videoRef.current?.setPositionAsync(1800)
+                      .then(() => videoRef.current?.playAsync())
+                      .catch(() => videoOpacidade.setValue(0));
+                  }
+                }}
+                onError={() => videoOpacidade.setValue(0)}
+              />
+              <View style={estilos.videoVinheta} />
             </Animated.View>
+            <View style={estilos.videoLegenda}>
+              <Text style={estilos.videoLegendaTexto}>RITUAL DE PREPARAÇÃO</Text>
+            </View>
           </View>
 
           {/* Frase animada */}
@@ -149,35 +134,44 @@ const estilos = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: Espacamento.xl,
   },
-  iconeCentral: {
-    width: 200,
-    height: 200,
+  videoCentral: {
+    width: '100%',
+    maxWidth: 520,
+    aspectRatio: 16 / 9,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Espacamento.xxl,
-  },
-  anel: {
-    position: 'absolute',
-    borderRadius: 9999,
+    marginBottom: Espacamento.xl,
+    borderRadius: 20,
     borderWidth: 1,
+    borderColor: 'rgba(212,175,55,0.32)',
+    backgroundColor: 'rgba(12,7,18,0.92)',
+    overflow: 'hidden',
   },
-  anelExterno: {
-    width: 200,
-    height: 200,
-    borderColor: 'rgba(212, 175, 55, 0.2)',
-  },
-  anelInterno: {
-    width: 150,
-    height: 150,
-    borderColor: 'rgba(212, 175, 55, 0.15)',
-  },
-  iconeContainer: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    backgroundColor: 'rgba(212, 175, 55, 0.08)',
+  videoFallback: {
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  videoVinheta: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(9,6,12,0.04)',
+  },
+  videoLegenda: {
+    position: 'absolute',
+    left: 12,
+    bottom: 10,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: 'rgba(9,6,12,0.72)',
+    borderWidth: 1,
+    borderColor: 'rgba(212,175,55,0.26)',
+  },
+  videoLegendaTexto: {
+    fontFamily: Fontes.corpoSemibold,
+    fontSize: 9,
+    letterSpacing: 1.1,
+    color: Cores.acento,
   },
   frase: {
     fontFamily: Fontes.titulo,
@@ -190,7 +184,7 @@ const estilos = StyleSheet.create({
   progressoContainer: {
     width: '80%',
     height: 3,
-    backgroundColor: 'rgba(245, 240, 232, 0.1)',
+    backgroundColor: 'rgba(88, 117, 101, 0.10)',
     borderRadius: 2,
     overflow: 'hidden',
   },

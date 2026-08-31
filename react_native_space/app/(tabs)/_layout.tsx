@@ -1,7 +1,8 @@
 import React from 'react';
 import { Platform } from 'react-native';
 import { Tabs } from 'expo-router';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
@@ -13,11 +14,11 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: Cores.acento,
-        tabBarInactiveTintColor: 'rgba(245, 240, 232, 0.4)',
+        tabBarActiveTintColor: Cores.primaria,
+        tabBarInactiveTintColor: Cores.textoSecundario,
         tabBarStyle: {
-          backgroundColor: 'rgba(26, 26, 46, 0.95)',
-          borderTopColor: 'rgba(212, 175, 55, 0.15)',
+          backgroundColor: Cores.superficie,
+          borderTopColor: Cores.cardBorda,
           borderTopWidth: 1,
           paddingBottom: insets.bottom,
           height: 60 + insets.bottom,
@@ -25,15 +26,15 @@ export default function TabsLayout() {
             ios: {
               shadowColor: '#000',
               shadowOffset: { width: 0, height: -4 },
-              shadowOpacity: 0.2,
-              shadowRadius: 12,
+              shadowOpacity: 0.08,
+              shadowRadius: 10,
             },
             android: { elevation: 12 },
             default: {
               shadowColor: '#000',
               shadowOffset: { width: 0, height: -4 },
-              shadowOpacity: 0.2,
-              shadowRadius: 12,
+              shadowOpacity: 0.08,
+              shadowRadius: 10,
             },
           }),
         },

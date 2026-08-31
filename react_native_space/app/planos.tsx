@@ -13,7 +13,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GradientBackground } from '../components/GradientBackground';
 import { Button } from '../components/Button';
@@ -23,7 +24,6 @@ import { Espacamento, RaioBorda } from '../constants/spacing';
 import { Hapticos } from '../utils/haptics';
 import { useAuth } from '../contexts/AuthContext';
 import { MercadoPagoServico, PLANOS_MP } from '../services/mercadopago';
-import { DatabaseServico } from '../services/database';
 
 const { width: LARGURA_TELA } = Dimensions.get('window');
 
@@ -109,8 +109,8 @@ const PLANOS: Plano[] = [
 export default function TelaPlanos() {
   const [planoSelecionado, setPlanoSelecionado] = useState<string>('explorador');
   const [processando, setProcessando] = useState(false);
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
+  const fadeAnim = useRef(new Animated.Value(Platform.OS === 'web' ? 1 : 0)).current;
+  const slideAnim = useRef(new Animated.Value(Platform.OS === 'web' ? 0 : 30)).current;
   const { sessao, perfil } = useAuth();
 
   useEffect(() => {
@@ -141,19 +141,7 @@ export default function TelaPlanos() {
     Hapticos.impactoMedio();
 
     try {
-      const { checkoutUrl, preferenceId } = await MercadoPagoServico.criarPreferencia(
-        planoMP,
-        sessao.user.email ?? '',
-        sessao.user.id
-      );
-
-      await DatabaseServico.criarAssinatura({
-        usuario_id: sessao.user.id,
-        plano: planoMP.id,
-        valor: planoMP.valor,
-        periodo: planoMP.periodo,
-        mp_preference_id: preferenceId,
-      });
+      const { checkoutUrl } = await MercadoPagoServico.criarPreferencia(planoMP);
 
       await Linking.openURL(checkoutUrl);
     } catch (e: any) {
@@ -270,7 +258,7 @@ export default function TelaPlanos() {
                             <Ionicons
                               name={beneficio.disponivel ? 'checkmark-circle' : 'close-circle'}
                               size={18}
-                              color={beneficio.disponivel ? '#4CAF50' : 'rgba(245, 240, 232, 0.2)'}
+                              color={beneficio.disponivel ? '#4F7A5A' : 'rgba(36, 49, 45, 0.28)'}
                             />
                             <Text style={[
                               estilos.beneficioTexto,
@@ -365,7 +353,7 @@ const estilos = StyleSheet.create({
     padding: Espacamento.md,
     marginBottom: Espacamento.md,
     borderWidth: 1,
-    borderColor: 'rgba(245, 240, 232, 0.08)',
+    borderColor: 'rgba(88, 117, 101, 0.14)',
   },
   planoCardSelecionado: {
     borderColor: Cores.acento,
@@ -422,7 +410,7 @@ const estilos = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
-    borderColor: 'rgba(245, 240, 232, 0.3)',
+    borderColor: 'rgba(88, 117, 101, 0.28)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: Espacamento.sm,
@@ -480,7 +468,7 @@ const estilos = StyleSheet.create({
   },
   beneficiosDivisor: {
     height: 1,
-    backgroundColor: 'rgba(245, 240, 232, 0.08)',
+    backgroundColor: 'rgba(88, 117, 101, 0.10)',
     marginBottom: Espacamento.sm,
   },
   beneficioLinha: {
@@ -495,7 +483,7 @@ const estilos = StyleSheet.create({
     color: Cores.textoClaro,
   },
   beneficioIndisponivel: {
-    color: 'rgba(245, 240, 232, 0.25)',
+    color: 'rgba(36, 49, 45, 0.38)',
     textDecorationLine: 'line-through',
   },
 
@@ -519,7 +507,7 @@ const estilos = StyleSheet.create({
     paddingVertical: Espacamento.md,
     paddingBottom: Espacamento.lg,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(245, 240, 232, 0.05)',
+    borderTopColor: 'rgba(88, 117, 101, 0.10)',
   },
   pularBotao: {
     alignItems: 'center',

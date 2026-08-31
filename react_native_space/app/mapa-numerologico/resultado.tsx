@@ -1,13 +1,16 @@
 import React, { useMemo, useRef, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Animated, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GradientBackground } from '../../components/GradientBackground';
+import { EstadoTela } from '../../components/EstadoTela';
 import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
+import { dataConsultaValida, textoConsultaValido } from '../../utils/validacaoConsulta';
 import { Hapticos } from '../../utils/haptics';
 import {
   gerarMapaCompleto,
@@ -17,45 +20,87 @@ import {
   INTERPRETACOES_ALMA,
   INTERPRETACOES_PERSONALIDADE,
   INTERPRETACOES_MATURIDADE,
+  INTERPRETACOES_ANO_PESSOAL,
   CalculoDetalhado,
   Interpretacao,
   NumeroNumerologico,
 } from '../../data/mapa-numerologico';
 
-type Aba = 'resumo' | 'calculos' | 'individual' | 'integracao';
+type Aba = 'resumo' | 'calculos' | 'individual' | 'integracao' | 'comparacao' | 'plano';
 
 const ABAS: { id: Aba; titulo: string; icone: string }[] = [
   { id: 'resumo', titulo: 'Resumo', icone: 'star-outline' },
   { id: 'calculos', titulo: 'Cálculos', icone: 'calculator-outline' },
   { id: 'individual', titulo: 'Individual', icone: 'list-outline' },
   { id: 'integracao', titulo: 'Integração', icone: 'infinite-outline' },
+  { id: 'comparacao', titulo: 'Comparar nomes', icone: 'git-compare-outline' },
+  { id: 'plano', titulo: 'Meu plano', icone: 'checkmark-circle-outline' },
 ];
 
 export default function TelaResultadoMapa() {
-  const params = useLocalSearchParams<{ nome: string; dia: string; mes: string; ano: string }>();
+  const params = useLocalSearchParams<{ nome: string; nomeAtual?: string; dia: string; mes: string; ano: string }>();
   const [abaAtiva, setAbaAtiva] = useState<Aba>('resumo');
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(Platform.OS === 'web' ? 1 : 0)).current;
+  const parametrosValidos = textoConsultaValido(params.nome)
+    && dataConsultaValida(params.dia, params.mes, params.ano)
+    && (!params.nomeAtual || textoConsultaValido(params.nomeAtual));
 
   const mapa = useMemo(() => {
+    if (!parametrosValidos) return null;
     const nome = params.nome || '';
-    const d = parseInt(params.dia || '1', 10);
-    const m = parseInt(params.mes || '1', 10);
-    const a = parseInt(params.ano || '2000', 10);
+    const d = Number(params.dia);
+    const m = Number(params.mes);
+    const a = Number(params.ano);
     return gerarMapaCompleto(nome, d, m, a);
-  }, [params.nome, params.dia, params.mes, params.ano]);
+  }, [parametrosValidos, params.nome, params.dia, params.mes, params.ano]);
 
-  const integracao = useMemo(() => gerarIntegracao(mapa), [mapa]);
+  const integracao = useMemo(() => mapa ? gerarIntegracao(mapa) : null, [mapa]);
+  const mapaAtual = useMemo(() => {
+    if (!mapa || !params.nomeAtual || params.nomeAtual.trim() === mapa.nome) return null;
+    return gerarMapaCompleto(
+      params.nomeAtual.trim(),
+      Number(params.dia),
+      Number(params.mes),
+      Number(params.ano),
+      mapa.anoReferencia
+    );
+  }, [mapa, params.nomeAtual, params.dia, params.mes, params.ano]);
+  const abasDisponiveis = useMemo(
+    () => mapaAtual ? ABAS : ABAS.filter(aba => aba.id !== 'comparacao'),
+    [mapaAtual]
+  );
 
   useEffect(() => {
+    if (Platform.OS === 'web') return;
     Animated.timing(fadeAnim, { toValue: 1, duration: 700, useNativeDriver: true }).start();
   }, [fadeAnim]);
 
   const trocarAba = (nova: Aba) => {
     Hapticos.impactoLeve();
+    if (Platform.OS === 'web') {
+      setAbaAtiva(nova);
+      return;
+    }
     fadeAnim.setValue(0);
     setAbaAtiva(nova);
     Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
   };
+
+  if (!parametrosValidos || !mapa || !integracao) {
+    return (
+      <GradientBackground>
+        <SafeAreaView style={estilos.safeArea} edges={['top']}>
+          <EstadoTela
+            tipo="erro"
+            titulo="Não foi possível montar seu mapa"
+            descricao="Informe seu nome e uma data de nascimento válida para continuar."
+            acaoLabel="Revisar dados"
+            onAcao={() => router.back()}
+          />
+        </SafeAreaView>
+      </GradientBackground>
+    );
+  }
 
   return (
     <GradientBackground>
@@ -65,6 +110,7 @@ export default function TelaResultadoMapa() {
           <Pressable
             onPress={() => { Hapticos.impactoLeve(); router.replace('/(tabs)'); }}
             style={estilos.botaoHeader}
+            accessibilityRole="button"
             accessibilityLabel="Fechar"
           >
             <Ionicons name="close" size={22} color={Cores.textoClaro} />
@@ -73,16 +119,25 @@ export default function TelaResultadoMapa() {
             <Text style={estilos.headerTitulo}>Mapa Numerológico</Text>
             <Text style={estilos.headerSubtitulo}>{mapa.nome}</Text>
           </View>
-          <View style={estilos.botaoHeader} />
+          <View style={estilos.botaoHeaderEspaco} />
         </View>
 
         {/* Abas */}
-        <View style={estilos.abas}>
-          {ABAS.map(aba => (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={estilos.abas}
+          accessibilityRole="tablist"
+          tabIndex={0}
+          accessibilityLabel="Etapas do resultado numerológico"
+        >
+          {abasDisponiveis.map(aba => (
             <Pressable
               key={aba.id}
               onPress={() => trocarAba(aba.id)}
               style={[estilos.aba, abaAtiva === aba.id && estilos.abaAtiva]}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: abaAtiva === aba.id }}
             >
               <Ionicons
                 name={aba.icone as any}
@@ -94,17 +149,25 @@ export default function TelaResultadoMapa() {
               </Text>
             </Pressable>
           ))}
-        </View>
+        </ScrollView>
+
+        <Text style={estilos.progressoEtapa} accessibilityLiveRegion="polite">
+          Etapa {abasDisponiveis.findIndex(aba => aba.id === abaAtiva) + 1} de {abasDisponiveis.length}
+        </Text>
 
         <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
           <ScrollView
             contentContainerStyle={estilos.scrollContent}
             showsVerticalScrollIndicator={false}
+            tabIndex={0}
+            accessibilityLabel="Resultado do mapa numerológico"
           >
             {abaAtiva === 'resumo' && <AbaResumo mapa={mapa} />}
             {abaAtiva === 'calculos' && <AbaCalculos mapa={mapa} />}
             {abaAtiva === 'individual' && <AbaIndividual mapa={mapa} />}
             {abaAtiva === 'integracao' && <AbaIntegracao integracao={integracao} />}
+            {abaAtiva === 'comparacao' && mapaAtual && <AbaComparacao nascimento={mapa} atual={mapaAtual} />}
+            {abaAtiva === 'plano' && <AbaPlano mapa={mapa} />}
 
             {/* Disclaimer */}
             <View style={estilos.disclaimer}>
@@ -129,6 +192,7 @@ function AbaResumo({ mapa }: { mapa: ReturnType<typeof gerarMapaCompleto> }) {
     { titulo: 'Alma', calc: mapa.alma, interp: INTERPRETACOES_ALMA, icone: 'heart-outline', cor: '#E91E90' },
     { titulo: 'Personalidade', calc: mapa.personalidade, interp: INTERPRETACOES_PERSONALIDADE, icone: 'person-outline', cor: '#3498DB' },
     { titulo: 'Maturidade', calc: mapa.maturidade, interp: INTERPRETACOES_MATURIDADE, icone: 'ribbon-outline', cor: '#7C9A82' },
+    { titulo: `Ano Pessoal ${mapa.anoReferencia}`, calc: mapa.anoPessoal, interp: INTERPRETACOES_ANO_PESSOAL, icone: 'calendar-outline', cor: '#5DADE2' },
   ];
 
   return (
@@ -179,6 +243,7 @@ function AbaCalculos({ mapa }: { mapa: ReturnType<typeof gerarMapaCompleto> }) {
     { titulo: 'Número da Alma', calc: mapa.alma, base: 'Somando apenas as vogais' },
     { titulo: 'Personalidade', calc: mapa.personalidade, base: 'Somando apenas as consoantes' },
     { titulo: 'Maturidade', calc: mapa.maturidade, base: 'Caminho de Vida + Expressão' },
+    { titulo: `Ano Pessoal ${mapa.anoReferencia}`, calc: mapa.anoPessoal, base: 'Dia + mês de nascimento + ano de referência' },
   ];
 
   return (
@@ -240,12 +305,13 @@ function AbaIndividual({ mapa }: { mapa: ReturnType<typeof gerarMapaCompleto> })
     { titulo: 'Alma', calc: mapa.alma, interp: INTERPRETACOES_ALMA[mapa.alma.numeroFinal] },
     { titulo: 'Personalidade', calc: mapa.personalidade, interp: INTERPRETACOES_PERSONALIDADE[mapa.personalidade.numeroFinal] },
     { titulo: 'Maturidade', calc: mapa.maturidade, interp: INTERPRETACOES_MATURIDADE[mapa.maturidade.numeroFinal] },
+    { titulo: `Ano Pessoal ${mapa.anoReferencia}`, calc: mapa.anoPessoal, interp: INTERPRETACOES_ANO_PESSOAL[mapa.anoPessoal.numeroFinal] },
   ];
 
   return (
     <View>
       <Text style={estilos.tituloAba}>Interpretação individual</Text>
-      <Text style={estilos.subtituloAba}>Significado profundo de cada número</Text>
+      <Text style={estilos.subtituloAba}>Associações tradicionais de cada número</Text>
 
       {secoes.map(s => (
         <View key={s.titulo} style={estilos.individualBloco}>
@@ -285,7 +351,7 @@ function AbaIndividual({ mapa }: { mapa: ReturnType<typeof gerarMapaCompleto> })
 function AbaIntegracao({ integracao }: { integracao: ReturnType<typeof gerarIntegracao> }) {
   const blocos = [
     { titulo: 'Personalidade Geral', texto: integracao.personalidadeGeral, icone: 'person-circle-outline', cor: '#3498DB' },
-    { titulo: 'Talentos & Missão', texto: integracao.talentosMissao, icone: 'trophy-outline', cor: '#D4AF37' },
+    { titulo: 'Talentos & Direção', texto: integracao.talentosMissao, icone: 'trophy-outline', cor: '#D4AF37' },
     { titulo: 'Desafios & Conflitos', texto: integracao.desafiosConflitos, icone: 'warning-outline', cor: '#E67E22' },
     { titulo: 'Amor & Relacionamentos', texto: integracao.amorRelacionamentos, icone: 'heart-outline', cor: '#E91E90' },
     { titulo: 'Carreira & Propósito', texto: integracao.carreiraProposito, icone: 'briefcase-outline', cor: '#7C9A82' },
@@ -296,7 +362,7 @@ function AbaIntegracao({ integracao }: { integracao: ReturnType<typeof gerarInte
   return (
     <View>
       <Text style={estilos.tituloAba}>Integração dos números</Text>
-      <Text style={estilos.subtituloAba}>Como suas energias trabalham juntas</Text>
+      <Text style={estilos.subtituloAba}>Como essas associações simbólicas podem ser lidas em conjunto</Text>
 
       {blocos.map(b => (
         <View key={b.titulo} style={[estilos.integracaoBloco, { borderLeftColor: b.cor }]}>
@@ -313,6 +379,130 @@ function AbaIntegracao({ integracao }: { integracao: ReturnType<typeof gerarInte
   );
 }
 
+const OPCOES_PLANO = [
+  { id: 'clareza', titulo: 'Clareza', pergunta: 'Que decisão merece fatos e tempo antes do próximo passo?' },
+  { id: 'relacoes', titulo: 'Relações', pergunta: 'Qual conversa pode ficar mais honesta e respeitosa?' },
+  { id: 'trabalho', titulo: 'Trabalho', pergunta: 'Que habilidade concreta você deseja praticar nas próximas semanas?' },
+  { id: 'rotina', titulo: 'Rotina', pergunta: 'Qual hábito pequeno cabe de verdade na sua semana?' },
+] as const;
+
+function AbaPlano({ mapa }: { mapa: ReturnType<typeof gerarMapaCompleto> }) {
+  const [selecionados, setSelecionados] = useState<string[]>([]);
+  const ciclo = INTERPRETACOES_ANO_PESSOAL[mapa.anoPessoal.numeroFinal];
+
+  const alternar = (id: string) => {
+    Hapticos.impactoLeve();
+    setSelecionados(atuais => atuais.includes(id)
+      ? atuais.filter(item => item !== id)
+      : [...atuais, id]);
+  };
+
+  return (
+    <View>
+      <Text style={estilos.tituloAba}>Seu plano de reflexão</Text>
+      <Text style={estilos.subtituloAba}>Escolha até onde esta leitura será útil para você. Nada é salvo ou enviado.</Text>
+
+      <View style={estilos.cicloCard}>
+        <Text style={estilos.cicloLabel}>Ponto de partida simbólico · Ano {mapa.anoReferencia}</Text>
+        <Text style={estilos.cicloTitulo}>{ciclo.titulo}</Text>
+        <Text style={estilos.cicloTexto}>{ciclo.descricao}</Text>
+      </View>
+
+      <Text style={estilos.planoSecaoTitulo}>Para os próximos 30 dias</Text>
+      {OPCOES_PLANO.map(opcao => {
+        const selecionado = selecionados.includes(opcao.id);
+        return (
+          <Pressable
+            key={opcao.id}
+            onPress={() => alternar(opcao.id)}
+            style={[estilos.planoOpcao, selecionado && estilos.planoOpcaoSelecionada]}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: selecionado }}
+            accessibilityLabel={`${opcao.titulo}: ${opcao.pergunta}`}
+          >
+            <Ionicons
+              name={selecionado ? 'checkmark-circle' : 'ellipse-outline'}
+              size={24}
+              color={selecionado ? Cores.acento : Cores.textoSecundario}
+            />
+            <View style={{ flex: 1 }}>
+              <Text style={estilos.planoOpcaoTitulo}>{opcao.titulo}</Text>
+              <Text style={estilos.planoOpcaoTexto}>{opcao.pergunta}</Text>
+            </View>
+          </Pressable>
+        );
+      })}
+
+      <View style={estilos.plano90Card}>
+        <Text style={estilos.planoSecaoTitulo}>Revisão em 90 dias</Text>
+        <Text style={estilos.planoOpcaoTexto}>
+          Retome apenas os itens escolhidos e registre o que mudou por causa das suas ações, do contexto e das conversas — não por causa de uma previsão.
+        </Text>
+        <Text style={estilos.planoContagem} accessibilityLiveRegion="polite">
+          {selecionados.length} {selecionados.length === 1 ? 'tema escolhido' : 'temas escolhidos'}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+function AbaComparacao({
+  nascimento,
+  atual,
+}: {
+  nascimento: ReturnType<typeof gerarMapaCompleto>;
+  atual: ReturnType<typeof gerarMapaCompleto>;
+}) {
+  const itens = [
+    { titulo: 'Expressão', nascimento: nascimento.expressao.numeroFinal, atual: atual.expressao.numeroFinal },
+    { titulo: 'Alma', nascimento: nascimento.alma.numeroFinal, atual: atual.alma.numeroFinal },
+    { titulo: 'Personalidade', nascimento: nascimento.personalidade.numeroFinal, atual: atual.personalidade.numeroFinal },
+    { titulo: 'Maturidade', nascimento: nascimento.maturidade.numeroFinal, atual: atual.maturidade.numeroFinal },
+  ];
+
+  return (
+    <View>
+      <Text style={estilos.tituloAba}>Comparação simbólica</Text>
+      <Text style={estilos.subtituloAba}>
+        Observe diferenças entre os cálculos sem interpretar um nome como melhor, corrigido ou mais próspero.
+      </Text>
+
+      <View style={estilos.comparacaoCabecalho}>
+        <View style={estilos.comparacaoNomeColuna}>
+          <Text style={estilos.comparacaoLabel}>Nascimento</Text>
+          <Text style={estilos.comparacaoNome} numberOfLines={2}>{nascimento.nome}</Text>
+        </View>
+        <Ionicons name="git-compare-outline" size={22} color={Cores.acento} />
+        <View style={estilos.comparacaoNomeColuna}>
+          <Text style={estilos.comparacaoLabel}>Nome atual</Text>
+          <Text style={estilos.comparacaoNome} numberOfLines={2}>{atual.nome}</Text>
+        </View>
+      </View>
+
+      {itens.map(item => {
+        const mudou = item.nascimento !== item.atual;
+        return (
+          <View key={item.titulo} style={estilos.comparacaoLinha}>
+            <View style={estilos.comparacaoNumero}><Text style={estilos.comparacaoNumeroTexto}>{item.nascimento}</Text></View>
+            <View style={estilos.comparacaoCentro}>
+              <Text style={estilos.comparacaoItemTitulo}>{item.titulo}</Text>
+              <Text style={estilos.comparacaoMudanca}>{mudou ? 'Associação diferente' : 'Mesma associação'}</Text>
+            </View>
+            <View style={estilos.comparacaoNumero}><Text style={estilos.comparacaoNumeroTexto}>{item.atual}</Text></View>
+          </View>
+        );
+      })}
+
+      <View style={estilos.comparacaoNota}>
+        <Ionicons name="information-circle-outline" size={18} color={Cores.textoSecundario} />
+        <Text style={estilos.comparacaoNotaTexto}>
+          O Caminho de Vida e o Ano Pessoal não mudam, pois dependem da data. Esta comparação não recomenda alterar documentos, assinatura ou identidade profissional.
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 const estilos = StyleSheet.create({
   safeArea: { flex: 1 },
   header: {
@@ -323,11 +513,12 @@ const estilos = StyleSheet.create({
     paddingVertical: Espacamento.sm,
   },
   botaoHeader: {
-    width: 40, height: 40, borderRadius: 20,
+    width: 44, height: 44, borderRadius: 22,
     backgroundColor: Cores.cardFundo,
     borderWidth: 1, borderColor: Cores.cardBorda,
     alignItems: 'center', justifyContent: 'center',
   },
+  botaoHeaderEspaco: { width: 44, height: 44 },
   headerTexto: { flex: 1, alignItems: 'center' },
   headerTitulo: {
     fontFamily: Fontes.titulo, fontSize: 16, fontWeight: '700', color: Cores.textoClaro,
@@ -340,10 +531,10 @@ const estilos = StyleSheet.create({
     paddingHorizontal: Espacamento.md,
     marginTop: Espacamento.xs,
     marginBottom: Espacamento.sm,
-    gap: 4,
+    gap: 6,
   },
   aba: {
-    flex: 1,
+    minWidth: 116,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -353,6 +544,13 @@ const estilos = StyleSheet.create({
     backgroundColor: Cores.cardFundo,
     borderWidth: 1,
     borderColor: Cores.cardBorda,
+  },
+  progressoEtapa: {
+    fontFamily: Fontes.corpoSemibold,
+    fontSize: 11,
+    color: Cores.textoSecundario,
+    textAlign: 'center',
+    marginBottom: Espacamento.xs,
   },
   abaAtiva: {
     backgroundColor: 'rgba(212, 175, 55, 0.12)',
@@ -685,6 +883,166 @@ const estilos = StyleSheet.create({
     fontSize: 14,
     color: Cores.textoClaro,
     lineHeight: 22,
+  },
+  cicloCard: {
+    backgroundColor: 'rgba(93, 173, 226, 0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(93, 173, 226, 0.35)',
+    borderRadius: RaioBorda.lg,
+    padding: Espacamento.md,
+    marginBottom: Espacamento.lg,
+  },
+  cicloLabel: {
+    fontFamily: Fontes.corpoSemibold,
+    fontSize: 11,
+    color: '#8BC8EF',
+    textTransform: 'uppercase',
+    letterSpacing: 0.7,
+  },
+  cicloTitulo: {
+    fontFamily: Fontes.titulo,
+    fontSize: 20,
+    fontWeight: '700',
+    color: Cores.textoClaro,
+    marginTop: 4,
+  },
+  cicloTexto: {
+    fontFamily: Fontes.corpo,
+    fontSize: 14,
+    lineHeight: 21,
+    color: Cores.textoClaro,
+    marginTop: Espacamento.sm,
+  },
+  planoSecaoTitulo: {
+    fontFamily: Fontes.corpoNegrito,
+    fontSize: 15,
+    color: Cores.textoClaro,
+    marginBottom: Espacamento.sm,
+  },
+  planoOpcao: {
+    minHeight: 64,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Espacamento.sm,
+    backgroundColor: Cores.cardFundo,
+    borderWidth: 1,
+    borderColor: Cores.cardBorda,
+    borderRadius: RaioBorda.md,
+    padding: Espacamento.md,
+    marginBottom: Espacamento.sm,
+  },
+  planoOpcaoSelecionada: {
+    borderColor: Cores.acento,
+    backgroundColor: 'rgba(212, 175, 55, 0.10)',
+  },
+  planoOpcaoTitulo: {
+    fontFamily: Fontes.corpoNegrito,
+    fontSize: 14,
+    color: Cores.textoClaro,
+  },
+  planoOpcaoTexto: {
+    fontFamily: Fontes.corpo,
+    fontSize: 13,
+    lineHeight: 19,
+    color: Cores.textoSecundario,
+    marginTop: 2,
+  },
+  plano90Card: {
+    backgroundColor: Cores.cardFundo,
+    borderWidth: 1,
+    borderColor: Cores.cardBorda,
+    borderRadius: RaioBorda.lg,
+    padding: Espacamento.md,
+    marginTop: Espacamento.md,
+  },
+  planoContagem: {
+    fontFamily: Fontes.corpoSemibold,
+    fontSize: 12,
+    color: Cores.acento,
+    marginTop: Espacamento.md,
+  },
+  comparacaoCabecalho: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Espacamento.sm,
+    backgroundColor: Cores.cardFundo,
+    borderWidth: 1,
+    borderColor: Cores.cardBorda,
+    borderRadius: RaioBorda.lg,
+    padding: Espacamento.md,
+    marginBottom: Espacamento.md,
+  },
+  comparacaoNomeColuna: { flex: 1, alignItems: 'center' },
+  comparacaoLabel: {
+    fontFamily: Fontes.corpoSemibold,
+    fontSize: 10,
+    color: Cores.textoSecundario,
+    textTransform: 'uppercase',
+    letterSpacing: 0.7,
+  },
+  comparacaoNome: {
+    fontFamily: Fontes.corpoNegrito,
+    fontSize: 13,
+    lineHeight: 17,
+    color: Cores.textoClaro,
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  comparacaoLinha: {
+    minHeight: 72,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Espacamento.sm,
+    backgroundColor: Cores.cardFundo,
+    borderWidth: 1,
+    borderColor: Cores.cardBorda,
+    borderRadius: RaioBorda.md,
+    padding: Espacamento.md,
+    marginBottom: Espacamento.sm,
+  },
+  comparacaoNumero: {
+    minWidth: 44,
+    height: 44,
+    paddingHorizontal: 8,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(212, 175, 55, 0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(212, 175, 55, 0.45)',
+  },
+  comparacaoNumeroTexto: {
+    fontFamily: Fontes.titulo,
+    fontSize: 19,
+    fontWeight: '700',
+    color: Cores.acento,
+  },
+  comparacaoCentro: { flex: 1, alignItems: 'center' },
+  comparacaoItemTitulo: {
+    fontFamily: Fontes.corpoNegrito,
+    fontSize: 14,
+    color: Cores.textoClaro,
+  },
+  comparacaoMudanca: {
+    fontFamily: Fontes.corpo,
+    fontSize: 11,
+    color: Cores.textoSecundario,
+    marginTop: 2,
+  },
+  comparacaoNota: {
+    flexDirection: 'row',
+    gap: Espacamento.sm,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: RaioBorda.md,
+    padding: Espacamento.md,
+    marginTop: Espacamento.md,
+  },
+  comparacaoNotaTexto: {
+    flex: 1,
+    fontFamily: Fontes.corpo,
+    fontSize: 12,
+    lineHeight: 18,
+    color: Cores.textoSecundario,
   },
   disclaimer: {
     flexDirection: 'row',

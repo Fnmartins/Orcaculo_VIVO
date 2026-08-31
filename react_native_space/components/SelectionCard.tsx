@@ -9,7 +9,8 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { Cores } from '../constants/colors';
 import { Fontes } from '../constants/typography';
 import { Espacamento, RaioBorda } from '../constants/spacing';
@@ -153,7 +154,7 @@ const estilos = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: 'rgba(245, 240, 232, 0.06)',
+    backgroundColor: 'rgba(88, 117, 101, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Espacamento.sm,

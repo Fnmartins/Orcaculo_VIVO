@@ -1,31 +1,31 @@
 // Paleta de cores do Oráculo Vivo
 export const Cores = {
   // Cores principais
-  primaria: '#7C9A82',
-  acento: '#D4AF37',
-  secundaria: '#87CEEB',
-  roxoMistico: '#4B0082',
-  fundoClaro: '#F5F0E8',
-  fundoEscuro: '#1A1A2E',
-  superficie: '#F9F6F0',
+  primaria: '#587565',
+  acento: '#B58B46',
+  secundaria: '#6E8390',
+  roxoMistico: '#806B88',
+  fundoClaro: '#F7F3EA',
+  fundoEscuro: '#24312D',
+  superficie: '#FFFCF6',
 
   // Texto
-  textoPrimario: '#2D2D3A',
-  textoSecundario: '#6B6B7B',
-  textoClaro: '#F5F0E8',
+  textoPrimario: '#24312D',
+  textoSecundario: '#59665F',
+  textoClaro: '#24312D',
 
   // Status
   erro: '#D94F4F',
 
   // Gradientes (tuplas)
-  gradientePrimario: ['#4B0082', '#1A1A2E'] as const,
-  gradienteAcento: ['#D4AF37', '#C49B30'] as const,
-  gradienteBemEstar: ['#7C9A82', '#87CEEB'] as const,
-  gradienteFundo: ['#1A1A2E', '#2D1B4E', '#1A1A2E'] as const,
+  gradientePrimario: ['#587565', '#365247'] as const,
+  gradienteAcento: ['#C5A365', '#B58B46'] as const,
+  gradienteBemEstar: ['#E6EEE5', '#E7EDF0'] as const,
+  gradienteFundo: ['#F7F3EA', '#F2EEE5', '#F7F3EA'] as const,
 
   // Transparências
-  cardFundo: 'rgba(245, 240, 232, 0.08)',
-  cardBorda: 'rgba(212, 175, 55, 0.15)',
-  inputFundo: 'rgba(245, 240, 232, 0.06)',
-  inputBorda: 'rgba(245, 240, 232, 0.15)',
+  cardFundo: 'rgba(255, 252, 246, 0.94)',
+  cardBorda: '#DED9CC',
+  inputFundo: '#FFFCF6',
+  inputBorda: '#D4D0C5',
 } as const;

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet, TextInput, Animated } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Cores } from '../constants/colors';
 import { Fontes } from '../constants/typography';
 import { Espacamento, RaioBorda } from '../constants/spacing';
@@ -14,6 +14,9 @@ export function RatingConsulta({ aoAvaliar }: RatingConsultaProps) {
   const [nota, setNota] = useState(0);
   const [comentario, setComentario] = useState('');
   const [enviado, setEnviado] = useState(false);
+
+  // So exibe quando existe uma integracao real para receber os dados.
+  if (!aoAvaliar) return null;
 
   function selecionarNota(n: number) {
     Hapticos.selecao();
@@ -48,7 +51,13 @@ export function RatingConsulta({ aoAvaliar }: RatingConsultaProps) {
       {/* Estrelas */}
       <View style={estilos.estrelas}>
         {[1, 2, 3, 4, 5].map((n) => (
-          <Pressable key={n} onPress={() => selecionarNota(n)}>
+          <Pressable
+            key={n}
+            onPress={() => selecionarNota(n)}
+            accessibilityRole="button"
+            accessibilityLabel={`Avaliar com ${n} ${n === 1 ? 'estrela' : 'estrelas'}`}
+            accessibilityState={{ selected: n === nota }}
+          >
             <Ionicons
               name={n <= nota ? 'star' : 'star-outline'}
               size={32}
@@ -78,6 +87,8 @@ export function RatingConsulta({ aoAvaliar }: RatingConsultaProps) {
         <Pressable
           onPress={enviar}
           style={({ pressed }) => [estilos.enviarBotao, { opacity: pressed ? 0.8 : 1 }]}
+          accessibilityRole="button"
+          accessibilityLabel="Enviar avaliação"
         >
           <Text style={estilos.enviarTexto}>Enviar avaliação</Text>
         </Pressable>
@@ -92,7 +103,7 @@ const estilos = StyleSheet.create({
   },
   divisor: {
     height: 1,
-    backgroundColor: 'rgba(245,240,232,0.07)',
+    backgroundColor: 'rgba(88,117,101,0.08)',
     marginVertical: Espacamento.lg,
   },
   titulo: {
@@ -116,9 +127,9 @@ const estilos = StyleSheet.create({
     marginBottom: Espacamento.sm,
   },
   comentarioInput: {
-    backgroundColor: 'rgba(245,240,232,0.05)',
+    backgroundColor: 'rgba(88,117,101,0.07)',
     borderWidth: 1,
-    borderColor: 'rgba(245,240,232,0.1)',
+    borderColor: 'rgba(88,117,101,0.14)',
     borderRadius: RaioBorda.md,
     padding: Espacamento.md,
     fontFamily: Fontes.corpo,

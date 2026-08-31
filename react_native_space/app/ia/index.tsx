@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Defs, RadialGradient as SvgRadial, Stop, Path, G, Line } from 'react-native-svg';
 import { Cores } from '../../constants/colors';
@@ -264,8 +264,8 @@ const estilos = StyleSheet.create({
   },
   voltarBotao: {
     width: 40, height: 40, borderRadius: 20,
-    backgroundColor: 'rgba(245,240,232,0.06)',
-    borderWidth: 1, borderColor: 'rgba(245,240,232,0.1)',
+    backgroundColor: 'rgba(88,117,101,0.08)',
+    borderWidth: 1, borderColor: 'rgba(88,117,101,0.14)',
     alignItems: 'center', justifyContent: 'center',
   },
   headerCenter: { flex: 1, alignItems: 'center' },
@@ -311,7 +311,7 @@ const estilos = StyleSheet.create({
   tipoCard: {
     borderRadius: RaioBorda.xl,
     borderWidth: 1,
-    borderColor: 'rgba(245,240,232,0.07)',
+    borderColor: 'rgba(88,117,101,0.12)',
     overflow: 'hidden',
     ...Platform.select({
       ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },

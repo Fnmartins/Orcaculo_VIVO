@@ -41,18 +41,18 @@ function BolaCristal({ pulseAnim }: { pulseAnim: Animated.Value }) {
       <Svg width={BOLA_SIZE} height={BOLA_SIZE}>
         <Defs>
           <SvgRadialGradient id="bolaGrad" cx="38%" cy="30%" r="65%" fx="38%" fy="30%">
-            <Stop offset="0%" stopColor="#9B6FE8" stopOpacity="0.95" />
-            <Stop offset="35%" stopColor="#4B0082" stopOpacity="0.85" />
-            <Stop offset="70%" stopColor="#1a0a2e" stopOpacity="0.95" />
-            <Stop offset="100%" stopColor="#0B0915" stopOpacity="1" />
+            <Stop offset="0%" stopColor="#DCE9E5" stopOpacity="0.98" />
+            <Stop offset="35%" stopColor="#8EA9A3" stopOpacity="0.92" />
+            <Stop offset="70%" stopColor="#587565" stopOpacity="0.96" />
+            <Stop offset="100%" stopColor="#365247" stopOpacity="1" />
           </SvgRadialGradient>
           <SvgRadialGradient id="reflexo" cx="32%" cy="25%" r="30%">
             <Stop offset="0%" stopColor="rgba(255,255,255,0.35)" stopOpacity="0.35" />
             <Stop offset="100%" stopColor="rgba(255,255,255,0)" stopOpacity="0" />
           </SvgRadialGradient>
           <SvgRadialGradient id="glowExt" cx="50%" cy="50%" r="50%">
-            <Stop offset="60%" stopColor="rgba(100,0,180,0)" stopOpacity="0" />
-            <Stop offset="100%" stopColor="rgba(100,0,180,0.4)" stopOpacity="0.4" />
+            <Stop offset="60%" stopColor="rgba(88,117,101,0)" stopOpacity="0" />
+            <Stop offset="100%" stopColor="rgba(88,117,101,0.35)" stopOpacity="0.35" />
           </SvgRadialGradient>
         </Defs>
         {/* Glow externo */}
@@ -117,7 +117,7 @@ function Estrela({ x, y, tamanho, opacidade }: { x: number; y: number; tamanho: 
       left: x, top: y,
       width: tamanho, height: tamanho,
       borderRadius: tamanho / 2,
-      backgroundColor: '#fff',
+      backgroundColor: '#B58B46',
       opacity: brilhaAnim,
     }} />
   );
@@ -147,8 +147,8 @@ export default function TelaPreparo() {
     // Pulso suave da bola
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.06, duration: 2200, easing: Easing.inOut(Easing.sine), useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 0.97, duration: 2200, easing: Easing.inOut(Easing.sine), useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1.06, duration: 2200, easing: Easing.inOut(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 0.97, duration: 2200, easing: Easing.inOut(Easing.cubic), useNativeDriver: true }),
       ])
     ).start();
 
@@ -206,7 +206,7 @@ export default function TelaPreparo() {
   });
 
   return (
-    <LinearGradient colors={['#070510', '#0F0A1E', '#070510']} style={{ flex: 1 }}>
+    <LinearGradient colors={['#F7F3EA', '#EDF1EA', '#F7F3EA']} style={{ flex: 1 }}>
       {/* Campo de estrelas */}
       <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
         {ESTRELAS.map((e, i) => (
@@ -222,11 +222,11 @@ export default function TelaPreparo() {
           {/* Anéis orbitantes */}
           <View style={estilos.anelWrapper} pointerEvents="none">
             <AnelOrbitante rotAnim={rotacao1} raio={BOLA_SIZE / 2 + 28} espessura={1.2}
-              cor="rgba(212,175,55,0.5)" velocidade={6000} />
+              cor="rgba(181,139,70,0.55)" velocidade={6000} />
             <AnelOrbitante rotAnim={rotacao2} raio={BOLA_SIZE / 2 + 52} espessura={0.8}
-              cor="rgba(155,111,232,0.35)" velocidade={9000} sentido={-1} />
+              cor="rgba(110,131,144,0.40)" velocidade={9000} sentido={-1} />
             <AnelOrbitante rotAnim={rotacao3} raio={BOLA_SIZE / 2 + 76} espessura={0.6}
-              cor="rgba(212,175,55,0.2)" velocidade={13000} />
+              cor="rgba(88,117,101,0.25)" velocidade={13000} />
           </View>
 
           {/* Bola de Cristal */}
@@ -254,7 +254,9 @@ export default function TelaPreparo() {
 }
 
 const estilos = StyleSheet.create({
-  safeArea: { flex: 1 },
+  // Os anéis são decoração e podem ultrapassar a largura em telas estreitas;
+  // recortá-los evita criar rolagem horizontal sem reduzir a bola central.
+  safeArea: { flex: 1, overflow: 'hidden' },
   container: {
     flex: 1,
     alignItems: 'center',
@@ -267,7 +269,7 @@ const estilos = StyleSheet.create({
     width: BOLA_SIZE * 1.8,
     height: BOLA_SIZE * 1.8,
     borderRadius: BOLA_SIZE * 0.9,
-    backgroundColor: 'rgba(75,0,130,0.25)',
+    backgroundColor: 'rgba(88,117,101,0.16)',
   },
 
   anelWrapper: {
@@ -313,7 +315,7 @@ const estilos = StyleSheet.create({
   progressoTrack: {
     width: '100%',
     height: 2,
-    backgroundColor: 'rgba(212,175,55,0.12)',
+    backgroundColor: 'rgba(88,117,101,0.14)',
     borderRadius: 1,
     overflow: 'hidden',
   },
@@ -326,7 +328,7 @@ const estilos = StyleSheet.create({
   preparandoTexto: {
     fontFamily: Fontes.corpo,
     fontSize: 12,
-    color: 'rgba(212,175,55,0.5)',
+    color: 'rgba(54,82,71,0.68)',
     marginTop: Espacamento.md,
     letterSpacing: 1.5,
     textTransform: 'uppercase',

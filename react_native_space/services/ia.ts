@@ -2,18 +2,18 @@ import type { TipoAnalise, AnaliseIA } from '../data/ia-analise';
 import { analisarImagem as analisarImagemMock } from '../data/ia-analise';
 import { obterBase64ImagemCache, limparImagemCache } from './imagemCache';
 
-const BASE_URL = 'https://apps.abacus.ai/api/v0';
-const CHAVE_API = process.env.EXPO_PUBLIC_ABACUS_API_KEY ?? '';
-
 const MODELO_VISAO = 'claude-3-5-sonnet';
 const MODELO_TEXTO = 'gpt-4o-mini';
+export const IA_REMOTA_DISPONIVEL = false;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Verificação de API key
 // ─────────────────────────────────────────────────────────────────────────────
 
 function temChaveValida(): boolean {
-  return CHAVE_API.length > 0 && !CHAVE_API.includes('SUA_CHAVE');
+  // O envio externo permanece desligado até existir consentimento explícito,
+  // política de privacidade e proxy autenticado com controle de uso.
+  return IA_REMOTA_DISPONIVEL;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -21,29 +21,9 @@ function temChaveValida(): boolean {
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function chamarIA(mensagens: object[], modelo: string): Promise<string> {
-  const resposta = await fetch(`${BASE_URL}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${CHAVE_API}`,
-    },
-    body: JSON.stringify({
-      model: modelo,
-      messages: mensagens,
-      max_tokens: 1200,
-      temperature: 0.85,
-    }),
-  });
-
-  if (!resposta.ok) {
-    const erro = await resposta.text();
-    throw new Error(`Erro da API (${resposta.status}): ${erro}`);
-  }
-
-  const dados = await resposta.json();
-  const conteudo = dados?.choices?.[0]?.message?.content;
-  if (!conteudo) throw new Error('Resposta vazia da API');
-  return conteudo;
+  void mensagens;
+  void modelo;
+  throw new Error('Aprofundamento por IA temporariamente indisponível.');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -76,7 +56,7 @@ Identifique formas, padrões e símbolos visíveis e forneça uma leitura espiri
 Responda SOMENTE com JSON válido, sem texto antes ou depois, no seguinte formato:
 {"titulo":"título poético da leitura","resumo":"resumo da mensagem em 2 frases","detalhes":[{"secao":"Formas Identificadas","texto":"descrição das formas e o que representam"},{"secao":"Interpretação Espiritual","texto":"mensagem espiritual personalizada"},{"secao":"Conselho","texto":"orientação prática para os próximos dias"},{"secao":"Afirmação","texto":"frase de poder para o usuário carregar consigo"}],"energia":"positiva"}
 
-Regras: energia pode ser "positiva", "neutra" ou "atencao". Tom místico, empático e encorajador.`,
+Regras: energia pode ser "positiva", "neutra" ou "atencao". Trate símbolos como possibilidades de reflexão, nunca como fatos ou previsões garantidas. Não faça diagnósticos nem recomendações médicas, legais ou financeiras. Tom místico, empático e encorajador.`,
 
   quiromancia: `Você é um quiromante experiente especializado em leitura de palma.
 Analise cuidadosamente a imagem da mão fornecida — observe as linhas principais, montes e textura.
@@ -85,7 +65,7 @@ Forneça uma leitura espiritual personalizada em Português Brasileiro.
 Responda SOMENTE com JSON válido, sem texto antes ou depois, no seguinte formato:
 {"titulo":"título poético da leitura","resumo":"resumo da mensagem em 2 frases","detalhes":[{"secao":"Linha da Vida","texto":"interpretação da linha da vida"},{"secao":"Linha do Coração","texto":"interpretação da linha do coração"},{"secao":"Linha da Cabeça","texto":"interpretação da linha da cabeça"},{"secao":"Conselho","texto":"orientação espiritual personalizada"}],"energia":"positiva"}
 
-Regras: energia pode ser "positiva", "neutra" ou "atencao". Tom profundo, místico e encorajador.`,
+Regras: energia pode ser "positiva", "neutra" ou "atencao". A leitura da mão não determina saúde, longevidade ou acontecimentos futuros. Não faça diagnósticos nem recomendações médicas, legais ou financeiras. Tom profundo, místico e encorajador.`,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -180,7 +160,7 @@ Crie uma interpretação PERSONALIZADA e FLUÍDA em Português Brasileiro que co
 Responda SOMENTE com JSON válido:
 {"titulo":"título da leitura","narrativa":"parágrafo geral conectando as 3 cartas (4-6 frases)","passado":"interpretação aprofundada do passado (2-3 frases)","presente":"interpretação aprofundada do presente (2-3 frases)","futuro":"interpretação aprofundada do futuro (2-3 frases)","conselho":"conselho prático e espiritual (2 frases)"}
 
-Tom: empático, poético, encorajador. Seja específico e pessoal, não genérico.`;
+Tom: empático, poético e encorajador. Apresente passado, presente e futuro como perspectivas simbólicas e possibilidades condicionais, nunca como fatos inevitáveis. Preserve o livre-arbítrio e não faça diagnósticos ou recomendações médicas, legais ou financeiras. Seja específico e pessoal, não genérico.`;
 
   const mensagens = [{ role: 'user', content: prompt }];
   const resposta = await chamarIA(mensagens, MODELO_TEXTO);
@@ -211,7 +191,7 @@ export async function gerarInterpretacaoBuzios(odu: {
 }): Promise<InterpretacaoBuzios> {
   if (!temChaveValida()) throw new Error('Chave não configurada');
 
-  const prompt = `Você é um pai/mãe de santo especialista em jogo de búzios.
+  const prompt = `Você interpreta simbolicamente um jogo de búzios com respeito às tradições afro-brasileiras, sem se apresentar como sacerdote ou substituir uma consulta religiosa presencial.
 O jogo revelou o ODU: ${odu.nome} (${odu.numero} búzios abertos).
 Orixás regentes: ${odu.orixas.join(', ')}.
 Significado base: ${odu.descricao}
@@ -222,7 +202,7 @@ Crie uma interpretação PERSONALIZADA e PROFUNDA em Português Brasileiro.
 Responda SOMENTE com JSON válido:
 {"titulo":"título da revelação","narrativa":"leitura do odu aplicada à intenção (4-5 frases)","mensagem":"mensagem direta dos Orixás (2-3 frases)","conselho":"ação prática recomendada (2 frases)","afirmacao":"frase de axé para o consulente"}
 
-Tom: respeitoso, profundo, sagrado. Misture referências ao candomblé com linguagem acessível.`;
+Tom: respeitoso, profundo e acolhedor. Não invente fundamentos, rituais ou falas literais dos Orixás. Trate a leitura como orientação simbólica, sem certeza sobre o futuro, e não faça diagnósticos ou recomendações médicas, legais ou financeiras.`;
 
   const mensagens = [{ role: 'user', content: prompt }];
   const resposta = await chamarIA(mensagens, MODELO_TEXTO);
@@ -239,7 +219,7 @@ Tom: respeitoso, profundo, sagrado. Misture referências ao candomblé com lingu
 export async function gerarMensagemEspiritual(contexto: string): Promise<string> {
   if (!temChaveValida()) return '';
 
-  const prompt = `Você é um oráculo espiritual. ${contexto}\n\nForneça uma mensagem espiritual em Português Brasileiro, empática e encorajadora, em 2-4 frases.`;
+  const prompt = `Você oferece uma reflexão espiritual simbólica. ${contexto}\n\nForneça uma mensagem em Português Brasileiro, empática e encorajadora, em 2-4 frases. Não apresente previsões como fatos, preserve o livre-arbítrio e não faça diagnósticos ou recomendações médicas, legais ou financeiras.`;
   const mensagens = [{ role: 'user', content: prompt }];
   return chamarIA(mensagens, MODELO_TEXTO);
 }

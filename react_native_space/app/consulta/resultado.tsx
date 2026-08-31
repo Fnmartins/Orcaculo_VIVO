@@ -11,18 +11,22 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GradientBackground } from '../../components/GradientBackground';
 import { Button } from '../../components/Button';
+import { EstadoTela } from '../../components/EstadoTela';
 import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
 import { Hapticos } from '../../utils/haptics';
 import type { CartaTarot } from '../../data/tarot';
-import { gerarInterpretacaoTarot, type InterpretacaoTarot } from '../../services/ia';
+import { gerarInterpretacaoTarot, IA_REMOTA_DISPONIVEL, type InterpretacaoTarot } from '../../services/ia';
 import { compartilharTarot } from '../../services/compartilhar';
 import { RatingConsulta } from '../../components/RatingConsulta';
+import { ConviteHistorico } from '../../components/ConviteHistorico';
+import { CartaTarotVisual } from '../../components/CartaTarotVisual';
+import { NotaReflexiva } from '../../components/NotaReflexiva';
 
 const POSICOES = ['Passado', 'Presente', 'Futuro'];
 
@@ -79,10 +83,13 @@ export default function TelaResultado() {
     return (
       <GradientBackground>
         <SafeAreaView style={estilos.safeArea}>
-          <View style={estilos.erroContainer}>
-            <Text style={estilos.erroTexto}>Não foi possível carregar as cartas</Text>
-            <Button variante="outline" label="Voltar" onPress={() => router.back()} />
-          </View>
+          <EstadoTela
+            tipo="erro"
+            titulo="As cartas não carregaram"
+            descricao="A leitura não foi perdida. Volte ao jogo para abrir as cartas novamente."
+            acaoLabel="Voltar ao jogo"
+            onAcao={() => router.back()}
+          />
         </SafeAreaView>
       </GradientBackground>
     );
@@ -101,26 +108,25 @@ export default function TelaResultado() {
             <Pressable
               onPress={() => router.dismissTo('/(tabs)')}
               style={estilos.voltarBotao}
+              accessibilityRole="button"
+              accessibilityLabel="Fechar leitura"
             >
               <Ionicons name="close" size={22} color={Cores.textoClaro} />
             </Pressable>
             <Text style={estilos.headerTitulo}>Sua Leitura</Text>
-            <View style={{ width: 40 }} />
+            <View style={{ width: 44 }} />
           </Animated.View>
 
           {/* Banner de formatos */}
           <Animated.View style={[estilos.formatosContainer, { opacity: fadeAnim }]}>
-            <Text style={estilos.formatosTitulo}>Receba em outros formatos</Text>
+            <Text style={estilos.formatosTitulo}>Formato da leitura</Text>
             <View style={estilos.formatosGrid}>
               {FORMATOS_ENTREGA.map((formato) => (
-                <Pressable
+                <View
                   key={formato.id}
-                  onPress={() => {
-                    Hapticos.impactoLeve();
-                    if (!formato.disponivel) {
-                      // placeholder
-                    }
-                  }}
+                  accessible
+                  accessibilityLabel={`${formato.titulo}${formato.disponivel ? ', selecionado' : ', em breve'}`}
+                  accessibilityState={{ disabled: !formato.disponivel, selected: formato.id === 'texto' }}
                   style={[
                     estilos.formatoItem,
                     formato.id === 'texto' && estilos.formatoItemAtivo,
@@ -143,7 +149,7 @@ export default function TelaResultado() {
                       <Text style={estilos.emBreveBadgeTexto}>Breve</Text>
                     </View>
                   )}
-                </Pressable>
+                </View>
               ))}
             </View>
           </Animated.View>
@@ -158,19 +164,17 @@ export default function TelaResultado() {
               }]}
             >
               <LinearGradient
-                colors={[carta.cor + '15', 'rgba(26,26,46,0.3)'] as const}
+                colors={[carta.cor + '15', 'rgba(255,252,246,0.94)'] as const}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={estilos.cartaGradiente}
               >
-                {/* Posição + ícone */}
+                {/* Posição + carta */}
                 <View style={estilos.cartaHeader}>
                   <View style={estilos.posicaoBadge}>
                     <Text style={estilos.posicaoTexto}>{POSICOES[index]}</Text>
                   </View>
-                  <View style={[estilos.cartaIconeCirculo, { backgroundColor: carta.cor + '20' }]}>
-                    <Ionicons name={carta.icone as any} size={28} color={carta.cor} />
-                  </View>
+                  <CartaTarotVisual icone={carta.icone} cor={carta.cor} largura={68} />
                 </View>
 
                 {/* Nome da carta */}
@@ -201,20 +205,21 @@ export default function TelaResultado() {
             >
               <Text style={estilos.sinteseTitulo}>✨ Síntese da Leitura</Text>
               <Text style={estilos.sinteseTexto}>
-                {`${cartas[0]?.nomeCompleto ?? 'A carta do passado'} revela de onde você veio e as energias que moldaram sua jornada. No presente, ${cartas[1]?.nomeCompleto ?? 'a carta central'} ilumina o momento exato em que você se encontra — com seus desafios e oportunidades. O futuro aponta para ${cartas[2]?.nomeCompleto ?? 'a transformação'}, indicando o caminho que se abre diante de você quando honra as lições do passado e age com consciência no presente. Confie no processo e permita que cada etapa se manifeste no tempo certo.`}
+                {`${cartas[0]?.nomeCompleto ?? 'A carta do passado'} convida a olhar para experiências que influenciam sua jornada. No presente, ${cartas[1]?.nomeCompleto ?? 'a carta central'} ajuda a refletir sobre desafios e oportunidades deste momento. Na posição de futuro, ${cartas[2]?.nomeCompleto ?? 'a transformação'} sugere uma possibilidade a considerar, que pode mudar conforme suas escolhas. Use esta leitura como apoio para agir com mais consciência.`}
               </Text>
             </LinearGradient>
           </Animated.View>
 
           {/* Bloco IA — Interpretação Aprofundada */}
-          <Animated.View style={[estilos.iaContainer, { opacity: fadeAnim }]}>
+          {IA_REMOTA_DISPONIVEL && (
+            <Animated.View style={[estilos.iaContainer, { opacity: fadeAnim }]}> 
             {!interpretacaoIA && !carregandoIA && (
               <Pressable
                 onPress={() => { Hapticos.impactoMedio(); aprofundarComIA(); }}
                 style={({ pressed }) => [{ transform: [{ scale: pressed ? 0.97 : 1 }] }]}
               >
                 <LinearGradient
-                  colors={['rgba(212,175,55,0.12)', 'rgba(75,0,130,0.10)'] as const}
+                  colors={['rgba(181,139,70,0.12)', 'rgba(110,131,144,0.10)'] as const}
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                   style={estilos.iaBotaoCard}
                 >
@@ -234,8 +239,10 @@ export default function TelaResultado() {
 
             {carregandoIA && (
               <LinearGradient
-                colors={['rgba(212,175,55,0.08)', 'rgba(75,0,130,0.06)'] as const}
+                colors={['rgba(181,139,70,0.08)', 'rgba(110,131,144,0.06)'] as const}
                 style={estilos.iaCarregando}
+                accessibilityRole="progressbar"
+                accessibilityLabel="Gerando interpretação aprofundada"
               >
                 <ActivityIndicator color={Cores.acento} />
                 <Text style={estilos.iaCarregandoTexto}>IA gerando sua interpretação...</Text>
@@ -243,7 +250,11 @@ export default function TelaResultado() {
             )}
 
             {erroIA && !carregandoIA && (
-              <Pressable onPress={aprofundarComIA}>
+              <Pressable
+                onPress={aprofundarComIA}
+                accessibilityRole="button"
+                accessibilityLabel="Tentar gerar a interpretação novamente"
+              >
                 <View style={estilos.iaErro}>
                   <Ionicons name="refresh-outline" size={16} color={Cores.textoSecundario} />
                   <Text style={estilos.iaErroTexto}>Falha ao conectar. Tocar para tentar novamente.</Text>
@@ -253,7 +264,7 @@ export default function TelaResultado() {
 
             {interpretacaoIA && (
               <LinearGradient
-                colors={['rgba(212,175,55,0.10)', 'rgba(75,0,130,0.08)'] as const}
+                colors={['rgba(181,139,70,0.10)', 'rgba(110,131,144,0.08)'] as const}
                 style={estilos.iaResultado}
               >
                 <View style={estilos.iaResultadoHeader}>
@@ -276,10 +287,21 @@ export default function TelaResultado() {
                 ))}
               </LinearGradient>
             )}
-          </Animated.View>
+            </Animated.View>
+          )}
+
+          <NotaReflexiva />
 
           {/* Rating */}
           <RatingConsulta />
+
+          <ConviteHistorico
+            consulta={{
+              tipo: 'tarot',
+              resultado: { cartas },
+              resumo: cartas.map((carta) => carta.nomeCompleto).join(' · '),
+            }}
+          />
 
           {/* Ações */}
           <View style={estilos.acoesContainer}>
@@ -334,8 +356,8 @@ const estilos = StyleSheet.create({
     paddingBottom: Espacamento.md,
   },
   voltarBotao: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: 20,
     backgroundColor: Cores.cardFundo,
     borderWidth: 1,
@@ -391,7 +413,7 @@ const estilos = StyleSheet.create({
     color: Cores.acento,
   },
   emBreveBadge: {
-    backgroundColor: 'rgba(245, 240, 232, 0.1)',
+    backgroundColor: 'rgba(88, 117, 101, 0.10)',
     paddingHorizontal: 6,
     paddingVertical: 1,
     borderRadius: RaioBorda.full,
@@ -411,7 +433,7 @@ const estilos = StyleSheet.create({
     borderRadius: RaioBorda.xl,
     padding: Espacamento.lg,
     borderWidth: 1,
-    borderColor: 'rgba(245, 240, 232, 0.06)',
+    borderColor: 'rgba(88, 117, 101, 0.12)',
   },
   cartaHeader: {
     flexDirection: 'row',

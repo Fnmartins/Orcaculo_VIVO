@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GradientBackground } from '../../components/GradientBackground';
 import { Button } from '../../components/Button';
@@ -174,7 +174,7 @@ export default function TelaRitual() {
           {/* Hero */}
           <Animated.View style={[{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
             <LinearGradient
-              colors={[dados.cor + '20', 'rgba(26,26,46,0.6)'] as const}
+              colors={[dados.cor + '18', 'rgba(255,252,246,0.95)'] as const}
               style={estilos.hero}
             >
               <View style={[estilos.heroIcone, { backgroundColor: dados.cor + '18' }]}>
@@ -355,7 +355,7 @@ const estilos = StyleSheet.create({
     padding: Espacamento.xl,
     marginBottom: Espacamento.lg,
     borderWidth: 1,
-    borderColor: 'rgba(245,240,232,0.06)',
+    borderColor: 'rgba(88,117,101,0.12)',
   },
   heroIcone: {
     width: 80,
@@ -442,7 +442,7 @@ const estilos = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: 'rgba(245,240,232,0.08)',
+    backgroundColor: 'rgba(88,117,101,0.10)',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 2,
@@ -475,7 +475,7 @@ const estilos = StyleSheet.create({
   timerContainer: { marginTop: Espacamento.xs },
   timerBarra: {
     height: 4,
-    backgroundColor: 'rgba(245,240,232,0.1)',
+    backgroundColor: 'rgba(88,117,101,0.12)',
     borderRadius: 2,
     overflow: 'hidden',
     marginBottom: Espacamento.xs,

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { GradientBackground } from '../../components/GradientBackground';
 import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
@@ -20,7 +20,7 @@ const FASES = [
 ];
 
 export default function TelaCalculandoMapa() {
-  const params = useLocalSearchParams<{ nome: string; dia: string; mes: string; ano: string }>();
+  const params = useLocalSearchParams<{ nome: string; nomeAtual?: string; dia: string; mes: string; ano: string }>();
   const [faseAtual, setFaseAtual] = useState(0);
   const rotate = useRef(new Animated.Value(0)).current;
   const pulse = useRef(new Animated.Value(1)).current;

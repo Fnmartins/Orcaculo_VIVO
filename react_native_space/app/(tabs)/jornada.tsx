@@ -8,7 +8,8 @@ import {
   Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GradientBackground } from '../../components/GradientBackground';
 import { Cores } from '../../constants/colors';
@@ -237,7 +238,7 @@ function CardLeitura({
 
       <View style={estilos.leituraConteudo}>
         <LinearGradient
-          colors={[cor + '12', 'rgba(26,26,46,0.3)'] as const}
+          colors={[cor + '12', 'rgba(255,252,246,0.94)'] as const}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={estilos.leituraGradiente}

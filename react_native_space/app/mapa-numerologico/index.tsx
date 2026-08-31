@@ -1,8 +1,9 @@
 import React, { useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Animated, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GradientBackground } from '../../components/GradientBackground';
 import { Cores } from '../../constants/colors';
@@ -19,10 +20,11 @@ const BENEFICIOS = [
 ];
 
 export default function TelaIntroMapaNumerologico() {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(20)).current;
+  const fadeAnim = useRef(new Animated.Value(Platform.OS === 'web' ? 1 : 0)).current;
+  const slideAnim = useRef(new Animated.Value(Platform.OS === 'web' ? 0 : 20)).current;
 
   useEffect(() => {
+    if (Platform.OS === 'web') return;
     Animated.parallel([
       Animated.timing(fadeAnim, { toValue: 1, duration: 700, useNativeDriver: true }),
       Animated.timing(slideAnim, { toValue: 0, duration: 700, useNativeDriver: true }),
@@ -36,6 +38,7 @@ export default function TelaIntroMapaNumerologico() {
           <Pressable
             onPress={() => { Hapticos.impactoLeve(); router.back(); }}
             style={estilos.voltar}
+            accessibilityRole="button"
             accessibilityLabel="Voltar"
           >
             <Ionicons name="arrow-back" size={24} color={Cores.textoClaro} />
@@ -45,6 +48,8 @@ export default function TelaIntroMapaNumerologico() {
         <ScrollView
           contentContainerStyle={estilos.scrollContent}
           showsVerticalScrollIndicator={false}
+          tabIndex={0}
+          accessibilityLabel="Conteúdo do mapa numerológico"
         >
           <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
             <View style={estilos.badge}>
@@ -103,6 +108,8 @@ export default function TelaIntroMapaNumerologico() {
           <Pressable
             onPress={() => { Hapticos.impactoMedio(); router.push('/mapa-numerologico/formulario'); }}
             style={({ pressed }) => [{ transform: [{ scale: pressed ? 0.97 : 1 }] }]}
+            accessibilityRole="button"
+            accessibilityLabel="Começar mapa numerológico"
           >
             <LinearGradient
               colors={Cores.gradienteAcento}
@@ -147,7 +154,7 @@ const estilos = StyleSheet.create({
   badgeTexto: {
     fontFamily: Fontes.corpoNegrito,
     fontSize: 10,
-    color: Cores.fundoEscuro,
+    color: '#17201D',
     letterSpacing: 1,
   },
   titulo: {

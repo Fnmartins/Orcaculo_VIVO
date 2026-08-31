@@ -8,5 +8,6 @@
         "./*"
       ]
     }
-  }
+  },
+  "exclude": ["supabase/functions"]
 }

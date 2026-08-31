@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { AuthServico, type Perfil } from '../services/auth';
+import { migrarConsultaPendente } from '../services/consultaPendente';
 
 interface AuthContextTipo {
   sessao: Session | null;
@@ -28,6 +29,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const carregarPerfil = useCallback(async (userId: string) => {
     const p = await AuthServico.buscarPerfil(userId);
     setPerfil(p);
+    migrarConsultaPendente(userId).catch((erro) => {
+      console.error('[Consulta pendente]', erro);
+    });
   }, []);
 
   useEffect(() => {

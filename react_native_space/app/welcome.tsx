@@ -10,8 +10,8 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { GradientBackground } from '../components/GradientBackground';
 import { Button } from '../components/Button';
 import { Cores } from '../constants/colors';
@@ -33,16 +33,17 @@ export default function TelaWelcome() {
   const [movimentoReduzido, setMovimentoReduzido] = useState(false);
 
   // Animações
-  const heroOpacidade = useRef(new Animated.Value(0)).current;
-  const heroEscala = useRef(new Animated.Value(0.8)).current;
+  const estadoVisivelWeb = Platform.OS === 'web';
+  const heroOpacidade = useRef(new Animated.Value(estadoVisivelWeb ? 1 : 0)).current;
+  const heroEscala = useRef(new Animated.Value(estadoVisivelWeb ? 1 : 0.8)).current;
   const rotacao = useRef(new Animated.Value(0)).current;
-  const tituloOpacidade = useRef(new Animated.Value(0)).current;
-  const tituloY = useRef(new Animated.Value(30)).current;
-  const divisorLargura = useRef(new Animated.Value(0)).current;
-  const taglineOpacidade = useRef(new Animated.Value(0)).current;
-  const descricaoOpacidade = useRef(new Animated.Value(0)).current;
-  const ctaOpacidade = useRef(new Animated.Value(0)).current;
-  const ctaY = useRef(new Animated.Value(40)).current;
+  const tituloOpacidade = useRef(new Animated.Value(estadoVisivelWeb ? 1 : 0)).current;
+  const tituloY = useRef(new Animated.Value(estadoVisivelWeb ? 0 : 30)).current;
+  const divisorLargura = useRef(new Animated.Value(estadoVisivelWeb ? 60 : 0)).current;
+  const taglineOpacidade = useRef(new Animated.Value(estadoVisivelWeb ? 1 : 0)).current;
+  const descricaoOpacidade = useRef(new Animated.Value(estadoVisivelWeb ? 1 : 0)).current;
+  const ctaOpacidade = useRef(new Animated.Value(estadoVisivelWeb ? 1 : 0)).current;
+  const ctaY = useRef(new Animated.Value(estadoVisivelWeb ? 0 : 40)).current;
   const brilhoCTA = useRef(new Animated.Value(0.2)).current;
 
   // Estrelas twinkle
@@ -293,13 +294,13 @@ export default function TelaWelcome() {
               ]}
             />
 
-            <Animated.View style={{ opacity: taglineOpacidade }}>
+            <Animated.View style={[estilos.textoLargura, { opacity: taglineOpacidade }]}>
               <Text style={estilos.tagline}>
                 Sua jornada de autoconhecimento começa aqui
               </Text>
             </Animated.View>
 
-            <Animated.View style={{ opacity: descricaoOpacidade }}>
+            <Animated.View style={[estilos.textoLargura, { opacity: descricaoOpacidade }]}>
               <Text style={estilos.descricao}>
                 Conecte-se com a sabedoria ancestral através da inteligência artificial.
                 Descubra respostas, encontre clareza e desperte sua intuição interior.
@@ -336,7 +337,7 @@ export default function TelaWelcome() {
                 label="Já tenho conta — Entrar"
                 larguraTotal
                 onPress={aoPressionarEntrar}
-                estilo={{ marginTop: Espacamento.sm }}
+                style={{ marginTop: Espacamento.sm }}
               />
             </Animated.View>
 
@@ -384,6 +385,10 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  textoLargura: {
+    alignSelf: 'stretch',
+    width: '100%',
+  },
   titulo: {
     fontFamily: Fontes.titulo,
     fontSize: 36,
@@ -405,6 +410,8 @@ const estilos = StyleSheet.create({
     opacity: 0.85,
     textAlign: 'center',
     lineHeight: 26,
+    width: '100%',
+    flexShrink: 1,
   },
   descricao: {
     fontFamily: Fontes.corpo,
@@ -413,6 +420,8 @@ const estilos = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
     marginTop: 12,
+    width: '100%',
+    flexShrink: 1,
   },
   // Seção Inferior
   secaoInferior: {

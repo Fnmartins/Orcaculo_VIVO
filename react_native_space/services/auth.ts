@@ -21,6 +21,8 @@ export interface Perfil {
   avatar_url: string | null;
   data_nascimento: string | null;
   signo: string | null;
+  caminho_espiritual: string | null;
+  intencao: string | null;
   plano: 'gratuito' | 'iniciante' | 'explorador' | 'mestre';
   plano_valido_ate: string | null;
   consultas_restantes: number;

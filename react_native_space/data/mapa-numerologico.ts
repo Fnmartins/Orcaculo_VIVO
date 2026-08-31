@@ -22,6 +22,8 @@ export interface MapaNumerologicoCompleto {
   alma: CalculoDetalhado;
   personalidade: CalculoDetalhado;
   maturidade: CalculoDetalhado;
+  anoPessoal: CalculoDetalhado;
+  anoReferencia: number;
 }
 
 // Tabela Pitagórica
@@ -249,6 +251,37 @@ export function calcularMaturidade(caminhoVida: number, expressao: number): Calc
   };
 }
 
+// ANO PESSOAL — dia + mês de nascimento + ano de referência
+export function calcularAnoPessoal(
+  dia: number,
+  mes: number,
+  anoReferencia = new Date().getFullYear()
+): CalculoDetalhado {
+  const passos: PassoCalculo[] = [];
+  const parcelas = [dia, mes, ...String(anoReferencia).split('').map(Number)];
+  const soma = parcelas.reduce((total, valor) => total + valor, 0);
+
+  passos.push({
+    descricao: 'Dia + mês + ano de referência',
+    detalhe: `${parcelas.join(' + ')} = ${soma}`,
+    resultado: String(soma),
+  });
+
+  const passosReducao: string[] = [];
+  const numeroFinal = reduzirComPassos(soma, passosReducao) as NumeroNumerologico;
+  passos.push({
+    descricao: 'Redução',
+    detalhe: passosReducao.length ? passosReducao.join(' → ') : `${soma} já é um dígito`,
+    resultado: String(numeroFinal),
+  });
+
+  return {
+    numeroFinal,
+    ehMestre: numeroFinal === 11 || numeroFinal === 22 || numeroFinal === 33,
+    passos,
+  };
+}
+
 // ═══════════════════════════════════════════════════════
 // FUNÇÃO PRINCIPAL
 // ═══════════════════════════════════════════════════════
@@ -256,13 +289,15 @@ export function gerarMapaCompleto(
   nome: string,
   dia: number,
   mes: number,
-  ano: number
+  ano: number,
+  anoReferencia = new Date().getFullYear()
 ): MapaNumerologicoCompleto {
   const caminhoVida = calcularCaminhoVida(dia, mes, ano);
   const expressao = calcularExpressao(nome);
   const alma = calcularAlma(nome);
   const personalidade = calcularPersonalidade(nome);
   const maturidade = calcularMaturidade(caminhoVida.numeroFinal, expressao.numeroFinal);
+  const anoPessoal = calcularAnoPessoal(dia, mes, anoReferencia);
 
   const dataFmt = `${String(dia).padStart(2, '0')}/${String(mes).padStart(2, '0')}/${ano}`;
 
@@ -274,6 +309,8 @@ export function gerarMapaCompleto(
     alma,
     personalidade,
     maturidade,
+    anoPessoal,
+    anoReferencia,
   };
 }
 
@@ -295,84 +332,84 @@ export const INTERPRETACOES_CAMINHO_VIDA: MapaInterpretacoes = {
   1: {
     titulo: 'O Pioneiro',
     essencia: 'Liderança e Independência',
-    descricao: 'Sua missão é abrir caminhos, liderar com originalidade e desenvolver a autoconfiança. Você veio para ser referência, iniciar movimentos e transformar sonhos em ação. A vida vai testar sua coragem de trilhar sozinho quando necessário.',
+    descricao: 'A tradição associa este caminho a iniciativa, originalidade e autonomia. Reflita sobre onde liderar pode ser útil e onde colaboração e escuta são necessárias.',
     pontosFortes: ['Iniciativa', 'Coragem', 'Autoconfiança', 'Originalidade'],
     desafios: ['Impaciência', 'Ego', 'Solidão', 'Autoritarismo'],
   },
   2: {
     titulo: 'O Pacificador',
     essencia: 'Cooperação e Sensibilidade',
-    descricao: 'Sua jornada é sobre parcerias, diplomacia e desenvolvimento da paciência. Você veio para ensinar harmonia e sentir profundamente. Aprender a se posicionar sem perder a gentileza é seu grande trabalho.',
+    descricao: 'A tradição associa este caminho a parceria, diplomacia e paciência. Reflita sobre como se posicionar com clareza sem abandonar a gentileza.',
     pontosFortes: ['Diplomacia', 'Empatia', 'Intuição', 'Colaboração'],
     desafios: ['Indecisão', 'Dependência emocional', 'Passividade'],
   },
   3: {
     titulo: 'O Comunicador',
     essencia: 'Expressão Criativa e Alegria',
-    descricao: 'Sua missão é inspirar através da palavra, arte e criatividade. Você veio para trazer luz, humor e beleza ao mundo. O desafio é focar sua energia e não se dispersar em muitos interesses.',
+    descricao: 'A tradição associa este caminho a comunicação, arte e criatividade. Observe quais formas de expressão fazem sentido no seu contexto e como evitar dispersão.',
     pontosFortes: ['Criatividade', 'Comunicação', 'Otimismo', 'Carisma'],
     desafios: ['Dispersão', 'Superficialidade', 'Drama'],
   },
   4: {
     titulo: 'O Construtor',
     essencia: 'Estrutura e Trabalho Sólido',
-    descricao: 'Sua jornada é construir bases duradouras através da disciplina e do esforço. Você veio para materializar, organizar e criar segurança. Aprender a fluir sem perder a solidez é seu equilíbrio.',
+    descricao: 'A tradição associa este caminho a estrutura, disciplina e consistência. Reflita sobre como criar segurança sem transformar organização em rigidez.',
     pontosFortes: ['Disciplina', 'Lealdade', 'Praticidade', 'Perseverança'],
     desafios: ['Rigidez', 'Teimosia', 'Excesso de trabalho'],
   },
   5: {
     titulo: 'O Aventureiro',
     essencia: 'Liberdade e Mudança',
-    descricao: 'Sua missão é experimentar a vida em toda sua diversidade e ensinar sobre liberdade. Você veio para se transformar constantemente. O desafio é canalizar a inquietude em direção construtiva.',
+    descricao: 'A tradição associa este caminho a mudança, curiosidade e liberdade. Reflita sobre como experimentar com responsabilidade e preservar compromissos importantes.',
     pontosFortes: ['Versatilidade', 'Adaptabilidade', 'Curiosidade', 'Magnetismo'],
     desafios: ['Instabilidade', 'Impulsividade', 'Excessos'],
   },
   6: {
     titulo: 'O Cuidador',
     essencia: 'Amor e Responsabilidade',
-    descricao: 'Sua jornada envolve família, serviço e responsabilidade com os outros. Você veio para nutrir, harmonizar e criar beleza. Cuidar sem se anular é sua grande lição.',
+    descricao: 'A tradição associa este caminho a cuidado, vínculos e responsabilidade. Reflita sobre como apoiar outras pessoas sem se anular ou tentar controlá-las.',
     pontosFortes: ['Amor', 'Serviço', 'Harmonia', 'Compromisso'],
     desafios: ['Perfeccionismo', 'Autossacrifício', 'Controle'],
   },
   7: {
     titulo: 'O Buscador',
     essencia: 'Sabedoria e Introspecção',
-    descricao: 'Sua missão é buscar a verdade interior e desenvolver conhecimento profundo. Você veio para questionar, pesquisar e conectar-se ao espiritual. Confiar sem isolar-se é seu grande trabalho.',
+    descricao: 'A tradição associa este caminho a investigação, introspecção e busca de conhecimento. Reflita sem se afastar de evidências, diálogo e pessoas de confiança.',
     pontosFortes: ['Sabedoria', 'Análise', 'Espiritualidade', 'Profundidade'],
     desafios: ['Isolamento', 'Ceticismo', 'Frieza'],
   },
   8: {
     titulo: 'O Realizador',
     essencia: 'Poder Material e Abundância',
-    descricao: 'Sua jornada é sobre poder pessoal, sucesso e maestria material. Você veio para administrar recursos, liderar empresas e gerar prosperidade. Equilibrar dinheiro com valores é sua lição.',
+    descricao: 'A tradição associa este caminho à gestão de recursos, liderança e responsabilidade material. Use a leitura para refletir sobre ambição, valores e limites, sem tratá-la como previsão financeira.',
     pontosFortes: ['Ambição', 'Estratégia', 'Autoridade', 'Resiliência'],
     desafios: ['Materialismo', 'Controle', 'Workaholismo'],
   },
   9: {
     titulo: 'O Humanitário',
     essencia: 'Compaixão Universal',
-    descricao: 'Sua missão é servir à humanidade com amor incondicional. Você veio para curar, inspirar e completar ciclos. Aprender a soltar e a receber é seu grande desafio.',
+    descricao: 'A tradição associa este caminho a serviço, compaixão e encerramento de ciclos. Reflita sobre como contribuir sem assumir responsabilidades que pertencem aos outros.',
     pontosFortes: ['Compaixão', 'Idealismo', 'Generosidade', 'Visão global'],
     desafios: ['Autossacrifício', 'Melancolia', 'Idealismo excessivo'],
   },
   11: {
     titulo: 'O Iluminador ✨',
     essencia: 'Intuição Mestra e Inspiração Espiritual',
-    descricao: 'Número mestre. Sua missão é iluminar caminhos através da intuição elevada e canalização espiritual. Você veio para inspirar multidões. A pressão interna e a hipersensibilidade são partes do caminho.',
-    pontosFortes: ['Intuição elevada', 'Carisma espiritual', 'Visão profética', 'Inspiração'],
-    desafios: ['Ansiedade', 'Hipersensibilidade', 'Pressão psíquica'],
+    descricao: 'Algumas escolas preservam o 11 como número mestre e o associam a sensibilidade e inspiração. Use essa associação como linguagem simbólica, não como prova de poderes ou destino especial.',
+    pontosFortes: ['Sensibilidade', 'Criatividade', 'Inspiração', 'Percepção'],
+    desafios: ['Idealização', 'Sobrecarga', 'Autoexigência'],
   },
   22: {
     titulo: 'O Mestre Construtor ✨',
     essencia: 'Realização Grandiosa',
-    descricao: 'Número mestre supremo. Sua missão é materializar visões espirituais em obras de impacto global. Você combina praticidade com visão elevada. O peso da missão pode assustar — mas você tem o poder.',
+    descricao: 'Algumas escolas preservam o 22 e o associam à combinação entre visão e execução. Use essa leitura para pensar em etapas realistas, colaboração e limites.',
     pontosFortes: ['Visão grandiosa', 'Poder de realização', 'Praticidade elevada', 'Liderança global'],
     desafios: ['Pressão extrema', 'Perfeccionismo', 'Autoexigência'],
   },
   33: {
     titulo: 'O Mestre Curador ✨',
     essencia: 'Amor Cristificado',
-    descricao: 'Número mestre raro. Sua missão é servir com amor incondicional em nível global. Você veio como professor da alma. Requer equilíbrio profundo entre serviço e autocuidado.',
+    descricao: 'Algumas escolas preservam o 33 e o associam a cuidado e ensino. Use essa leitura para refletir sobre serviço responsável, reciprocidade e autocuidado.',
     pontosFortes: ['Amor incondicional', 'Cura', 'Ensino espiritual', 'Sabedoria'],
     desafios: ['Autossacrifício extremo', 'Peso da missão', 'Solidão espiritual'],
   },
@@ -386,11 +423,11 @@ export const INTERPRETACOES_EXPRESSAO: MapaInterpretacoes = {
   5: { titulo: 'Talentos Versáteis', essencia: 'Manifesta versatilidade', descricao: 'Seus talentos são múltiplos e adaptáveis. Você aprende rápido, comunica-se bem e ama diversidade.', pontosFortes: ['Versatilidade', 'Adaptabilidade', 'Persuasão'], desafios: ['Dispersão'] },
   6: { titulo: 'Talentos de Cuidado', essencia: 'Manifesta amor', descricao: 'Você expressa dons em relacionamentos, cuidado, educação e criação de ambientes harmoniosos.', pontosFortes: ['Cuidado', 'Ensino', 'Estética'], desafios: ['Assumir problemas alheios'] },
   7: { titulo: 'Talentos Analíticos', essencia: 'Manifesta profundidade', descricao: 'Você expressa capacidade de análise, pesquisa e insight. É bom em áreas que exigem estudo e reflexão.', pontosFortes: ['Análise', 'Pesquisa', 'Insight'], desafios: ['Comunicação emocional'] },
-  8: { titulo: 'Talentos Executivos', essencia: 'Manifesta poder', descricao: 'Seus dons estão em administrar, liderar negócios e materializar visões. Você tem faro para poder e prosperidade.', pontosFortes: ['Administração', 'Estratégia', 'Liderança'], desafios: ['Excesso de trabalho'] },
+  8: { titulo: 'Talentos Executivos', essencia: 'Gestão e estratégia', descricao: 'A tradição relaciona este número a administração, negociação e execução. Experiência e contexto continuam essenciais para avaliar competências reais.', pontosFortes: ['Administração', 'Estratégia', 'Liderança'], desafios: ['Excesso de trabalho'] },
   9: { titulo: 'Talentos Humanitários', essencia: 'Manifesta compaixão', descricao: 'Você expressa dons em causas maiores, artes com propósito e trabalho de impacto social.', pontosFortes: ['Compaixão', 'Visão universal', 'Inspiração'], desafios: ['Desapego difícil'] },
   11: { titulo: 'Talentos Inspiracionais ✨', essencia: 'Canaliza inspiração', descricao: 'Seus dons são canalizadores. Você expressa mensagens que inspiram e elevam pessoas. Grande potencial em áreas espirituais e artísticas.', pontosFortes: ['Inspiração', 'Intuição', 'Carisma'], desafios: ['Pressão interna'] },
   22: { titulo: 'Talentos Grandiosos ✨', essencia: 'Manifesta em grande escala', descricao: 'Você tem talentos raros para criar obras de grande impacto — organizações, movimentos, legados duradouros.', pontosFortes: ['Visão prática', 'Realização', 'Impacto'], desafios: ['Peso da responsabilidade'] },
-  33: { titulo: 'Talentos de Cura ✨', essencia: 'Manifesta amor divino', descricao: 'Dons raros de cura, ensino espiritual e serviço amoroso. Você inspira transformação nas pessoas.', pontosFortes: ['Cura', 'Ensino', 'Amor'], desafios: ['Autossacrifício'] },
+  33: { titulo: 'Talentos de Cuidado ✨', essencia: 'Cuidado e ensino', descricao: 'Algumas escolas associam este número ao cuidado e ao ensino. Ele não indica capacidade médica ou terapêutica.', pontosFortes: ['Cuidado', 'Ensino', 'Acolhimento'], desafios: ['Autossacrifício'] },
 };
 
 export const INTERPRETACOES_ALMA: MapaInterpretacoes = {
@@ -403,7 +440,7 @@ export const INTERPRETACOES_ALMA: MapaInterpretacoes = {
   7: { titulo: 'Alma Mística', essencia: 'Desejo de verdade', descricao: 'Sua alma busca sabedoria profunda, mistérios espirituais e verdade interior. Precisa de silêncio e reflexão.', pontosFortes: ['Sabedoria interior', 'Intuição'], desafios: ['Isolamento'] },
   8: { titulo: 'Alma Ambiciosa', essencia: 'Desejo de poder', descricao: 'Interiormente você quer poder, sucesso material e reconhecimento. Sua alma tem sede de conquistas.', pontosFortes: ['Determinação', 'Visão de futuro'], desafios: ['Obsessão por resultados'] },
   9: { titulo: 'Alma Universal', essencia: 'Desejo de servir o todo', descricao: 'Sua alma quer transformar o mundo, servir causas maiores e amar sem limites.', pontosFortes: ['Compaixão profunda', 'Idealismo'], desafios: ['Peso do mundo'] },
-  11: { titulo: 'Alma Iluminada ✨', essencia: 'Desejo de despertar', descricao: 'Sua alma vibra em frequência elevada. Quer despertar a si e aos outros para verdades espirituais.', pontosFortes: ['Sensibilidade psíquica', 'Missão elevada'], desafios: ['Sobrecarga energética'] },
+  11: { titulo: 'Alma Inspirada ✨', essencia: 'Desejo de significado', descricao: 'Algumas escolas associam o 11 a sensibilidade e busca de significado. Trate essa leitura como símbolo, não como evidência de percepção sobrenatural.', pontosFortes: ['Sensibilidade', 'Inspiração'], desafios: ['Idealização'] },
   22: { titulo: 'Alma Construtora ✨', essencia: 'Desejo de criar legado', descricao: 'Interiormente você quer construir algo que mude o mundo. Sua alma sente o chamado de missão grandiosa.', pontosFortes: ['Visão épica', 'Poder criativo'], desafios: ['Autoexigência'] },
   33: { titulo: 'Alma Cristificada ✨', essencia: 'Desejo de amar tudo', descricao: 'Alma raríssima. Anseia por amor incondicional e serviço divino sem apego.', pontosFortes: ['Amor sem limites', 'Sabedoria'], desafios: ['Peso espiritual'] },
 };
@@ -420,7 +457,7 @@ export const INTERPRETACOES_PERSONALIDADE: MapaInterpretacoes = {
   9: { titulo: 'Persona Compassiva', essencia: 'Aparência de sábio', descricao: 'Os outros te veem como generoso, sábio e humanitário. Você inspira confiança e admiração.', pontosFortes: ['Nobreza', 'Sabedoria visível'], desafios: ['Parecer distante do mundano'] },
   11: { titulo: 'Persona Inspiradora ✨', essencia: 'Aparência luminosa', descricao: 'Você é percebido como intuitivo, especial e magnético. Pessoas sentem sua vibração alta.', pontosFortes: ['Aura', 'Inspiração'], desafios: ['Ser mal compreendido'] },
   22: { titulo: 'Persona Imponente ✨', essencia: 'Aparência de mestre', descricao: 'Os outros percebem grandeza em você. Transmite visão e poder de realização raros.', pontosFortes: ['Autoridade natural', 'Visão'], desafios: ['Ser intimidador'] },
-  33: { titulo: 'Persona Amorosa ✨', essencia: 'Aparência de curador', descricao: 'Você é percebido como amoroso, sábio e curador. Pessoas se abrem naturalmente com você.', pontosFortes: ['Amor visível', 'Cura'], desafios: ['Sobrecarga emocional'] },
+  33: { titulo: 'Persona Acolhedora ✨', essencia: 'Aparência cuidadosa', descricao: 'Algumas escolas associam o 33 a uma imagem acolhedora e responsável. Isso não indica capacidade médica ou terapêutica.', pontosFortes: ['Acolhimento', 'Escuta'], desafios: ['Sobrecarga emocional'] },
 };
 
 export const INTERPRETACOES_MATURIDADE: MapaInterpretacoes = {
@@ -431,11 +468,26 @@ export const INTERPRETACOES_MATURIDADE: MapaInterpretacoes = {
   5: { titulo: 'Maturidade Livre', essencia: 'Após os 35-40 anos', descricao: 'Sua maturidade traz liberdade, viagens e transformações prazerosas.', pontosFortes: ['Liberdade conquistada'], desafios: ['Inquietude'] },
   6: { titulo: 'Maturidade Amorosa', essencia: 'Após os 35-40 anos', descricao: 'Você amadurece em amor, família e responsabilidade harmoniosa.', pontosFortes: ['Amor maduro'], desafios: ['Autossacrifício'] },
   7: { titulo: 'Maturidade Sábia', essencia: 'Após os 35-40 anos', descricao: 'Sua fase madura é de sabedoria profunda, espiritualidade e ensino.', pontosFortes: ['Sabedoria'], desafios: ['Isolamento'] },
-  8: { titulo: 'Maturidade Próspera', essencia: 'Após os 35-40 anos', descricao: 'Você colhe poder, prosperidade material e reconhecimento profissional.', pontosFortes: ['Abundância'], desafios: ['Materialismo'] },
+  8: { titulo: 'Maturidade Estratégica', essencia: 'Associação tradicional da maturidade', descricao: 'A tradição associa esta combinação ao amadurecimento na gestão de recursos e responsabilidades.', pontosFortes: ['Estratégia'], desafios: ['Materialismo'] },
   9: { titulo: 'Maturidade Humanitária', essencia: 'Após os 35-40 anos', descricao: 'Sua fase madura se dedica a causas maiores e legado transformador.', pontosFortes: ['Legado'], desafios: ['Autossacrifício'] },
-  11: { titulo: 'Maturidade Iluminada ✨', essencia: 'Após os 35-40 anos', descricao: 'Você se torna canal de inspiração espiritual, guia para outros.', pontosFortes: ['Missão espiritual'], desafios: ['Pressão psíquica'] },
+  11: { titulo: 'Maturidade Inspiradora ✨', essencia: 'Associação tradicional da maturidade', descricao: 'A tradição associa esta combinação ao amadurecimento da sensibilidade e da expressão criativa.', pontosFortes: ['Inspiração'], desafios: ['Autoexigência'] },
   22: { titulo: 'Maturidade Grandiosa ✨', essencia: 'Após os 35-40 anos', descricao: 'Materializa obras de grande impacto na segunda metade da vida.', pontosFortes: ['Legado épico'], desafios: ['Peso'] },
-  33: { titulo: 'Maturidade de Cura ✨', essencia: 'Após os 35-40 anos', descricao: 'Você se torna mestre curador, ensinando amor incondicional.', pontosFortes: ['Amor mestre'], desafios: ['Autoentrega'] },
+  33: { titulo: 'Maturidade de Cuidado ✨', essencia: 'Associação tradicional da maturidade', descricao: 'A tradição associa esta combinação ao amadurecimento do cuidado, do ensino e dos limites pessoais.', pontosFortes: ['Cuidado responsável'], desafios: ['Autoentrega'] },
+};
+
+export const INTERPRETACOES_ANO_PESSOAL: MapaInterpretacoes = {
+  1: { titulo: 'Ciclo de Inícios', essencia: 'Iniciativa e autonomia', descricao: 'A tradição associa este ciclo a começos e decisões autorais. Reflita sobre o que deseja iniciar e quais recursos reais já possui.', pontosFortes: ['Iniciativa', 'Clareza de intenção'], desafios: ['Pressa', 'Isolamento'] },
+  2: { titulo: 'Ciclo de Cooperação', essencia: 'Paciência e parceria', descricao: 'A tradição associa este ciclo a acordos, escuta e amadurecimento gradual. Observe onde colaborar pode ser mais útil do que acelerar.', pontosFortes: ['Escuta', 'Diplomacia'], desafios: ['Indecisão', 'Passividade'] },
+  3: { titulo: 'Ciclo de Expressão', essencia: 'Comunicação e criatividade', descricao: 'A tradição associa este ciclo à expressão de ideias e vínculos sociais. Escolha canais concretos para comunicar e criar.', pontosFortes: ['Criatividade', 'Comunicação'], desafios: ['Dispersão', 'Exagero'] },
+  4: { titulo: 'Ciclo de Estrutura', essencia: 'Organização e consistência', descricao: 'A tradição associa este ciclo à construção de bases. Revise rotinas, limites e prioridades antes de assumir novas obrigações.', pontosFortes: ['Disciplina', 'Planejamento'], desafios: ['Rigidez', 'Sobrecarga'] },
+  5: { titulo: 'Ciclo de Mudança', essencia: 'Adaptação e movimento', descricao: 'A tradição associa este ciclo a mudanças e experimentação. Explore alternativas sem abandonar critérios, segurança e compromissos importantes.', pontosFortes: ['Adaptabilidade', 'Curiosidade'], desafios: ['Impulsividade', 'Instabilidade'] },
+  6: { titulo: 'Ciclo de Cuidado', essencia: 'Responsabilidade e vínculos', descricao: 'A tradição associa este ciclo ao cuidado com relações e espaços compartilhados. Equilibre presença para os outros com autocuidado.', pontosFortes: ['Responsabilidade', 'Acolhimento'], desafios: ['Controle', 'Autossacrifício'] },
+  7: { titulo: 'Ciclo de Investigação', essencia: 'Estudo e interiorização', descricao: 'A tradição associa este ciclo a estudo, avaliação e silêncio produtivo. Use reflexão como apoio, sem se afastar de fatos e pessoas de confiança.', pontosFortes: ['Análise', 'Profundidade'], desafios: ['Isolamento', 'Excesso de dúvida'] },
+  8: { titulo: 'Ciclo de Realização', essencia: 'Recursos e responsabilidade', descricao: 'A tradição associa este ciclo à gestão de recursos e resultados. Planeje com dados concretos e não use esta leitura como orientação financeira.', pontosFortes: ['Estratégia', 'Execução'], desafios: ['Controle', 'Excesso de trabalho'] },
+  9: { titulo: 'Ciclo de Conclusão', essencia: 'Síntese e desapego', descricao: 'A tradição associa este ciclo ao encerramento e à revisão de aprendizados. Diferencie o que precisa terminar do que apenas precisa ser ajustado.', pontosFortes: ['Síntese', 'Compaixão'], desafios: ['Melancolia', 'Dificuldade de encerrar'] },
+  11: { titulo: 'Ciclo Mestre 11', essencia: 'Sensibilidade e inspiração', descricao: 'Algumas escolas preservam o 11 neste cálculo. Use-o como convite simbólico à percepção e à expressão, sem atribuir poderes ou previsões.', pontosFortes: ['Sensibilidade', 'Inspiração'], desafios: ['Ansiedade', 'Idealização'] },
+  22: { titulo: 'Ciclo Mestre 22', essencia: 'Visão e construção', descricao: 'Algumas escolas preservam o 22 neste cálculo. Use-o como convite simbólico para transformar uma visão em etapas realistas e verificáveis.', pontosFortes: ['Planejamento', 'Realização'], desafios: ['Autoexigência', 'Sobrecarga'] },
+  33: { titulo: 'Ciclo Mestre 33', essencia: 'Cuidado e serviço', descricao: 'Algumas escolas preservam o 33 neste cálculo. Use-o como convite simbólico para cuidar com limites e responsabilidade.', pontosFortes: ['Cuidado', 'Ensino'], desafios: ['Autossacrifício', 'Idealização'] },
 };
 
 // ═══════════════════════════════════════════════════════
@@ -462,7 +514,7 @@ export function gerarIntegracao(mapa: MapaNumerologicoCompleto): {
   const iPers = INTERPRETACOES_PERSONALIDADE[pers];
   const iMat = INTERPRETACOES_MATURIDADE[mat];
 
-  // Padrões — números repetidos indicam energia amplificada
+  // Padrões — repetições são destacadas como associação simbólica
   const todos = [cv, exp, alma, pers, mat];
   const contagem = todos.reduce<Record<number, number>>((acc, n) => {
     acc[n] = (acc[n] || 0) + 1;
@@ -473,12 +525,12 @@ export function gerarIntegracao(mapa: MapaNumerologicoCompleto): {
 
   let padroes = '';
   if (repetidos.length > 0) {
-    padroes = `Detectamos repetição dos números ${repetidos.map(([n, c]) => `${n} (${c}x)`).join(', ')}, o que amplifica dramaticamente essa energia em sua vida. É um foco importante do seu mapa.`;
+    padroes = `Os números ${repetidos.map(([n, c]) => `${n} (${c}x)`).join(', ')} aparecem mais de uma vez. A tradição costuma destacar essas repetições; use-as apenas como temas para reflexão.`;
   } else {
     padroes = 'Seus números formam uma composição diversa, indicando um perfil multifacetado com várias energias ativas — versatilidade é seu traço marcante.';
   }
   if (numerosMestre.length > 0) {
-    padroes += ` Você carrega ${numerosMestre.length} número(s) mestre (${numerosMestre.join(', ')}), o que indica uma alma com missão elevada e potencial acima da média — junto com maior sensibilidade e pressão interna.`;
+    padroes += ` O cálculo preservou ${numerosMestre.length} número(s) mestre (${numerosMestre.join(', ')}), conforme a metodologia adotada. Isso é uma convenção numerológica, não uma medida de potencial ou superioridade.`;
   }
 
   return {
@@ -490,9 +542,9 @@ export function gerarIntegracao(mapa: MapaNumerologicoCompleto): {
 
     amorRelacionamentos: `Nos relacionamentos, sua alma ${alma} busca ${iAlma.essencia.toLowerCase()}, mas sua personalidade ${pers} projeta ${iPers.essencia.toLowerCase()}. ${alma === 2 || alma === 6 ? 'Você tem uma alma naturalmente amorosa e parceira.' : alma === 1 || alma === 5 ? 'Você valoriza sua liberdade e independência afetiva.' : 'Você busca conexões profundas e significativas.'} Cuidado com o padrão ${iAlma.desafios[0]?.toLowerCase()}.`,
 
-    carreiraProposito: `Profissionalmente, seus talentos de Expressão ${exp} combinam bem com trabalhos ligados a ${iExp.essencia.toLowerCase()}. Seu Caminho ${cv} indica que sua realização virá de ${iCV.essencia.toLowerCase()}. Áreas ideais dependem de aplicar ${iExp.pontosFortes[0]?.toLowerCase()} no serviço de ${iCV.pontosFortes[0]?.toLowerCase()}.`,
+    carreiraProposito: `Como reflexão profissional, a Expressão ${exp} pode convidar você a observar atividades ligadas a ${iExp.essencia.toLowerCase()}. O Caminho ${cv} acrescenta o tema simbólico de ${iCV.essencia.toLowerCase()}. Compare essas associações com suas competências demonstradas, interesses, contexto e oportunidades reais.`,
 
-    espiritualidade: `Espiritualmente, ${numerosMestre.length > 0 ? `você carrega vibrações mestras (${numerosMestre.join(', ')}) que aceleram seu despertar. Sua sensibilidade é maior — cultive práticas de aterramento.` : `seu caminho espiritual é ${cv === 7 || cv === 9 ? 'naturalmente elevado e buscador' : cv === 4 || cv === 8 ? 'prático e integrado ao material' : 'equilibrado entre céu e terra'}.`} Sua Maturidade ${mat} (${iMat.titulo}) mostra que ${iMat.descricao.toLowerCase()}`,
+    espiritualidade: `Como reflexão espiritual, ${numerosMestre.length > 0 ? `a metodologia preservou os números ${numerosMestre.join(', ')}, tradicionalmente associados a sensibilidade e responsabilidade` : `o Caminho ${cv} oferece uma associação simbólica para observar valores, significado e práticas pessoais`}. A Maturidade ${mat} acrescenta esta leitura: ${iMat.descricao.toLowerCase()}`,
 
     padroesRecorrentes: padroes,
   };

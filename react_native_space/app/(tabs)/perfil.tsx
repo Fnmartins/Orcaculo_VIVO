@@ -10,10 +10,13 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
@@ -50,6 +53,7 @@ interface MenuItemProps {
   onPress?: () => void;
   trailing?: React.ReactNode;
   perigo?: boolean;
+  emBreve?: boolean;
 }
 
 export default function TelaPerfil() {
@@ -59,7 +63,10 @@ export default function TelaPerfil() {
   const [somHapticos, setSomHapticos] = useState(true);
   const [modoEscuro, setModoEscuro] = useState(true);
   const [enviandoFoto, setEnviandoFoto] = useState(false);
-  const { sessao, perfil, recarregarPerfil } = useAuth();
+  const [editandoNome, setEditandoNome] = useState(false);
+  const [nomeInput, setNomeInput] = useState('');
+  const [salvandoNome, setSalvandoNome] = useState(false);
+  const { sessao, perfil, carregando, recarregarPerfil, atualizarPerfil } = useAuth();
 
   useEffect(() => {
     Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
@@ -81,6 +88,26 @@ export default function TelaPerfil() {
     const d = new Date(perfil.criado_em);
     return d.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
   }, [perfil]);
+
+  const abrirEditarNome = useCallback(() => {
+    setNomeInput(perfil?.nome ?? sessao?.user?.email?.split('@')[0] ?? '');
+    setEditandoNome(true);
+    Hapticos.impactoLeve();
+  }, [perfil, sessao]);
+
+  const salvarNome = useCallback(async () => {
+    const nome = nomeInput.trim();
+    if (!nome) return;
+    setSalvandoNome(true);
+    try {
+      await atualizarPerfil({ nome });
+      setEditandoNome(false);
+    } catch {
+      Alert.alert('Erro', 'Nao foi possivel salvar o nome. Tente novamente.');
+    } finally {
+      setSalvandoNome(false);
+    }
+  }, [nomeInput, atualizarPerfil]);
 
   const alterarFoto = useCallback(async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -136,6 +163,21 @@ export default function TelaPerfil() {
     ]);
   }, []);
 
+  const nomeExibido = perfil?.nome ?? sessao?.user?.email?.split('@')[0] ?? 'Buscador de Luz';
+
+  if (carregando) {
+    return (
+      <GradientBackground>
+        <SafeAreaView style={estilos.safeArea} edges={['top']}>
+          <View style={estilos.loadingContainer}>
+            <ActivityIndicator size="large" color={Cores.acento} />
+            <Text style={estilos.loadingTexto}>Carregando perfil...</Text>
+          </View>
+        </SafeAreaView>
+      </GradientBackground>
+    );
+  }
+
   return (
     <GradientBackground>
       <SafeAreaView style={estilos.safeArea} edges={['top']}>
@@ -166,7 +208,10 @@ export default function TelaPerfil() {
                   }
                 </Pressable>
               </View>
-              <Text style={estilos.perfilNome}>{perfil?.nome ?? sessao?.user?.email?.split('@')[0] ?? 'Buscador de Luz'}</Text>
+              <Pressable onPress={abrirEditarNome} style={estilos.nomeContainer}>
+                <Text style={estilos.perfilNome}>{nomeExibido}</Text>
+                <Ionicons name="pencil-outline" size={14} color={Cores.textoSecundario} style={estilos.nomeIconeEditar} />
+              </Pressable>
               <Text style={estilos.perfilEmail}>{sessao?.user?.email ?? ''}</Text>
               <View style={estilos.perfilBadges}>
                 <View style={estilos.badgeMembro}>
@@ -246,26 +291,26 @@ export default function TelaPerfil() {
                 <MenuItem
                   icone="compass-outline"
                   titulo="Caminhos Espirituais"
-                  subtitulo="Tarot, Búzios, Numerologia"
-                  onPress={() => Hapticos.impactoLeve()}
+                  subtitulo={perfil?.caminho_espiritual ?? 'Não definido'}
+                  emBreve
                 />
                 <MenuItem
                   icone="document-text-outline"
                   titulo="Formato de Entrega"
                   subtitulo="Texto"
-                  onPress={() => Hapticos.impactoLeve()}
+                  emBreve
                 />
                 <MenuItem
                   icone="heart-outline"
                   titulo="Intenções"
-                  subtitulo="Amor, Autoconhecimento"
-                  onPress={() => Hapticos.impactoLeve()}
+                  subtitulo={perfil?.intencao ?? 'Não definido'}
+                  emBreve
                 />
                 <MenuItem
                   icone="color-palette-outline"
                   titulo="Signo Solar"
-                  subtitulo="Gêmeos ♊"
-                  onPress={() => Hapticos.impactoLeve()}
+                  subtitulo={perfil?.signo ?? 'Não definido'}
+                  emBreve
                 />
               </View>
             </View>
@@ -337,7 +382,7 @@ export default function TelaPerfil() {
                   icone="language-outline"
                   titulo="Idioma"
                   subtitulo="Português (BR)"
-                  onPress={() => Hapticos.impactoLeve()}
+                  emBreve
                 />
               </View>
             </View>
@@ -349,28 +394,28 @@ export default function TelaPerfil() {
                 <MenuItem
                   icone="help-circle-outline"
                   titulo="Central de Ajuda"
-                  onPress={() => Hapticos.impactoLeve()}
+                  emBreve
                 />
                 <MenuItem
                   icone="chatbubble-ellipses-outline"
                   titulo="Fale Conosco"
                   subtitulo="WhatsApp ou Email"
-                  onPress={() => Hapticos.impactoLeve()}
+                  emBreve
                 />
                 <MenuItem
                   icone="star-outline"
                   titulo="Avaliar o App"
-                  onPress={() => Hapticos.impactoLeve()}
+                  emBreve
                 />
                 <MenuItem
                   icone="document-outline"
                   titulo="Termos de Uso"
-                  onPress={() => Hapticos.impactoLeve()}
+                  emBreve
                 />
                 <MenuItem
                   icone="shield-outline"
                   titulo="Política de Privacidade"
-                  onPress={() => Hapticos.impactoLeve()}
+                  emBreve
                 />
               </View>
             </View>
@@ -421,12 +466,56 @@ export default function TelaPerfil() {
           </ScrollView>
         </Animated.View>
       </SafeAreaView>
+
+      {/* Modal: editar nome */}
+      <Modal
+        visible={editandoNome}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditandoNome(false)}
+      >
+        <Pressable style={estilos.modalOverlay} onPress={() => setEditandoNome(false)}>
+          <Pressable style={estilos.modalCard} onPress={(e) => e.stopPropagation()}>
+            <Text style={estilos.modalTitulo}>Editar Nome</Text>
+            <Text style={estilos.modalSubtitulo}>Como deseja ser chamado?</Text>
+            <TextInput
+              style={estilos.modalInput}
+              value={nomeInput}
+              onChangeText={setNomeInput}
+              placeholder="Seu nome ou nome espiritual"
+              placeholderTextColor={Cores.textoSecundario}
+              autoFocus
+              maxLength={50}
+              returnKeyType="done"
+              onSubmitEditing={salvarNome}
+            />
+            <View style={estilos.modalBotoes}>
+              <Pressable
+                style={estilos.modalCancelar}
+                onPress={() => setEditandoNome(false)}
+              >
+                <Text style={estilos.modalCancelarTexto}>Cancelar</Text>
+              </Pressable>
+              <Pressable
+                style={[estilos.modalSalvar, salvandoNome && { opacity: 0.6 }]}
+                onPress={salvarNome}
+                disabled={salvandoNome}
+              >
+                {salvandoNome
+                  ? <ActivityIndicator size="small" color={Cores.fundoEscuro} />
+                  : <Text style={estilos.modalSalvarTexto}>Salvar</Text>
+                }
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </GradientBackground>
   );
 }
 
 /* ---- Menu Item ---- */
-function MenuItem({ icone, iconeLib = 'ionicons', titulo, subtitulo, cor, onPress, trailing, perigo }: MenuItemProps) {
+function MenuItem({ icone, iconeLib = 'ionicons', titulo, subtitulo, cor, onPress, trailing, perigo, emBreve }: MenuItemProps) {
   const Icone = iconeLib === 'material' ? MaterialCommunityIcons : Ionicons;
   const corIcone = perigo ? Cores.erro : cor ?? Cores.textoClaro;
 
@@ -439,7 +528,11 @@ function MenuItem({ icone, iconeLib = 'ionicons', titulo, subtitulo, cor, onPres
         <Text style={[estilos.menuTitulo, perigo && { color: Cores.erro }]}>{titulo}</Text>
         {subtitulo ? <Text style={estilos.menuSubtitulo}>{subtitulo}</Text> : null}
       </View>
-      {trailing ?? (onPress ? <Ionicons name="chevron-forward" size={18} color={Cores.textoSecundario} /> : null)}
+      {emBreve ? (
+        <View style={estilos.emBreveBadge}>
+          <Text style={estilos.emBreveTexto}>Em breve</Text>
+        </View>
+      ) : trailing ?? (onPress ? <Ionicons name="chevron-forward" size={18} color={Cores.textoSecundario} /> : null)}
     </View>
   );
 
@@ -453,12 +546,26 @@ function MenuItem({ icone, iconeLib = 'ionicons', titulo, subtitulo, cor, onPres
       </Pressable>
     );
   }
+  if (emBreve) {
+    return <View accessible accessibilityLabel={`${titulo}, em breve`}>{conteudo}</View>;
+  }
   return conteudo;
 }
 
 const estilos = StyleSheet.create({
   safeArea: { flex: 1 },
   scrollContent: { paddingBottom: 40 },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+  },
+  loadingTexto: {
+    fontFamily: Fontes.corpo,
+    fontSize: 14,
+    color: Cores.textoSecundario,
+  },
   header: {
     paddingHorizontal: Espacamento.md,
     paddingTop: Espacamento.md,
@@ -469,7 +576,6 @@ const estilos = StyleSheet.create({
     fontSize: 28,
     color: Cores.textoClaro,
   },
-  // Perfil Card
   perfilCard: {
     alignItems: 'center',
     paddingVertical: Espacamento.lg,
@@ -512,12 +618,20 @@ const estilos = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#1A1A2E',
+    borderColor: '#24312D',
+  },
+  nomeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   perfilNome: {
     fontFamily: Fontes.corpoNegrito,
     fontSize: 20,
     color: Cores.textoClaro,
+  },
+  nomeIconeEditar: {
+    marginTop: 2,
   },
   perfilEmail: {
     fontFamily: Fontes.corpo,
@@ -543,7 +657,6 @@ const estilos = StyleSheet.create({
     fontSize: 12,
     color: Cores.acento,
   },
-  // Seções
   secao: {
     paddingHorizontal: Espacamento.md,
     marginTop: Espacamento.lg,
@@ -556,7 +669,6 @@ const estilos = StyleSheet.create({
     letterSpacing: 0.8,
     marginBottom: Espacamento.sm,
   },
-  // Plano
   planoCard: {
     borderRadius: RaioBorda.lg,
     borderWidth: 1,
@@ -630,7 +742,6 @@ const estilos = StyleSheet.create({
     fontSize: 13,
     color: Cores.acento,
   },
-  // Menu
   menuGrupo: {
     backgroundColor: Cores.cardFundo,
     borderRadius: RaioBorda.lg,
@@ -666,7 +777,17 @@ const estilos = StyleSheet.create({
     color: Cores.textoSecundario,
     marginTop: 1,
   },
-  // Footer
+  emBreveBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: RaioBorda.full,
+    backgroundColor: 'rgba(212, 175, 55, 0.10)',
+  },
+  emBreveTexto: {
+    fontFamily: Fontes.corpoSemibold,
+    fontSize: 10,
+    color: Cores.acento,
+  },
   footer: {
     alignItems: 'center',
     paddingVertical: Espacamento.xl,
@@ -688,5 +809,73 @@ const estilos = StyleSheet.create({
     fontSize: 12,
     color: 'rgba(255,255,255,0.2)',
     marginTop: 2,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: Espacamento.lg,
+  },
+  modalCard: {
+    width: '100%',
+    backgroundColor: '#1E1B2E',
+    borderRadius: RaioBorda.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(212,175,55,0.2)',
+    padding: Espacamento.lg,
+  },
+  modalTitulo: {
+    fontFamily: Fontes.titulo,
+    fontSize: 20,
+    color: Cores.textoClaro,
+    marginBottom: 4,
+  },
+  modalSubtitulo: {
+    fontFamily: Fontes.corpo,
+    fontSize: 13,
+    color: Cores.textoSecundario,
+    marginBottom: Espacamento.md,
+  },
+  modalInput: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: RaioBorda.md,
+    borderWidth: 1,
+    borderColor: 'rgba(212,175,55,0.25)',
+    paddingHorizontal: Espacamento.md,
+    paddingVertical: 12,
+    fontFamily: Fontes.corpo,
+    fontSize: 16,
+    color: Cores.textoClaro,
+    marginBottom: Espacamento.md,
+  },
+  modalBotoes: {
+    flexDirection: 'row',
+    gap: Espacamento.sm,
+  },
+  modalCancelar: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: RaioBorda.md,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    alignItems: 'center',
+  },
+  modalCancelarTexto: {
+    fontFamily: Fontes.corpoSemibold,
+    fontSize: 15,
+    color: Cores.textoSecundario,
+  },
+  modalSalvar: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: RaioBorda.md,
+    backgroundColor: Cores.acento,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalSalvarTexto: {
+    fontFamily: Fontes.corpoNegrito,
+    fontSize: 15,
+    color: Cores.fundoEscuro,
   },
 });

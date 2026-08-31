@@ -1,6 +1,4 @@
-import axios from 'axios';
-
-const MP_API = 'https://api.mercadopago.com';
+import { supabase } from './supabase';
 
 export interface PlanoMP {
   id: string;
@@ -35,79 +33,19 @@ export const PLANOS_MP: PlanoMP[] = [
 ];
 
 export const MercadoPagoServico = {
-  /**
-   * Cria uma preferência de pagamento no Mercado Pago.
-   * Retorna a init_point (URL do checkout) para abrir no browser/WebView.
-   *
-   * ATENÇÃO: Em produção, esta chamada deve ser feita pelo backend
-   * (Supabase Edge Function) para proteger o access_token.
-   * Esta versão é para desenvolvimento/testes apenas.
-   */
-  async criarPreferencia(plano: PlanoMP, usuarioEmail: string, usuarioId: string) {
-    const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
+  async criarPreferencia(plano: PlanoMP) {
+    const { data, error } = await supabase.functions.invoke('criar-preferencia', {
+      body: { planoId: plano.id },
+    });
 
-    if (!accessToken || accessToken === 'SEU_ACCESS_TOKEN_MP_AQUI') {
-      throw new Error('Configure o MERCADOPAGO_ACCESS_TOKEN no arquivo .env');
+    if (error) throw new Error('Pagamento temporariamente indisponível. Tente novamente.');
+    if (!data?.checkoutUrl || !data?.preferenceId) {
+      throw new Error(data?.erro ?? 'Resposta inválida do serviço de pagamento.');
     }
 
-    const payload = {
-      items: [
-        {
-          id: plano.id,
-          title: plano.titulo,
-          description: plano.descricao,
-          quantity: 1,
-          unit_price: plano.valor,
-          currency_id: 'BRL',
-        },
-      ],
-      payer: {
-        email: usuarioEmail,
-      },
-      back_urls: {
-        success: `oraculovivo://pagamento/sucesso?plano=${plano.id}&usuario=${usuarioId}`,
-        failure: `oraculovivo://pagamento/falha`,
-        pending: `oraculovivo://pagamento/pendente`,
-      },
-      auto_return: 'approved',
-      external_reference: `${usuarioId}__${plano.id}__${Date.now()}`,
-      metadata: {
-        usuario_id: usuarioId,
-        plano_id: plano.id,
-      },
-    };
-
-    const { data } = await axios.post(
-      `${MP_API}/checkout/preferences`,
-      payload,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
     return {
-      preferenceId: data.id as string,
-      checkoutUrl: data.init_point as string,
-      sandboxUrl: data.sandbox_init_point as string,
-    };
-  },
-
-  /**
-   * Verifica o status de um pagamento pelo ID.
-   */
-  async verificarPagamento(paymentId: string) {
-    const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
-    const { data } = await axios.get(`${MP_API}/v1/payments/${paymentId}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    return {
-      status: data.status as 'approved' | 'pending' | 'rejected',
-      statusDetalhe: data.status_detail as string,
-      valor: data.transaction_amount as number,
-      referencia: data.external_reference as string,
+      preferenceId: data.preferenceId as string,
+      checkoutUrl: data.checkoutUrl as string,
     };
   },
 };

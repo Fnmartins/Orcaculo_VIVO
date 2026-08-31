@@ -264,6 +264,7 @@ export function BuzioIcon({ aberto, tamanho = 36 }: BuzioIconProps) {
 
 const styles = StyleSheet.create({
   container: {
+    borderRadius: 9999,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -272,12 +273,9 @@ const styles = StyleSheet.create({
         shadowRadius: 5,
       },
       android: { elevation: 6 },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.35,
-        shadowRadius: 5,
-      },
+      // No navegador, box-shadow acompanha a caixa do SVG e cria um quadrado.
+      // O próprio desenho já contém uma sombra orgânica dentro do SVG.
+      default: {},
     }),
   },
 });

@@ -12,10 +12,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GradientBackground } from '../../components/GradientBackground';
 import { Button } from '../../components/Button';
+import { EstadoTela } from '../../components/EstadoTela';
 import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
@@ -25,6 +26,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { DatabaseServico } from '../../services/database';
 import { compartilharAnaliseIA } from '../../services/compartilhar';
 import { RatingConsulta } from '../../components/RatingConsulta';
+import { NotaReflexiva } from '../../components/NotaReflexiva';
 
 const FORMATOS = [
   { id: 'texto', icone: 'document-text-outline', titulo: 'Texto', disponivel: true },
@@ -83,10 +85,13 @@ export default function TelaIAResultado() {
     return (
       <GradientBackground>
         <SafeAreaView style={estilos.safeArea}>
-          <View style={estilos.erroContainer}>
-            <Text style={estilos.erroTexto}>Erro ao carregar análise</Text>
-            <Button variante="outline" label="Voltar" onPress={() => router.back()} />
-          </View>
+          <EstadoTela
+            tipo="erro"
+            titulo="A análise não carregou"
+            descricao="Volte à etapa anterior e solicite a análise novamente."
+            acaoLabel="Voltar"
+            onAcao={() => router.back()}
+          />
         </SafeAreaView>
       </GradientBackground>
     );
@@ -107,20 +112,27 @@ export default function TelaIAResultado() {
         >
           {/* Header */}
           <Animated.View style={[estilos.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-            <Pressable onPress={() => router.dismissTo('/(tabs)')} style={estilos.voltarBotao}>
+            <Pressable
+              onPress={() => router.dismissTo('/(tabs)')}
+              style={estilos.voltarBotao}
+              accessibilityRole="button"
+              accessibilityLabel="Fechar análise"
+            >
               <Ionicons name="close" size={22} color={Cores.textoClaro} />
             </Pressable>
             <Text style={estilos.headerTitulo}>Resultado da Análise</Text>
-            <View style={{ width: 40 }} />
+            <View style={{ width: 44 }} />
           </Animated.View>
 
           {/* Formatos */}
           <Animated.View style={[estilos.formatosContainer, { opacity: fadeAnim }]}>
             <View style={estilos.formatosGrid}>
               {FORMATOS.map((f) => (
-                <Pressable
+                <View
                   key={f.id}
-                  onPress={() => Hapticos.impactoLeve()}
+                  accessible
+                  accessibilityLabel={`${f.titulo}${f.disponivel ? ', selecionado' : ', em breve'}`}
+                  accessibilityState={{ disabled: !f.disponivel, selected: f.id === 'texto' }}
                   style={[
                     estilos.formatoItem,
                     f.id === 'texto' && estilos.formatoAtivo,
@@ -135,7 +147,8 @@ export default function TelaIAResultado() {
                   <Text style={[estilos.formatoTexto, f.id === 'texto' && { color: Cores.acento }]}>
                     {f.titulo}
                   </Text>
-                </Pressable>
+                  {!f.disponivel && <Text style={estilos.formatoBreve}>Em breve</Text>}
+                </View>
               ))}
             </View>
           </Animated.View>
@@ -143,7 +156,7 @@ export default function TelaIAResultado() {
           {/* Imagem + Título */}
           <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
             <LinearGradient
-              colors={[analise.cor + '20', 'rgba(26,26,46,0.4)'] as const}
+              colors={[analise.cor + '18', 'rgba(255,252,246,0.95)'] as const}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={estilos.resultadoCard}
@@ -179,6 +192,8 @@ export default function TelaIAResultado() {
               <Text style={estilos.detalheTexto}>{detalhe.texto}</Text>
             </Animated.View>
           ))}
+
+          <NotaReflexiva />
 
           {/* Rating */}
           <RatingConsulta />
@@ -266,7 +281,7 @@ const estilos = StyleSheet.create({
     paddingTop: Espacamento.sm, paddingBottom: Espacamento.md,
   },
   voltarBotao: {
-    width: 40, height: 40, borderRadius: 20,
+    width: 44, height: 44, borderRadius: 22,
     backgroundColor: Cores.cardFundo, borderWidth: 1, borderColor: Cores.cardBorda,
     alignItems: 'center', justifyContent: 'center',
   },
@@ -282,10 +297,11 @@ const estilos = StyleSheet.create({
   formatoAtivo: { borderColor: Cores.acento, backgroundColor: 'rgba(212, 175, 55, 0.08)' },
   formatoDesabilitado: { opacity: 0.5 },
   formatoTexto: { fontFamily: Fontes.corpo, fontSize: 11, color: Cores.textoSecundario, marginTop: 4 },
+  formatoBreve: { fontFamily: Fontes.corpo, fontSize: 9, color: Cores.textoSecundario, marginTop: 2 },
 
   resultadoCard: {
     borderRadius: RaioBorda.xl, padding: Espacamento.lg,
-    borderWidth: 1, borderColor: 'rgba(245, 240, 232, 0.06)',
+    borderWidth: 1, borderColor: 'rgba(88, 117, 101, 0.12)',
     marginBottom: Espacamento.md,
   },
   miniImagemContainer: {

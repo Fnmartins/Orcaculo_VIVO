@@ -10,13 +10,17 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Path, G, Text as SvgText, Defs, RadialGradient as SvgRadial, Stop, Line } from 'react-native-svg';
 import { GradientBackground } from '../../components/GradientBackground';
+import { EstadoTela } from '../../components/EstadoTela';
+import { NotaReflexiva } from '../../components/NotaReflexiva';
 import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
+import { dataConsultaValida, horarioConsultaValido, textoConsultaValido } from '../../utils/validacaoConsulta';
 import { Hapticos } from '../../utils/haptics';
 import { gerarMapaAstral, corElemento, type MapaAstralResultado } from '../../data/astrologia';
 
@@ -85,8 +89,8 @@ function RodaZodiacal({ solIdx, luaIdx, ascIdx }: { solIdx: number; luaIdx: numb
               />
             )}
             {/* Símbolo */}
-            <SvgText x={symX} y={symY} textAnchor="middle" dominantBaseline="middle"
-              fontSize={10} fill={isAtivo ? SIGNOS_CORES[i] : 'rgba(245,240,232,0.35)'}
+            <SvgText x={symX} y={symY + 3} textAnchor="middle"
+              fontSize={10} fill={isAtivo ? SIGNOS_CORES[i] : 'rgba(36,49,45,0.45)'}
               fontWeight={isAtivo ? '700' : '400'}>{sim}</SvgText>
           </G>
         );
@@ -103,7 +107,7 @@ function RodaZodiacal({ solIdx, luaIdx, ascIdx }: { solIdx: number; luaIdx: numb
         return (
           <G key={label}>
             <Circle cx={px} cy={py} r={9} fill={cor + '30'} stroke={cor} strokeWidth={1} />
-            <SvgText x={px} y={py} textAnchor="middle" dominantBaseline="middle"
+            <SvgText x={px} y={py + 3} textAnchor="middle"
               fontSize={10} fill={cor}>{label}</SvgText>
           </G>
         );
@@ -157,6 +161,26 @@ export default function TelaMapaAstralResultado() {
     ]).start();
   }, [fadeAnim, slideAnim]);
 
+  const parametrosValidos = dataConsultaValida(params.dia, params.mes, params.ano)
+    && horarioConsultaValido(params.hora, params.minuto)
+    && textoConsultaValido(params.cidade);
+
+  if (!parametrosValidos) {
+    return (
+      <GradientBackground colors={['#060413', '#0D0820', '#060413']}>
+        <SafeAreaView style={estilos.safeArea}>
+          <EstadoTela
+            tipo="erro"
+            titulo="Faltam dados para o mapa astral"
+            descricao="Revise sua data, horário e cidade de nascimento para calcular o mapa corretamente."
+            acaoLabel="Revisar dados"
+            onAcao={() => router.back()}
+          />
+        </SafeAreaView>
+      </GradientBackground>
+    );
+  }
+
   // índices dos signos para a roda
   const solIdx = idxSigno(mapa.sol.signo.id);
   const luaIdx = idxSigno(mapa.lua.signo.id);
@@ -175,7 +199,12 @@ export default function TelaMapaAstralResultado() {
         >
           {/* Header */}
           <Animated.View style={[estilos.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-            <Pressable onPress={() => router.back()} style={estilos.voltarBotao}>
+            <Pressable
+              onPress={() => router.back()}
+              style={estilos.voltarBotao}
+              accessibilityRole="button"
+              accessibilityLabel="Voltar"
+            >
               <Ionicons name="arrow-back" size={22} color={Cores.textoClaro} />
             </Pressable>
             <View style={estilos.headerCenter}>
@@ -184,9 +213,7 @@ export default function TelaMapaAstralResultado() {
                 {params.dia}/{params.mes}/{params.ano} — {params.cidade}
               </Text>
             </View>
-            <Pressable onPress={() => { Hapticos.impactoLeve(); }} style={estilos.voltarBotao}>
-              <Ionicons name="share-outline" size={20} color={Cores.textoClaro} />
-            </Pressable>
+            <View style={estilos.voltarBotaoEspaco} />
           </Animated.View>
 
           {/* Roda zodiacal */}
@@ -341,6 +368,10 @@ export default function TelaMapaAstralResultado() {
             </View>
           </Animated.View>
 
+          <View style={{ paddingHorizontal: Espacamento.lg }}>
+            <NotaReflexiva />
+          </View>
+
           {/* Botões finais */}
           <Animated.View style={[estilos.botoesFinais, { opacity: fadeAnim }]}>
             <Pressable
@@ -393,7 +424,7 @@ function CardPrincipal(props: CardPrincipalProps) {
   return (
     <View style={estilos.cardPrincipal}>
       <LinearGradient
-        colors={[props.corSigno + '15', 'rgba(26,26,46,0.3)'] as const}
+        colors={[props.corSigno + '15', 'rgba(255,252,246,0.94)'] as const}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={estilos.cardPrincipalGradiente}
@@ -437,13 +468,14 @@ const estilos = StyleSheet.create({
     paddingBottom: Espacamento.sm,
   },
   voltarBotao: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: RaioBorda.full,
     backgroundColor: Cores.cardFundo,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  voltarBotaoEspaco: { width: 44, height: 44 },
   headerCenter: { flex: 1, alignItems: 'center' },
   headerTitulo: {
     fontFamily: Fontes.titulo,

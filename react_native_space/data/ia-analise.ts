@@ -15,7 +15,7 @@ const ANALISES_CAFE: AnaliseIA[] = [
   {
     tipo: 'cafe',
     titulo: 'Caminhos que se Abrem',
-    resumo: 'A borra revela caminhos novos surgindo em sua vida. As formas indicam movimento e transforma\u00e7\u00e3o positiva.',
+    resumo: 'As formas da borra lembram caminhos e podem inspirar uma reflex\u00e3o sobre movimento, escolhas e transforma\u00e7\u00e3o.',
     detalhes: [
       {
         secao: 'Formas Identificadas',
@@ -23,11 +23,11 @@ const ANALISES_CAFE: AnaliseIA[] = [
       },
       {
         secao: 'Interpreta\u00e7\u00e3o Espiritual',
-        texto: 'As energias mostram que voc\u00ea est\u00e1 em um momento de transi\u00e7\u00e3o. Novos come\u00e7os est\u00e3o se formando, especialmente na \u00e1rea profissional e afetiva. Confie no fluxo natural dos acontecimentos.',
+        texto: 'Esses s\u00edmbolos convidam a observar poss\u00edveis transi\u00e7\u00f5es nas \u00e1reas profissional e afetiva. Considere quais novos come\u00e7os fazem sentido para voc\u00ea.',
       },
       {
         secao: 'Conselho',
-        texto: 'Mantenha-se aberto \u00e0s novas possibilidades. Uma oportunidade inesperada pode surgir nos pr\u00f3ximos dias. Preste aten\u00e7\u00e3o aos sinais do universo.',
+        texto: 'Mantenha-se aberto a novas possibilidades e observe oportunidades concretas ao seu redor antes de escolher como agir.',
       },
     ],
     energia: 'positiva',
@@ -36,7 +36,7 @@ const ANALISES_CAFE: AnaliseIA[] = [
   {
     tipo: 'cafe',
     titulo: 'Prote\u00e7\u00e3o e For\u00e7a Interior',
-    resumo: 'Os padr\u00f5es na borra indicam prote\u00e7\u00e3o espiritual forte ao seu redor. Voc\u00ea est\u00e1 sendo guiado por for\u00e7as ben\u00e9ficas.',
+    resumo: 'Os padr\u00f5es circulares podem simbolizar prote\u00e7\u00e3o, apoio e a for\u00e7a das suas pr\u00f3prias ra\u00edzes.',
     detalhes: [
       {
         secao: 'Formas Identificadas',
@@ -44,11 +44,11 @@ const ANALISES_CAFE: AnaliseIA[] = [
       },
       {
         secao: 'Interpreta\u00e7\u00e3o Espiritual',
-        texto: 'Sua aura est\u00e1 fortalecida neste momento. Os ancestrais est\u00e3o presentes e atuantes em sua vida. H\u00e1 uma energia de cura fluindo, especialmente para quest\u00f5es emocionais antigas.',
+        texto: 'A imagem pode ser lida como um convite para reconhecer suas ra\u00edzes, redes de apoio e recursos internos ao lidar com quest\u00f5es emocionais antigas.',
       },
       {
         secao: 'Conselho',
-        texto: 'Aproveite este per\u00edodo de prote\u00e7\u00e3o para resolver pend\u00eancias. \u00c9 um bom momento para iniciar projetos que exigem coragem.',
+        texto: 'Reflita sobre quais pend\u00eancias merecem aten\u00e7\u00e3o e avalie, com calma, projetos que pedem coragem.',
       },
     ],
     energia: 'positiva',
@@ -65,11 +65,11 @@ const ANALISES_CAFE: AnaliseIA[] = [
       },
       {
         secao: 'Interpreta\u00e7\u00e3o Espiritual',
-        texto: 'O universo pede que voc\u00ea desacelere. H\u00e1 respostas que s\u00f3 vir\u00e3o no sil\u00eancio. Medita\u00e7\u00e3o e momentos de solid\u00e3o ser\u00e3o seus maiores aliados agora.',
+        texto: 'A leitura sugere uma pausa para observar pensamentos e sentimentos. Sil\u00eancio, descanso ou medita\u00e7\u00e3o podem apoiar essa reflex\u00e3o, se fizerem sentido para voc\u00ea.',
       },
       {
         secao: 'Conselho',
-        texto: 'Evite tomar decis\u00f5es importantes nos pr\u00f3ximos dias. Reserve tempo para si, cuide do corpo e da mente. A clareza vir\u00e1 naturalmente.',
+        texto: 'Antes de decis\u00f5es importantes, reserve tempo para organizar informa\u00e7\u00f5es e considerar as consequ\u00eancias. Cuide de si e busque apoio qualificado quando necess\u00e1rio.',
       },
     ],
     energia: 'neutra',
@@ -80,24 +80,24 @@ const ANALISES_CAFE: AnaliseIA[] = [
 const ANALISES_QUIROMANCIA: AnaliseIA[] = [
   {
     tipo: 'quiromancia',
-    titulo: 'M\u00e3os que Criam Destinos',
-    resumo: 'As linhas da sua m\u00e3o revelam uma pessoa criativa e determinada, com grande potencial de realiza\u00e7\u00e3o.',
+    titulo: 'M\u00e3os, Escolhas e Caminhos',
+    resumo: 'As linhas da m\u00e3o oferecem s\u00edmbolos para refletir sobre criatividade, determina\u00e7\u00e3o e possibilidades de realiza\u00e7\u00e3o.',
     detalhes: [
       {
         secao: 'Linha da Vida',
-        texto: 'Longa e bem definida, indicando vitalidade e energia abundante. Sua sa\u00fade tende a ser boa, mas \u00e9 importante manter h\u00e1bitos saud\u00e1veis. H\u00e1 indica\u00e7\u00e3o de uma grande mudan\u00e7a positiva na fase atual.',
+        texto: 'Longa e bem definida, tradicionalmente associada a vitalidade e persist\u00eancia. Essa leitura \u00e9 simb\u00f3lica e n\u00e3o permite avaliar sa\u00fade, longevidade ou prever mudan\u00e7as.',
       },
       {
         secao: 'Linha do Cora\u00e7\u00e3o',
-        texto: 'Profunda e curvada, revelando intensidade emocional e capacidade de amar profundamente. Relacionamentos significativos est\u00e3o presentes ou se aproximando.',
+        texto: 'Profunda e curvada, tradicionalmente associada a intensidade emocional. Use o s\u00edmbolo para refletir sobre como voc\u00ea vive e comunica seus afetos.',
       },
       {
         secao: 'Linha da Cabe\u00e7a',
-        texto: 'Clara e estendida, mostrando intelig\u00eancia anal\u00edtica e criatividade. Voc\u00ea tem facilidade para resolver problemas complexos e pensar fora da caixa.',
+        texto: 'Clara e estendida, simbolicamente ligada a pensamento anal\u00edtico e criatividade. Considere em quais situa\u00e7\u00f5es essas qualidades aparecem para voc\u00ea.',
       },
       {
         secao: 'Conselho',
-        texto: 'Use seus talentos naturais com confian\u00e7a. O momento \u00e9 favor\u00e1vel para investir em educa\u00e7\u00e3o e projetos criativos.',
+        texto: 'Observe seus talentos com curiosidade e avalie, conforme sua realidade, como desenvolver estudos ou projetos criativos.',
       },
     ],
     energia: 'positiva',
@@ -106,23 +106,23 @@ const ANALISES_QUIROMANCIA: AnaliseIA[] = [
   {
     tipo: 'quiromancia',
     titulo: 'Sabedoria nas M\u00e3os',
-    resumo: 'Suas linhas indicam maturidade espiritual e uma conex\u00e3o forte com a intui\u00e7\u00e3o.',
+    resumo: 'As linhas podem inspirar uma reflex\u00e3o sobre maturidade, experi\u00eancias vividas e a forma como voc\u00ea escuta sua intui\u00e7\u00e3o.',
     detalhes: [
       {
         secao: 'Linha da Vida',
-        texto: 'Apresenta ramifica\u00e7\u00f5es que indicam viagens e experi\u00eancias transformadoras. Mudan\u00e7as de ambiente ser\u00e3o ben\u00e9ficas para seu crescimento.',
+        texto: 'As ramifica\u00e7\u00f5es s\u00e3o tradicionalmente associadas a movimento e mudan\u00e7a. Elas n\u00e3o preveem viagens, mas podem ajudar a pensar sobre sua abertura a novas experi\u00eancias.',
       },
       {
         secao: 'Linha do Destino',
-        texto: 'Bem marcada, sugerindo que voc\u00ea tem um prop\u00f3sito claro na vida. Mesmo com obst\u00e1culos, a dire\u00e7\u00e3o \u00e9 ascendente e favor\u00e1vel.',
+        texto: 'Bem marcada, simbolicamente associada a prop\u00f3sito e continuidade. Reflita sobre as dire\u00e7\u00f5es que voc\u00ea deseja construir diante dos obst\u00e1culos.',
       },
       {
         secao: 'Monte de J\u00fapiter',
-        texto: 'Proeminente, indicando lideran\u00e7a natural e ambi\u00e7\u00e3o saud\u00e1vel. Voc\u00ea tem o poder de influenciar positivamente as pessoas ao redor.',
+        texto: 'Proeminente, tradicionalmente associado a lideran\u00e7a e ambi\u00e7\u00e3o. Considere como exercer influ\u00eancia com responsabilidade e escuta.',
       },
       {
         secao: 'Conselho',
-        texto: 'Confie na sua intui\u00e7\u00e3o. Ela \u00e9 mais certeira do que voc\u00ea imagina. Abra-se para novas experi\u00eancias sem medo.',
+        texto: 'Escute sua intui\u00e7\u00e3o sem abandonar fatos, limites e consequ\u00eancias. Abra-se a novas experi\u00eancias no seu pr\u00f3prio ritmo.',
       },
     ],
     energia: 'positiva',

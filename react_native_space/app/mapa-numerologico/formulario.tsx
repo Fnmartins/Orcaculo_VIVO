@@ -11,16 +11,18 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GradientBackground } from '../../components/GradientBackground';
 import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
 import { Hapticos } from '../../utils/haptics';
+import { dataConsultaValida, textoConsultaValido } from '../../utils/validacaoConsulta';
 
 export default function TelaFormularioMapa() {
   const [nome, setNome] = useState('');
+  const [nomeAtual, setNomeAtual] = useState('');
   const [dia, setDia] = useState('');
   const [mes, setMes] = useState('');
   const [ano, setAno] = useState('');
@@ -28,24 +30,34 @@ export default function TelaFormularioMapa() {
 
   const validarEProsseguir = () => {
     const nomeTrimmed = nome.trim();
-    const nomeParts = nomeTrimmed.split(/\s+/);
-
-    if (nomeParts.length < 2 || nomeTrimmed.length < 5) {
+    if (!textoConsultaValido(nomeTrimmed) || nomeTrimmed.split(/\s+/).length < 2) {
       setErro('Digite seu nome completo de nascimento (nome e sobrenome).');
+      return;
+    }
+    const nomeAtualTrimmed = nomeAtual.trim().replace(/\s+/g, ' ');
+    if (nomeAtualTrimmed && (!textoConsultaValido(nomeAtualTrimmed) || nomeAtualTrimmed.split(/\s+/).length < 2)) {
+      setErro('Digite o nome atual completo ou deixe o campo opcional vazio.');
       return;
     }
     const d = parseInt(dia, 10);
     const m = parseInt(mes, 10);
     const a = parseInt(ano, 10);
-    if (isNaN(d) || d < 1 || d > 31) { setErro('Dia inválido (1-31).'); return; }
-    if (isNaN(m) || m < 1 || m > 12) { setErro('Mês inválido (1-12).'); return; }
-    if (isNaN(a) || a < 1900 || a > new Date().getFullYear()) { setErro('Ano inválido.'); return; }
+    if (!dataConsultaValida(String(d), String(m), String(a))) {
+      setErro('Digite uma data de nascimento válida.');
+      return;
+    }
 
     setErro('');
     Hapticos.impactoMedio();
     router.push({
       pathname: '/mapa-numerologico/calculando',
-      params: { nome: nomeTrimmed, dia: String(d), mes: String(m), ano: String(a) },
+      params: {
+        nome: nomeTrimmed,
+        nomeAtual: nomeAtualTrimmed && nomeAtualTrimmed !== nomeTrimmed ? nomeAtualTrimmed : undefined,
+        dia: String(d),
+        mes: String(m),
+        ano: String(a),
+      },
     });
   };
 
@@ -60,6 +72,7 @@ export default function TelaFormularioMapa() {
             <Pressable
               onPress={() => { Hapticos.impactoLeve(); router.back(); }}
               style={estilos.voltar}
+              accessibilityRole="button"
               accessibilityLabel="Voltar"
             >
               <Ionicons name="arrow-back" size={24} color={Cores.textoClaro} />
@@ -70,6 +83,8 @@ export default function TelaFormularioMapa() {
             contentContainerStyle={estilos.scrollContent}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            tabIndex={0}
+            accessibilityLabel="Formulário do mapa numerológico"
           >
             <Text style={estilos.titulo}>Seus dados de nascimento</Text>
             <Text style={estilos.subtitulo}>
@@ -86,6 +101,26 @@ export default function TelaFormularioMapa() {
                 placeholderTextColor={Cores.textoSecundario}
                 autoCapitalize="words"
                 autoCorrect={false}
+                maxLength={120}
+                accessibilityLabel="Nome completo de nascimento"
+              />
+            </View>
+
+            <View style={estilos.grupo}>
+              <Text style={estilos.label}>Nome usado atualmente (opcional)</Text>
+              <Text style={estilos.ajudaCampo}>
+                Preencha somente se quiser comparar as associações simbólicas. Não sugerimos alteração de nome ou assinatura.
+              </Text>
+              <TextInput
+                style={estilos.input}
+                value={nomeAtual}
+                onChangeText={setNomeAtual}
+                placeholder="Ex: nome após casamento ou nome profissional"
+                placeholderTextColor={Cores.textoSecundario}
+                autoCapitalize="words"
+                autoCorrect={false}
+                maxLength={120}
+                accessibilityLabel="Nome usado atualmente, opcional"
               />
             </View>
 
@@ -100,6 +135,7 @@ export default function TelaFormularioMapa() {
                   placeholderTextColor={Cores.textoSecundario}
                   keyboardType="number-pad"
                   maxLength={2}
+                  accessibilityLabel="Dia de nascimento"
                 />
                 <Text style={estilos.separador}>/</Text>
                 <TextInput
@@ -110,6 +146,7 @@ export default function TelaFormularioMapa() {
                   placeholderTextColor={Cores.textoSecundario}
                   keyboardType="number-pad"
                   maxLength={2}
+                  accessibilityLabel="Mês de nascimento"
                 />
                 <Text style={estilos.separador}>/</Text>
                 <TextInput
@@ -120,12 +157,13 @@ export default function TelaFormularioMapa() {
                   placeholderTextColor={Cores.textoSecundario}
                   keyboardType="number-pad"
                   maxLength={4}
+                  accessibilityLabel="Ano de nascimento"
                 />
               </View>
             </View>
 
             {erro ? (
-              <View style={estilos.erroBox}>
+              <View style={estilos.erroBox} accessibilityRole="alert" accessibilityLiveRegion="assertive">
                 <Ionicons name="alert-circle" size={16} color="#E74C3C" />
                 <Text style={estilos.erroTexto}>{erro}</Text>
               </View>
@@ -143,6 +181,8 @@ export default function TelaFormularioMapa() {
             <Pressable
               onPress={validarEProsseguir}
               style={({ pressed }) => [{ transform: [{ scale: pressed ? 0.97 : 1 }] }]}
+              accessibilityRole="button"
+              accessibilityLabel="Calcular meu mapa numerológico"
             >
               <LinearGradient
                 colors={Cores.gradienteAcento}
@@ -198,6 +238,14 @@ const estilos = StyleSheet.create({
     fontFamily: Fontes.corpoSemibold,
     fontSize: 13,
     color: Cores.textoClaro,
+    marginBottom: Espacamento.sm,
+  },
+  ajudaCampo: {
+    fontFamily: Fontes.corpo,
+    fontSize: 11,
+    lineHeight: 16,
+    color: Cores.textoSecundario,
+    marginTop: -4,
     marginBottom: Espacamento.sm,
   },
   input: {
