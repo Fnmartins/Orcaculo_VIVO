@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, Animated, KeyboardAvoidingView,
-  Platform, Pressable, ScrollView, Alert,
+  Platform, Pressable, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -16,6 +16,7 @@ import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
 import { Hapticos } from '../../utils/haptics';
 import { AuthServico } from '../../services/auth';
+import { mostrarAlerta } from '../../utils/alerta';
 
 export default function TelaCadastro() {
   const [nome, setNome] = useState('');
@@ -36,31 +37,31 @@ export default function TelaCadastro() {
 
   async function cadastrar() {
     if (!nome.trim() || !email.trim() || !senha.trim()) {
-      Alert.alert('Atenção', 'Preencha todos os campos.');
+      mostrarAlerta('Atenção', 'Preencha todos os campos.');
       return;
     }
     if (senha.length < 6) {
-      Alert.alert('Atenção', 'A senha deve ter no mínimo 6 caracteres.');
+      mostrarAlerta('Atenção', 'A senha deve ter no mínimo 6 caracteres.');
       return;
     }
     if (senha !== confirmarSenha) {
-      Alert.alert('Atenção', 'As senhas não coincidem.');
+      mostrarAlerta('Atenção', 'As senhas não coincidem.');
       return;
     }
     setCarregando(true);
     Hapticos.impactoMedio();
     try {
       await AuthServico.cadastrar({ nome: nome.trim(), email: email.trim(), senha });
-      Alert.alert(
+      mostrarAlerta(
         'Conta criada! ✨',
         'Verifique seu e-mail para confirmar o cadastro e acesse sua conta.',
-        [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
+        () => router.replace('/auth/login'),
       );
     } catch (e: any) {
       const msg = e?.message?.includes('already registered')
         ? 'Este e-mail já está cadastrado.'
         : e?.message ?? 'Erro ao criar conta. Tente novamente.';
-      Alert.alert('Erro', msg);
+      mostrarAlerta('Erro', msg);
     } finally {
       setCarregando(false);
     }

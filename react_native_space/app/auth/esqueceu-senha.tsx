@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, Animated, KeyboardAvoidingView,
-  Platform, Pressable, ScrollView, Alert,
+  Platform, Pressable, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -14,6 +14,7 @@ import { Fontes } from '../../constants/typography';
 import { Espacamento } from '../../constants/spacing';
 import { Hapticos } from '../../utils/haptics';
 import { AuthServico } from '../../services/auth';
+import { mostrarAlerta } from '../../utils/alerta';
 
 export default function TelaEsqueceuSenha() {
   const [email, setEmail] = useState('');
@@ -27,7 +28,7 @@ export default function TelaEsqueceuSenha() {
 
   async function enviar() {
     if (!email.trim()) {
-      Alert.alert('Atenção', 'Digite seu e-mail.');
+      mostrarAlerta('Atenção', 'Digite seu e-mail.');
       return;
     }
     setCarregando(true);
@@ -36,7 +37,7 @@ export default function TelaEsqueceuSenha() {
       await AuthServico.recuperarSenha(email.trim());
       setEnviado(true);
     } catch (e: any) {
-      Alert.alert('Erro', e?.message ?? 'Erro ao enviar. Tente novamente.');
+      mostrarAlerta('Erro', e?.message ?? 'Erro ao enviar. Tente novamente.');
     } finally {
       setCarregando(false);
     }

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, Animated, KeyboardAvoidingView,
-  Platform, Pressable, ScrollView, Alert,
+  Platform, Pressable, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -16,6 +16,7 @@ import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
 import { Hapticos } from '../../utils/haptics';
 import { AuthServico } from '../../services/auth';
+import { mostrarAlerta } from '../../utils/alerta';
 
 export default function TelaLogin() {
   const [email, setEmail] = useState('');
@@ -36,7 +37,7 @@ export default function TelaLogin() {
 
   async function entrar() {
     if (!email.trim() || !senha.trim()) {
-      Alert.alert('Atenção', 'Preencha e-mail e senha.');
+      mostrarAlerta('Atenção', 'Preencha e-mail e senha.');
       return;
     }
     setCarregando(true);
@@ -48,7 +49,7 @@ export default function TelaLogin() {
       const msg = e?.message?.includes('Invalid login credentials')
         ? 'E-mail ou senha incorretos.'
         : e?.message ?? 'Erro ao entrar. Tente novamente.';
-      Alert.alert('Erro', msg);
+      mostrarAlerta('Erro', msg);
     } finally {
       setCarregando(false);
     }
