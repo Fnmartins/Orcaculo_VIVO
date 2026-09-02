@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { mostrarAlerta } from '../utils/alerta';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -24,7 +25,7 @@ export function ConviteHistorico({ consulta }: { consulta: ConsultaPendente }) {
       await guardarConsultaPendente(consulta);
       router.push('/auth/cadastro');
     } catch {
-      Alert.alert('Não foi possível guardar', 'Tente novamente para levar esta leitura ao seu histórico.');
+      mostrarAlerta('Não foi possível guardar', 'Tente novamente para levar esta leitura ao seu histórico.');
       setSalvando(false);
     }
   }

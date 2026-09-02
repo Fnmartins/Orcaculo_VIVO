@@ -8,12 +8,11 @@ import {
   Pressable,
   Switch,
   Platform,
-  Alert,
   ActivityIndicator,
   Modal,
   TextInput,
 } from 'react-native';
-import { confirmarAcao } from '../../utils/alerta';
+import { confirmarAcao, mostrarAlerta } from '../../utils/alerta';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -104,7 +103,7 @@ export default function TelaPerfil() {
       await atualizarPerfil({ nome });
       setEditandoNome(false);
     } catch {
-      Alert.alert('Erro', 'Nao foi possivel salvar o nome. Tente novamente.');
+      mostrarAlerta('Erro', 'Nao foi possivel salvar o nome. Tente novamente.');
     } finally {
       setSalvandoNome(false);
     }
@@ -113,7 +112,7 @@ export default function TelaPerfil() {
   const alterarFoto = useCallback(async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Permissão negada', 'Precisamos de acesso à galeria para alterar sua foto.');
+      mostrarAlerta('Permissão negada', 'Precisamos de acesso à galeria para alterar sua foto.');
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -145,7 +144,7 @@ export default function TelaPerfil() {
       await AuthServico.atualizarPerfil(sessao.user.id, { avatar_url: urlData.publicUrl });
       await recarregarPerfil();
     } catch (e: any) {
-      Alert.alert('Erro', 'Não foi possível alterar a foto. Tente novamente.');
+      mostrarAlerta('Erro', 'Não foi possível alterar a foto. Tente novamente.');
     } finally {
       setEnviandoFoto(false);
     }
@@ -430,7 +429,7 @@ export default function TelaPerfil() {
                   titulo="Exportar Meus Dados"
                   onPress={() => {
                     Hapticos.impactoLeve();
-                    Alert.alert('Exportar Dados', 'Seus dados serão preparados e enviados para seu email.', [{ text: 'OK' }]);
+                    mostrarAlerta('Exportar Dados', 'Seus dados serão preparados e enviados para seu email.');
                   }}
                 />
                 <MenuItem

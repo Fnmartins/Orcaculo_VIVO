@@ -5,9 +5,9 @@ import {
   StyleSheet,
   Image,
   Pressable,
-  Alert,
   Platform,
 } from 'react-native';
+import { mostrarAlerta } from '../../utils/alerta';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -50,7 +50,7 @@ export default function TelaCaptura() {
     Hapticos.impactoLeve();
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permissão necessária', 'Precisamos de acesso à câmera para capturar a imagem.');
+      mostrarAlerta('Permissão necessária', 'Precisamos de acesso à câmera para capturar a imagem.');
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
@@ -71,7 +71,7 @@ export default function TelaCaptura() {
     Hapticos.impactoLeve();
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permissão necessária', 'Precisamos de acesso à galeria.');
+      mostrarAlerta('Permissão necessária', 'Precisamos de acesso à galeria.');
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({

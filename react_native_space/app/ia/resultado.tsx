@@ -8,8 +8,8 @@ import {
   Pressable,
   Image,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
+import { mostrarAlerta } from '../../utils/alerta';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -59,7 +59,7 @@ export default function TelaIAResultado() {
 
   async function salvarAnalise() {
     if (!logado || !perfil?.id || !analise) {
-      Alert.alert('Entre para salvar', 'Faça login para guardar suas análises.');
+      mostrarAlerta('Entre para salvar', 'Faça login para guardar suas análises.');
       return;
     }
     setSalvando(true);
@@ -74,7 +74,7 @@ export default function TelaIAResultado() {
       Hapticos.impactoPesado();
       setTimeout(() => setSalvo(false), 2000);
     } catch (erro) {
-      Alert.alert('Erro ao salvar', 'Não foi possível guardar a análise. Tente novamente.');
+      mostrarAlerta('Erro ao salvar', 'Não foi possível guardar a análise. Tente novamente.');
       console.error(erro);
     } finally {
       setSalvando(false);

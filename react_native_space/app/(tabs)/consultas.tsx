@@ -9,10 +9,10 @@ import {
   FlatList,
   Platform,
   Modal,
-  Alert,
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { mostrarAlerta } from '../../utils/alerta';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
@@ -108,7 +108,7 @@ export default function TelaConsultas() {
 
   const abrirAgendamento = useCallback((orac: Oraculista) => {
     Hapticos.impactoLeve();
-    Alert.alert(
+    mostrarAlerta(
       'Agendamento em preparação',
       `A agenda de ${orac.nome} ainda não está disponível. Esta área é uma prévia e nenhuma consulta foi marcada.`
     );
@@ -128,10 +128,9 @@ export default function TelaConsultas() {
     };
     setConsultas(prev => [nova, ...prev]);
     setModalVisivel(false);
-    Alert.alert(
+    mostrarAlerta(
       'Consulta Agendada! ✨',
       `Sua consulta com ${oraculistaSelecionado.nome} está marcada para ${nova.data} às ${nova.hora}.`,
-      [{ text: 'OK' }]
     );
   }, [oraculistaSelecionado, horarioSelecionado, dataSelecionada, formatoSelecionado]);
 

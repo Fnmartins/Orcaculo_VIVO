@@ -7,10 +7,10 @@ import {
   Animated,
   Pressable,
   Platform,
-  Alert,
   Dimensions,
   Linking,
 } from 'react-native';
+import { mostrarAlerta, confirmarAcao } from '../utils/alerta';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -127,10 +127,12 @@ export default function TelaPlanos() {
 
   const aoAssinar = useCallback(async () => {
     if (!sessao?.user) {
-      Alert.alert('Atenção', 'Faça login para assinar um plano.', [
-        { text: 'Entrar', onPress: () => router.push('/auth/login') },
-        { text: 'Cancelar' },
-      ]);
+      confirmarAcao(
+        'Atenção',
+        'Faça login para assinar um plano.',
+        () => router.push('/auth/login'),
+        { confirmarLabel: 'Entrar' },
+      );
       return;
     }
 
@@ -148,7 +150,7 @@ export default function TelaPlanos() {
       const msg = e?.message?.includes('Configure')
         ? e.message
         : 'Erro ao iniciar pagamento. Tente novamente.';
-      Alert.alert('Erro', msg);
+      mostrarAlerta('Erro', msg);
     } finally {
       setProcessando(false);
     }
