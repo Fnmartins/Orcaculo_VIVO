@@ -13,6 +13,7 @@ import {
   Modal,
   TextInput,
 } from 'react-native';
+import { confirmarAcao } from '../../utils/alerta';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -152,15 +153,15 @@ export default function TelaPerfil() {
 
   const sair = useCallback(() => {
     Hapticos.impactoMedio();
-    Alert.alert('Sair da Conta', 'Tem certeza que deseja sair?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Sair', style: 'destructive', onPress: async () => {
-          await AuthServico.sair();
-          router.replace('/welcome');
-        }
+    confirmarAcao(
+      'Sair da Conta',
+      'Tem certeza que deseja sair?',
+      async () => {
+        await AuthServico.sair();
+        router.replace('/welcome');
       },
-    ]);
+      { confirmarLabel: 'Sair', destrutivo: true },
+    );
   }, []);
 
   const nomeExibido = perfil?.nome ?? sessao?.user?.email?.split('@')[0] ?? 'Buscador de Luz';
@@ -444,13 +445,11 @@ export default function TelaPerfil() {
                   perigo
                   onPress={() => {
                     Hapticos.impactoPesado();
-                    Alert.alert(
+                    confirmarAcao(
                       'Excluir Conta',
                       'Esta ação é irreversível. Todos os seus dados serão removidos permanentemente.',
-                      [
-                        { text: 'Cancelar', style: 'cancel' },
-                        { text: 'Excluir', style: 'destructive', onPress: () => {} },
-                      ]
+                      () => {},
+                      { confirmarLabel: 'Excluir', destrutivo: true },
                     );
                   }}
                 />

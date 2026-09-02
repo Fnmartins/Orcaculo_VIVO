@@ -31,3 +31,36 @@ export function mostrarAlerta(
     aoConfirmar ? [{ text: 'OK', onPress: aoConfirmar }] : undefined,
   );
 }
+
+/**
+ * Confirmacao cross-platform (Cancelar / Confirmar).
+ * Na WEB usa window.confirm (o Alert.alert nativo e no-op la, entao o botao
+ * de acao — "Sair", "Excluir" — nunca disparava). No mobile, Alert.alert com
+ * os dois botoes. So chama `aoConfirmar` se o usuario confirmar.
+ */
+export function confirmarAcao(
+  titulo: string,
+  mensagem: string,
+  aoConfirmar: () => void,
+  opts?: { confirmarLabel?: string; cancelarLabel?: string; destrutivo?: boolean },
+): void {
+  const confirmarLabel = opts?.confirmarLabel ?? 'Confirmar';
+
+  if (Platform.OS === 'web') {
+    const g = globalThis as { confirm?: (mensagem?: string) => boolean };
+    const ok = typeof g.confirm === 'function'
+      ? g.confirm(mensagem ? `${titulo}\n\n${mensagem}` : titulo)
+      : true;
+    if (ok) aoConfirmar();
+    return;
+  }
+
+  Alert.alert(titulo, mensagem, [
+    { text: opts?.cancelarLabel ?? 'Cancelar', style: 'cancel' },
+    {
+      text: confirmarLabel,
+      style: opts?.destrutivo ? 'destructive' : 'default',
+      onPress: aoConfirmar,
+    },
+  ]);
+}
