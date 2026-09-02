@@ -160,9 +160,9 @@ export default function TelaCadastro() {
 
               <Text style={estilos.termos}>
                 Ao criar conta, você concorda com nossos{' '}
-                <Text style={estilos.termosLink}>Termos de Uso</Text>
+                <Text style={estilos.termosLink} onPress={() => router.push('/legal/termos')}>Termos de Uso</Text>
                 {' '}e{' '}
-                <Text style={estilos.termosLink}>Política de Privacidade</Text>
+                <Text style={estilos.termosLink} onPress={() => router.push('/legal/privacidade')}>Política de Privacidade</Text>
               </Text>
 
               <Pressable
