@@ -1,4 +1,4 @@
-// Dados astrológicos do Oráculo Vivo
+// Dados astrológicos do Arcanus
 
 export interface Signo {
   id: string;

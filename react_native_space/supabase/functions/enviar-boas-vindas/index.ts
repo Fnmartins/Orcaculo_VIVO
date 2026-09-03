@@ -1,5 +1,5 @@
 // Edge Function: enviar-boas-vindas
-// Envia o e-mail de boas-vindas do Oraculo Vivo DEPOIS que o usuario confirma
+// Envia o e-mail de boas-vindas do Arcanus DEPOIS que o usuario confirma
 // a conta. E invocada pelo trigger SQL `ao_confirmar_email` (ver
 // supabase/welcome-email/setup.sql), que so dispara na transicao
 // email_confirmed_at NULL -> preenchido.
@@ -15,7 +15,7 @@
 //   RESEND_API_KEY          -> API key do Resend (re_...)
 //   WELCOME_HOOK_SECRET     -> mesmo segredo usado no trigger SQL
 //   REMETENTE_EMAIL         -> remetente verificado no Resend (ex.: contato@seudominio.com)
-//   REMETENTE_NOME          -> opcional (default "Oraculo Vivo")
+//   REMETENTE_NOME          -> opcional (default "Arcanus")
 // SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY sao injetados automaticamente
 // pelo runtime das Edge Functions.
 
@@ -32,18 +32,18 @@ function json(status: number, body: Record<string, unknown> = { ok: true }) {
 
 function corpoEmail(primeiroNome: string | null): string {
   const saudacao = primeiroNome
-    ? `Sua conta está ativa, ${primeiroNome} — o <strong style="color:#587565;">Oráculo Vivo</strong> já te reconhece. ✨`
-    : `Sua conta está ativa e o <strong style="color:#587565;">Oráculo Vivo</strong> já te reconhece. ✨`;
+    ? `Sua conta está ativa, ${primeiroNome} — o <strong style="color:#587565;">Arcanus</strong> já te reconhece. ✨`
+    : `Sua conta está ativa e o <strong style="color:#587565;">Arcanus</strong> já te reconhece. ✨`;
   return `<!DOCTYPE html>
 <html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="color-scheme" content="light"><title>Bem-vindo(a) ao Oráculo Vivo</title></head>
+<meta name="color-scheme" content="light"><title>Bem-vindo(a) ao Arcanus</title></head>
 <body style="margin:0; padding:0; background-color:#F7F3EA;">
-  <div style="display:none; max-height:0; overflow:hidden; opacity:0; color:#F7F3EA; font-size:1px; line-height:1px;">Sua conta está ativa. O Oráculo Vivo está pronto para caminhar com você.</div>
+  <div style="display:none; max-height:0; overflow:hidden; opacity:0; color:#F7F3EA; font-size:1px; line-height:1px;">Sua conta está ativa. O Arcanus está pronto para caminhar com você.</div>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F7F3EA;"><tr><td align="center" style="padding:32px 16px;">
     <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px; background-color:#FFFCF6; border-radius:18px; overflow:hidden; border:1px solid #DED9CC;">
       <tr><td align="center" style="background-color:#24312D; padding:36px 24px 30px 24px;">
-        <div style="font-family:Georgia,'Times New Roman',serif; font-size:13px; letter-spacing:5px; color:#C5A365; text-transform:uppercase;">✦ &nbsp;Oráculo Vivo&nbsp; ✦</div>
+        <div style="font-family:Georgia,'Times New Roman',serif; font-size:13px; letter-spacing:5px; color:#C5A365; text-transform:uppercase;">✦ &nbsp;Arcanus&nbsp; ✦</div>
         <div style="font-family:Georgia,'Times New Roman',serif; font-size:26px; line-height:1.3; color:#F7F3EA; margin-top:14px;">Sua jornada começou 🌙</div>
       </td></tr>
       <tr><td style="padding:36px 40px 12px 40px; font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
@@ -59,13 +59,13 @@ function corpoEmail(primeiroNome: string | null): string {
       <tr><td align="center" style="padding:14px 40px 8px 40px;">
         <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
           <td align="center" style="border-radius:999px; background-color:#B58B46;">
-            <a href="https://oraculovivo.vercel.app" target="_blank" style="display:inline-block; padding:15px 40px; font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; font-size:16px; font-weight:600; color:#FFFCF6; text-decoration:none; border-radius:999px;">Abrir o Oráculo Vivo</a>
+            <a href="https://arcanus.com.br" target="_blank" style="display:inline-block; padding:15px 40px; font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; font-size:16px; font-weight:600; color:#FFFCF6; text-decoration:none; border-radius:999px;">Abrir o Arcanus</a>
           </td>
         </tr></table>
       </td></tr>
       <tr><td style="padding:28px 40px 0 40px;"><div style="height:1px; background-color:#DED9CC; line-height:1px; font-size:1px;">&nbsp;</div></td></tr>
       <tr><td style="padding:20px 40px 34px 40px; font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
-        <p style="margin:0; font-size:12px; line-height:1.6; color:#B0A9A0;">Que a sua jornada seja luminosa. — equipe do Oráculo Vivo 🌙</p>
+        <p style="margin:0; font-size:12px; line-height:1.6; color:#B0A9A0;">Que a sua jornada seja luminosa. — equipe do Arcanus 🌙</p>
       </td></tr>
     </table>
   </td></tr></table>
@@ -93,7 +93,7 @@ Deno.serve(async (request) => {
 
     const resendKey = Deno.env.get('RESEND_API_KEY');
     const remetenteEmail = Deno.env.get('REMETENTE_EMAIL');
-    const remetenteNome = Deno.env.get('REMETENTE_NOME') ?? 'Oraculo Vivo';
+    const remetenteNome = Deno.env.get('REMETENTE_NOME') ?? 'Arcanus';
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     // Inerte enquanto Resend/remetente nao estiverem configurados.
@@ -125,7 +125,7 @@ Deno.serve(async (request) => {
       body: JSON.stringify({
         from: `${remetenteNome} <${remetenteEmail}>`,
         to: [email],
-        subject: 'Bem-vindo(a) ao Oráculo Vivo 🌙',
+        subject: 'Bem-vindo(a) ao Arcanus 🌙',
         html: corpoEmail(primeiroNome),
       }),
     });

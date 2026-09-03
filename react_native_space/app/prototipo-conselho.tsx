@@ -50,7 +50,7 @@ export function HomeAurora({ mostrarConselho = false }: { mostrarConselho?: bool
             </View>}
 
             <View style={s.header}>
-              <View><Text style={s.saudacao}>Um espaço para respirar e perceber</Text><Text style={s.marca}>Oráculo Vivo</Text></View>
+              <View><Text style={s.saudacao}>Um espaço para respirar e perceber</Text><Text style={s.marca}>Arcanus</Text></View>
               <View style={s.avatar}><Ionicons name="person-outline" size={21} color={P.verdeEscuro} /></View>
             </View>
 

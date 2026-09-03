@@ -1,5 +1,5 @@
 -- ============================================================
--- ORACULO VIVO — E-mail de boas-vindas pos-confirmacao
+-- ARCANUS — E-mail de boas-vindas pos-confirmacao
 -- Roda no SQL Editor do projeto rfdjukdbrtvvulaxbzwb.
 --
 -- ANTES de rodar, substitua os dois placeholders abaixo:

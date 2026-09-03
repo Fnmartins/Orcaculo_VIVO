@@ -1,20 +1,20 @@
 import React from 'react';
 import { PaginaLegal } from '../../components/PaginaLegal';
 
-// TODO: trocar pelo e-mail oficial quando o dominio for definido.
-const CONTATO = 'contato@oraculovivo.com';
+// E-mail oficial de contato — garantir que a caixa/encaminhamento exista no domínio arcanus.com.br.
+const CONTATO = 'contato@arcanus.com.br';
 
 export default function TelaPrivacidade() {
   return (
     <PaginaLegal
       titulo="Política de Privacidade"
       atualizadoEm="setembro de 2026"
-      intro="Sua privacidade importa. Esta Política explica quais dados o Oráculo Vivo coleta, como os usamos e quais são os seus direitos, em conformidade com a Lei Geral de Proteção de Dados (LGPD — Lei nº 13.709/2018)."
+      intro="Sua privacidade importa. Esta Política explica quais dados o Arcanus coleta, como os usamos e quais são os seus direitos, em conformidade com a Lei Geral de Proteção de Dados (LGPD — Lei nº 13.709/2018)."
       secoes={[
         {
           titulo: 'Quem somos',
           paragrafos: [
-            'O Oráculo Vivo é o responsável pelo tratamento dos dados pessoais coletados no aplicativo e site. Para qualquer questão de privacidade, use o contato ao final desta Política.',
+            'O Arcanus é o responsável pelo tratamento dos dados pessoais coletados no aplicativo e site. Para qualquer questão de privacidade, use o contato ao final desta Política.',
           ],
         },
         {
@@ -74,7 +74,7 @@ export default function TelaPrivacidade() {
         {
           titulo: 'Menores de idade',
           paragrafos: [
-            'O Oráculo Vivo destina-se a maiores de 18 anos e não coleta intencionalmente dados de menores. Se identificarmos um cadastro de menor, a conta poderá ser removida.',
+            'O Arcanus destina-se a maiores de 18 anos e não coleta intencionalmente dados de menores. Se identificarmos um cadastro de menor, a conta poderá ser removida.',
           ],
         },
         {

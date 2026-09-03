@@ -65,7 +65,7 @@ export const AuthServico = {
 
   async recuperarSenha(email: string) {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: 'oraculovivo://recuperar-senha',
+      redirectTo: 'arcanus://recuperar-senha',
     });
     if (error) throw error;
   },

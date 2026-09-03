@@ -1,4 +1,4 @@
-// Dados de Numerologia do Oráculo Vivo
+// Dados de Numerologia do Arcanus
 
 import {
   calcularAlma as calcularAlmaDetalhado,

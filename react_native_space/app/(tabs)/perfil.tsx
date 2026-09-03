@@ -457,7 +457,7 @@ export default function TelaPerfil() {
 
             {/* Footer */}
             <View style={estilos.footer}>
-              <Text style={estilos.footerLogo}>Oráculo Vivo</Text>
+              <Text style={estilos.footerLogo}>Arcanus</Text>
               <Text style={estilos.footerVersao}>Versão 1.0.0</Text>
               <Text style={estilos.footerCopy}>Feito com ✨ e intenção</Text>
             </View>

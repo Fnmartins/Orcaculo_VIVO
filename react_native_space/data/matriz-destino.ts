@@ -1,4 +1,4 @@
-// A Matriz do Destino — Oráculo Vivo
+// A Matriz do Destino — Arcanus
 // Sistema baseado em numerologia + 22 Arcanos Maiores do Tarô + chakras
 // Usa apenas a data de nascimento
 

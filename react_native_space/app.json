@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Oraculo Vivo",
+    "name": "Arcanus",
     "slug": "abacusai-mobile-apps",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -27,7 +27,7 @@
           "autoVerify": true,
           "data": [
             {
-              "scheme": "oraculovivo",
+              "scheme": "arcanus",
               "host": "*"
             }
           ],
@@ -48,11 +48,11 @@
       "expo-secure-store",
       [
         "expo-camera",
-        { "cameraPermission": "O Oráculo Vivo precisa da câmera para analisar borra de café e quiromância." }
+        { "cameraPermission": "O Arcanus precisa da câmera para analisar borra de café e quiromância." }
       ],
       [
         "expo-image-picker",
-        { "photosPermission": "O Oráculo Vivo acessa suas fotos para análise espiritual." }
+        { "photosPermission": "O Arcanus acessa suas fotos para análise espiritual." }
       ],
       [
         "expo-notifications",
@@ -63,7 +63,7 @@
         }
       ]
     ],
-    "scheme": "oraculovivo",
+    "scheme": "arcanus",
     "extra": {
       "router": {},
       "eas": {

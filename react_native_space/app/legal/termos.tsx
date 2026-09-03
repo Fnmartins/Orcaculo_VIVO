@@ -1,34 +1,34 @@
 import React from 'react';
 import { PaginaLegal } from '../../components/PaginaLegal';
 
-// TODO: trocar pelo e-mail oficial quando o dominio for definido.
-const CONTATO = 'contato@oraculovivo.com';
+// E-mail oficial de contato — garantir que a caixa/encaminhamento exista no domínio arcanus.com.br.
+const CONTATO = 'contato@arcanus.com.br';
 
 export default function TelaTermos() {
   return (
     <PaginaLegal
       titulo="Termos de Uso"
       atualizadoEm="setembro de 2026"
-      intro="Ao criar uma conta ou usar o Oráculo Vivo, você concorda com estes Termos de Uso. Leia com atenção — eles explicam o que oferecemos, o que esperamos de você e os limites do serviço."
+      intro="Ao criar uma conta ou usar o Arcanus, você concorda com estes Termos de Uso. Leia com atenção — eles explicam o que oferecemos, o que esperamos de você e os limites do serviço."
       secoes={[
         {
           titulo: 'Aceitação dos Termos',
           paragrafos: [
-            'Estes Termos regem o uso do aplicativo e site Oráculo Vivo ("Oráculo Vivo", "nós"). Ao acessar ou usar o serviço, você declara ter lido, compreendido e aceito estes Termos e a nossa Política de Privacidade.',
-            'Se você não concordar com qualquer ponto, não utilize o Oráculo Vivo.',
+            'Estes Termos regem o uso do aplicativo e site Arcanus ("Arcanus", "nós"). Ao acessar ou usar o serviço, você declara ter lido, compreendido e aceito estes Termos e a nossa Política de Privacidade.',
+            'Se você não concordar com qualquer ponto, não utilize o Arcanus.',
           ],
         },
         {
-          titulo: 'O que é o Oráculo Vivo',
+          titulo: 'O que é o Arcanus',
           paragrafos: [
-            'O Oráculo Vivo é um aplicativo de autoconhecimento e entretenimento que oferece experiências inspiradas em tradições como tarô, búzios, numerologia e astrologia, além de conteúdos de reflexão.',
+            'O Arcanus é um aplicativo de autoconhecimento e entretenimento que oferece experiências inspiradas em tradições como tarô, búzios, numerologia e astrologia, além de conteúdos de reflexão.',
             'IMPORTANTE: o conteúdo tem finalidade de reflexão pessoal e entretenimento. Ele NÃO constitui e não substitui aconselhamento médico, psicológico, jurídico, financeiro ou profissional de qualquer natureza. Decisões importantes da sua vida devem ser tomadas com apoio de profissionais qualificados.',
           ],
         },
         {
           titulo: 'Elegibilidade',
           paragrafos: [
-            'Você deve ter pelo menos 18 anos para criar uma conta e utilizar o Oráculo Vivo. Ao usar o serviço, você confirma que atende a esse requisito.',
+            'Você deve ter pelo menos 18 anos para criar uma conta e utilizar o Arcanus. Ao usar o serviço, você confirma que atende a esse requisito.',
           ],
         },
         {
@@ -41,7 +41,7 @@ export default function TelaTermos() {
         {
           titulo: 'Planos, pagamentos e assinaturas',
           paragrafos: [
-            'O Oráculo Vivo oferece um plano gratuito e planos pagos com recursos adicionais. Os preços vigentes são exibidos no aplicativo antes da contratação.',
+            'O Arcanus oferece um plano gratuito e planos pagos com recursos adicionais. Os preços vigentes são exibidos no aplicativo antes da contratação.',
             'Os pagamentos são processados pelo Mercado Pago. Ao contratar um plano, você concorda também com os termos do meio de pagamento. O acesso aos recursos pagos é liberado após a confirmação do pagamento.',
             'Assinaturas recorrentes, quando aplicável, são renovadas automaticamente pelo período contratado até que você cancele.',
           ],
@@ -62,14 +62,14 @@ export default function TelaTermos() {
         {
           titulo: 'Propriedade intelectual',
           paragrafos: [
-            'A marca, os textos, o design, o código e os demais elementos do Oráculo Vivo são protegidos e pertencem a nós ou aos nossos licenciadores. O uso do aplicativo não transfere a você qualquer direito sobre esses elementos.',
+            'A marca, os textos, o design, o código e os demais elementos do Arcanus são protegidos e pertencem a nós ou aos nossos licenciadores. O uso do aplicativo não transfere a você qualquer direito sobre esses elementos.',
           ],
         },
         {
           titulo: 'Isenção de responsabilidade e limitação',
           paragrafos: [
             'O serviço é oferecido "no estado em que se encontra". Não garantimos que os resultados, leituras ou conteúdos sejam exatos, completos ou adequados a um propósito específico, e não nos responsabilizamos por decisões tomadas com base neles.',
-            'Na máxima extensão permitida pela lei, o Oráculo Vivo não responde por danos indiretos, incidentais ou consequenciais decorrentes do uso do serviço.',
+            'Na máxima extensão permitida pela lei, o Arcanus não responde por danos indiretos, incidentais ou consequenciais decorrentes do uso do serviço.',
           ],
         },
         {

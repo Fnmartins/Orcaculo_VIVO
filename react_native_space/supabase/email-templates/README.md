@@ -1,6 +1,6 @@
-# E-mails de autenticação brandados — Oráculo Vivo
+# E-mails de autenticação brandados — Arcanus
 
-Templates PT-BR com a identidade do Oráculo Vivo para os e-mails que o Supabase
+Templates PT-BR com a identidade do Arcanus para os e-mails que o Supabase
 envia (projeto **`rfdjukdbrtvvulaxbzwb`**). Trocam o visual genérico "Confirm your
 email address / powered by Supabase" pela marca do app.
 
@@ -8,9 +8,9 @@ email address / powered by Supabase" pela marca do app.
 
 | Arquivo | Template do Supabase | Assunto sugerido |
 |---|---|---|
-| `confirmacao-cadastro.html` | **Confirm signup** | `Confirme seu e-mail e desperte o Oráculo Vivo ✦` |
-| `recuperar-senha.html` | **Reset Password** | `Redefinir sua senha do Oráculo Vivo` |
-| `boas-vindas.html` | *(não é template nativo — ver seção Boas-vindas)* | `Bem-vindo(a) ao Oráculo Vivo 🌙` |
+| `confirmacao-cadastro.html` | **Confirm signup** | `Confirme seu e-mail e desperte o Arcanus ✦` |
+| `recuperar-senha.html` | **Reset Password** | `Redefinir sua senha do Arcanus` |
+| `boas-vindas.html` | *(não é template nativo — ver seção Boas-vindas)* | `Bem-vindo(a) ao Arcanus 🌙` |
 
 > O app usa e-mail/senha (cadastro + "esqueceu a senha"), então os dois primeiros
 > são os que realmente disparam hoje. Se um dia ativar Magic Link / troca de e-mail,
@@ -20,7 +20,7 @@ email address / powered by Supabase" pela marca do app.
 
 ## 1. Colar os templates (corpo dos e-mails)
 
-1. Supabase Dashboard → projeto **Oraculo Vivo** (`rfdjukdbrtvvulaxbzwb`).
+1. Supabase Dashboard → projeto **Arcanus** (`rfdjukdbrtvvulaxbzwb`).
 2. Menu **Authentication** → **Emails** → aba **Templates**.
 3. Selecione **Confirm signup**:
    - Em **Subject**, cole o assunto da tabela acima.
@@ -37,10 +37,10 @@ o Supabase as substitui no envio.
 Para o link de confirmação voltar pro app (e não dar 404):
 
 1. **Authentication** → **URL Configuration**.
-2. **Site URL**: `https://oraculovivo.vercel.app`
+2. **Site URL**: `https://arcanus.com.br`
 3. **Redirect URLs**: adicione (uma por linha):
-   - `https://oraculovivo.vercel.app/**`
-   - `oraculovivo://**` (deep-link do app mobile)
+   - `https://arcanus.com.br/**`
+   - `arcanus://**` (deep-link do app mobile)
 4. **Save**. (O rewrite SPA no `vercel.json` já garante que rotas profundas na web
    não dão 404.)
 
@@ -48,7 +48,7 @@ Para o link de confirmação voltar pro app (e não dar 404):
 
 Sem SMTP próprio o Supabase envia por `noreply@mail.app.supabase.io`, com selo
 "powered by Supabase" e um **limite baixo de e-mails/hora** (bom só p/ testes).
-Para o remetente virar a marca do Oráculo Vivo e liberar volume:
+Para o remetente virar a marca do Arcanus e liberar volume:
 
 1. Tenha um provedor de e-mail transacional. Opções comuns:
    - **Resend** (recomendado, integra fácil e tem plano grátis)
@@ -58,7 +58,7 @@ Para o remetente virar a marca do Oráculo Vivo e liberar volume:
 3. Supabase → **Authentication** → **Emails** → **SMTP Settings** →
    **Enable Custom SMTP** e preencha:
    - **Sender email**: ex. `contato@seudominio.com` (ou o remetente verificado)
-   - **Sender name**: `Oráculo Vivo`
+   - **Sender name**: `Arcanus`
    - **Host / Port / Username / Password**: os dados do provedor.
 4. **Save** e mande um e-mail de teste.
 
@@ -68,7 +68,7 @@ Para o remetente virar a marca do Oráculo Vivo e liberar volume:
 ### 3.1 Passo a passo com o Resend (provedor escolhido)
 
 1. Crie a conta em **resend.com**.
-2. **Domains** → **Add Domain** → informe seu domínio (ex.: `oraculovivo.com`
+2. **Domains** → **Add Domain** → informe seu domínio (ex.: `arcanus.com.br`
    ou o remetente que quiser). O Resend mostra registros DNS (**SPF**, **DKIM**
    e às vezes um CNAME de tracking).
 3. No painel do seu domínio (Registro.br, Cloudflare, GoDaddy, etc.), adicione
@@ -86,8 +86,8 @@ Para o remetente virar a marca do Oráculo Vivo e liberar volume:
    - **Username**: `resend`
    - **Password**: a sua API key `re_...`
    - **Sender email**: um endereço **no domínio verificado**
-     (ex.: `contato@oraculovivo.com` ou `noreply@oraculovivo.com`)
-   - **Sender name**: `Oráculo Vivo`
+     (ex.: `contato@arcanus.com.br` ou `noreply@arcanus.com.br`)
+   - **Sender name**: `Arcanus`
 6. **Save** e crie uma conta de teste no app pra confirmar o remetente novo.
 
 > A API key `re_...` é um segredo: vai **só** no campo Password do Supabase,

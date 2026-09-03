@@ -1,4 +1,4 @@
-# E-mail de boas-vindas pós-confirmação — Oráculo Vivo
+# E-mail de boas-vindas pós-confirmação — Arcanus
 
 O Supabase **não** manda e-mail de boas-vindas nativamente. Este pacote adiciona
 um, disparado **uma vez**, no momento em que o usuário confirma a conta.
@@ -23,8 +23,8 @@ Peças:
    supabase secrets set \
      RESEND_API_KEY=re_xxx \
      WELCOME_HOOK_SECRET=o_mesmo_segredo_do_sql \
-     REMETENTE_EMAIL=contato@seudominio.com \
-     REMETENTE_NOME="Oráculo Vivo"
+     REMETENTE_EMAIL=contato@arcanus.com.br \
+     REMETENTE_NOME="Arcanus"
    ```
    `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` já são injetados automaticamente.
 

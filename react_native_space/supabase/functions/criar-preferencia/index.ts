@@ -72,9 +72,9 @@ Deno.serve(async (request) => {
         items: [{ id: planoId, title: plano.titulo, description: plano.descricao, quantity: 1, unit_price: plano.valor, currency_id: 'BRL' }],
         payer: usuario.email ? { email: usuario.email } : undefined,
         back_urls: {
-          success: `oraculovivo://pagamento/sucesso?plano=${planoId}`,
-          failure: 'oraculovivo://pagamento/falha',
-          pending: 'oraculovivo://pagamento/pendente',
+          success: `arcanus://pagamento/sucesso?plano=${planoId}`,
+          failure: 'arcanus://pagamento/falha',
+          pending: 'arcanus://pagamento/pendente',
         },
         auto_return: 'approved',
         external_reference: referencia,

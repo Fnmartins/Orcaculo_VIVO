@@ -282,7 +282,7 @@ export default function TelaWelcome() {
                 style={estilos.titulo}
                 accessibilityRole="header"
               >
-                Oráculo Vivo
+                Arcanus
               </Text>
             </Animated.View>
 

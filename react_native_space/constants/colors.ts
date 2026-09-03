@@ -1,4 +1,4 @@
-// Paleta de cores do Oráculo Vivo
+// Paleta de cores do Arcanus
 export const Cores = {
   // Cores principais
   primaria: '#587565',

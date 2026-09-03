@@ -1,4 +1,4 @@
-// Dados da Jornada Espiritual do Oráculo Vivo
+// Dados da Jornada Espiritual do Arcanus
 
 export type TipoOraculo = 'tarot' | 'buzios' | 'numerologia' | 'mapa_astral' | 'cafe' | 'quiromancia';
 export type FormatoEntrega = 'texto' | 'audio' | 'video';

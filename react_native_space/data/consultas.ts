@@ -1,4 +1,4 @@
-// Dados de consultas e oraculistas do Oráculo Vivo
+// Dados de consultas e oraculistas do Arcanus
 
 export interface Oraculista {
   id: string;

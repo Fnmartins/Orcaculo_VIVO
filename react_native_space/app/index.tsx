@@ -176,7 +176,7 @@ export default function TelaSplash() {
     <GradientBackground>
       <Animated.View
         style={[estilos.container, { opacity: telaOpacidade }]}
-        accessibilityLabel="Oráculo Vivo, carregando"
+        accessibilityLabel="Arcanus, carregando"
         accessibilityRole="header"
       >
         {/* Partículas douradas */}
@@ -223,7 +223,7 @@ export default function TelaSplash() {
             transform: [{ translateY: tituloY }],
           }}
         >
-          <Text style={estilos.titulo}>Oráculo Vivo</Text>
+          <Text style={estilos.titulo}>Arcanus</Text>
         </Animated.View>
 
         {/* Subtítulo */}

@@ -1,6 +1,6 @@
 import { Share, Platform } from 'react-native';
 
-const ASSINATURA = '\n\n🔮 Oráculo Vivo — oraculovivo.app';
+const ASSINATURA = '\n\n🔮 Arcanus — arcanus.com.br';
 
 export interface DadosCompartilhamento {
   tipo: string;
