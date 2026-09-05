@@ -16,6 +16,7 @@ async function ativarPlano(
   planoId: PlanoId,
   sub: Stripe.Subscription,
   customerId: string,
+  checkoutSessionId?: string,
 ) {
   const s = sub as any;
   const fimUnix = s.current_period_end ?? s.items?.data?.[0]?.current_period_end;
@@ -26,9 +27,14 @@ async function ativarPlano(
   const fimPeriodo = new Date(fimUnix * 1000).toISOString();
   const inicio = new Date(inicioUnix * 1000).toISOString();
 
-  await supabaseAdmin.from('assinaturas')
+  // Escopa a atualização à linha DESTA assinatura (não a todas as linhas do
+  // usuário) e grava o plano na linha: no checkout, localiza pela sessão; na
+  // renovação, pela subscription. Evita que uma compra abandonada de outro
+  // plano vire uma linha stale/contraditória no ledger.
+  let atualizacao = supabaseAdmin.from('assinaturas')
     .update({
       status: 'ativo',
+      plano: planoId,
       stripe_subscription_id: sub.id,
       stripe_customer_id: customerId,
       inicio_em: inicio,
@@ -36,6 +42,10 @@ async function ativarPlano(
     })
     .eq('usuario_id', usuarioId)
     .in('status', ['pendente', 'ativo']);
+  atualizacao = checkoutSessionId
+    ? atualizacao.eq('stripe_checkout_session_id', checkoutSessionId)
+    : atualizacao.eq('stripe_subscription_id', sub.id);
+  await atualizacao;
 
   await supabaseAdmin.from('perfis')
     .update({
@@ -92,7 +102,7 @@ Deno.serve(async (request) => {
           return resposta(400);
         }
         const sub = await stripe.subscriptions.retrieve(String(session.subscription));
-        await ativarPlano(supabaseAdmin, usuarioId, planoId, sub, String(session.customer));
+        await ativarPlano(supabaseAdmin, usuarioId, planoId, sub, String(session.customer), session.id);
         break;
       }
       case 'invoice.paid': {
