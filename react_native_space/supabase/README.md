@@ -43,7 +43,14 @@ supabase functions deploy stripe-webhook --no-verify-jwt
 
 Trocar os secrets para chaves/Price IDs **live**, recriar o endpoint de
 webhook em live (novo `whsec_...`), atualizar `APP_BASE_URL` para o domínio
-final e refazer 1 compra de validação.
+final e refazer a validação: **uma compra nova E uma renovação** (avançar o
+ciclo em test mode ou aguardar a próxima `invoice.paid`). A renovação entra
+na checklist de propósito — é o caminho que falha em silêncio se a versão de
+API da Stripe da conta usar período por item; o webhook já lê os dois
+formatos (`sub.current_period_end` e `sub.items.data[0].current_period_end`;
+`invoice.subscription` e `invoice.parent.subscription_details.subscription`),
+mas confirme que `plano_valido_ate` estende e `consultas_restantes` reseta na
+renovação.
 
 ## IA remota
 

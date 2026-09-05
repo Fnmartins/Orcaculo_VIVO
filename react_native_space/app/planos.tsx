@@ -33,7 +33,6 @@ const { width: LARGURA_TELA } = Dimensions.get('window');
 interface Plano {
   id: string;
   nome: string;
-  preco: string;
   precoNum: number;
   periodo: string;
   descricao: string;
@@ -48,7 +47,6 @@ const PLANOS: Plano[] = [
   {
     id: 'iniciante',
     nome: 'Iniciante',
-    preco: 'R$ 29,90',
     precoNum: 29.9,
     periodo: '/mês',
     descricao: 'Ideal para começar sua jornada',
@@ -68,7 +66,6 @@ const PLANOS: Plano[] = [
   {
     id: 'explorador',
     nome: 'Explorador',
-    preco: 'R$ 79,90',
     precoNum: 79.9,
     periodo: '/mês',
     descricao: 'Experiência completa com IA',
@@ -89,7 +86,6 @@ const PLANOS: Plano[] = [
   {
     id: 'mestre',
     nome: 'Mestre',
-    preco: 'R$ 199,90',
     precoNum: 199.9,
     periodo: '/mês',
     descricao: 'Tudo + consulta com oraculista',
