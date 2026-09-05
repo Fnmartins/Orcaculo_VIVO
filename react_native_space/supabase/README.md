@@ -44,3 +44,11 @@ supabase functions deploy stripe-webhook --no-verify-jwt
 Trocar os secrets para chaves/Price IDs **live**, recriar o endpoint de
 webhook em live (novo `whsec_...`), atualizar `APP_BASE_URL` para o domínio
 final e refazer 1 compra de validação.
+
+## IA remota
+
+O envio de imagens e textos a provedores externos está desativado. As leituras
+locais continuam funcionando sem transmissão desses dados. Uma futura reativação
+exige política de privacidade, consentimento explícito antes do upload, proxy
+autenticado, limites de uso e validação das respostas. Não use chaves de IA em
+variáveis `EXPO_PUBLIC_*`.
