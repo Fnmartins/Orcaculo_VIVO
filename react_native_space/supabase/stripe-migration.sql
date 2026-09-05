@@ -19,3 +19,12 @@ create table if not exists webhook_eventos (
 );
 alter table webhook_eventos enable row level security;
 -- Sem policies: apenas o service role (webhook) acessa; anon fica bloqueado.
+
+-- Índices dos lookups do webhook/checkout (idempotentes): o webhook localiza a
+-- assinatura por session/subscription e o checkout/portal buscam o customer.
+create index if not exists idx_assinaturas_stripe_subscription_id
+  on assinaturas (stripe_subscription_id);
+create index if not exists idx_assinaturas_stripe_checkout_session_id
+  on assinaturas (stripe_checkout_session_id);
+create index if not exists idx_perfis_stripe_customer_id
+  on perfis (stripe_customer_id);
