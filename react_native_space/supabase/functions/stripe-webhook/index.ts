@@ -17,8 +17,14 @@ async function ativarPlano(
   sub: Stripe.Subscription,
   customerId: string,
 ) {
-  const fimPeriodo = new Date(sub.current_period_end * 1000).toISOString();
-  const inicio = new Date(sub.current_period_start * 1000).toISOString();
+  const s = sub as any;
+  const fimUnix = s.current_period_end ?? s.items?.data?.[0]?.current_period_end;
+  const inicioUnix = s.current_period_start ?? s.items?.data?.[0]?.current_period_start;
+  if (typeof fimUnix !== 'number' || typeof inicioUnix !== 'number') {
+    throw new Error(`Período da assinatura ausente (sub ${sub.id}); verificar versão da API Stripe`);
+  }
+  const fimPeriodo = new Date(fimUnix * 1000).toISOString();
+  const inicio = new Date(inicioUnix * 1000).toISOString();
 
   await supabaseAdmin.from('assinaturas')
     .update({
@@ -49,7 +55,7 @@ Deno.serve(async (request) => {
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   if (!secretKey || !webhookSecret || !supabaseUrl || !serviceRoleKey) return resposta(503);
 
-  const stripe = new Stripe(secretKey, { httpClient: Stripe.createFetchHttpClient() });
+  const stripe = new Stripe(secretKey, { apiVersion: '2024-09-30.acacia', httpClient: Stripe.createFetchHttpClient() });
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
   const assinatura = request.headers.get('stripe-signature');
@@ -69,7 +75,12 @@ Deno.serve(async (request) => {
   // Dedupe idempotente: se o event.id já existe, já foi processado.
   const { error: erroDedupe } = await supabaseAdmin
     .from('webhook_eventos').insert({ id: evento.id });
-  if (erroDedupe) return resposta();
+  if (erroDedupe) {
+    // 23505 = unique_violation → evento já processado (dedupe esperado)
+    if ((erroDedupe as any).code === '23505') return resposta();
+    console.error('Falha ao gravar dedupe de webhook', erroDedupe.message ?? erroDedupe);
+    return resposta(500); // erro real (ex.: tabela ausente) → deixa a Stripe re-tentar
+  }
 
   try {
     switch (evento.type) {
@@ -85,9 +96,10 @@ Deno.serve(async (request) => {
         break;
       }
       case 'invoice.paid': {
-        const invoice = evento.data.object as Stripe.Invoice;
-        if (!invoice.subscription) break;
-        const sub = await stripe.subscriptions.retrieve(String(invoice.subscription));
+        const invoice = evento.data.object as any;
+        const invoiceSubId = invoice.subscription ?? invoice.parent?.subscription_details?.subscription;
+        if (!invoiceSubId) break;
+        const sub = await stripe.subscriptions.retrieve(String(invoiceSubId));
         const usuarioId = sub.metadata?.usuario_id;
         const planoId = sub.metadata?.plano_id as PlanoId | undefined;
         if (!usuarioId || !planoId || !(planoId in PLANOS)) break;

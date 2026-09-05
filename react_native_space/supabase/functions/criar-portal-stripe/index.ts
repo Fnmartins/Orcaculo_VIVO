@@ -40,7 +40,7 @@ Deno.serve(async (request) => {
     const customerId = perfil?.stripe_customer_id as string | undefined;
     if (!customerId) return resposta({ erro: 'Nenhuma assinatura encontrada' }, 400);
 
-    const stripe = new Stripe(secretKey, { httpClient: Stripe.createFetchHttpClient() });
+    const stripe = new Stripe(secretKey, { apiVersion: '2024-09-30.acacia', httpClient: Stripe.createFetchHttpClient() });
     const session = await stripe.billingPortal.sessions.create({
       customer: customerId,
       return_url: `${appBaseUrl}/planos`,

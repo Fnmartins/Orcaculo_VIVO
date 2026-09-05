@@ -45,7 +45,7 @@ Deno.serve(async (request) => {
     const priceId = Deno.env.get(PLANOS[planoId].priceEnv);
     if (!priceId) return resposta({ erro: 'Pagamento temporariamente indisponível' }, 503);
 
-    const stripe = new Stripe(secretKey, { httpClient: Stripe.createFetchHttpClient() });
+    const stripe = new Stripe(secretKey, { apiVersion: '2024-09-30.acacia', httpClient: Stripe.createFetchHttpClient() });
 
     // Customer: reutiliza o salvo em perfis, senão cria e persiste.
     const { data: perfil } = await supabaseAdmin
