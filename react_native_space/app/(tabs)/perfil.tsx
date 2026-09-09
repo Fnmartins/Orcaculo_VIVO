@@ -235,6 +235,32 @@ export default function TelaPerfil() {
               </View>
             </View>
 
+            {/* Administração (só super-admin) */}
+            {perfil?.is_super_admin && (
+              <View style={estilos.secao}>
+                <Text style={estilos.secaoTitulo}>Administração</Text>
+                <Pressable
+                  onPress={() => { Hapticos.impactoLeve(); router.push('/manager'); }}
+                  style={({ pressed }) => [{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 10,
+                    paddingVertical: 14,
+                    paddingHorizontal: 16,
+                    backgroundColor: Cores.cardFundo,
+                    borderRadius: 14,
+                    borderWidth: 1,
+                    borderColor: Cores.cardBorda,
+                    opacity: pressed ? 0.85 : 1,
+                  }]}
+                >
+                  <MaterialCommunityIcons name="tune-variant" size={20} color={Cores.acento} />
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: Cores.textoClaro }}>Painel de planos</Text>
+                  <Ionicons name="chevron-forward" size={18} color={Cores.textoSecundario} style={{ marginLeft: 'auto' }} />
+                </Pressable>
+              </View>
+            )}
+
             {/* Plano Atual */}
             <View style={estilos.secao}>
               <Text style={estilos.secaoTitulo}>Meu Plano</Text>
