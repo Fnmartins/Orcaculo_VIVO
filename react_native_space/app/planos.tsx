@@ -23,14 +23,16 @@ import { Fontes } from '../constants/typography';
 import { Espacamento, RaioBorda } from '../constants/spacing';
 import { Hapticos } from '../utils/haptics';
 import { useAuth } from '../contexts/AuthContext';
-import { MercadoPagoServico, PLANOS_MP } from '../services/mercadopago';
+import {
+  criarCheckout, abrirPortalAssinatura, moedaPadrao, formatarPreco,
+  MOEDAS_SUPORTADAS, PLANOS_STRIPE, type MoedaSuportada,
+} from '../services/stripe';
 
 const { width: LARGURA_TELA } = Dimensions.get('window');
 
 interface Plano {
   id: string;
   nome: string;
-  preco: string;
   precoNum: number;
   periodo: string;
   descricao: string;
@@ -45,7 +47,6 @@ const PLANOS: Plano[] = [
   {
     id: 'iniciante',
     nome: 'Iniciante',
-    preco: 'R$ 29,90',
     precoNum: 29.9,
     periodo: '/mês',
     descricao: 'Ideal para começar sua jornada',
@@ -65,7 +66,6 @@ const PLANOS: Plano[] = [
   {
     id: 'explorador',
     nome: 'Explorador',
-    preco: 'R$ 79,90',
     precoNum: 79.9,
     periodo: '/mês',
     descricao: 'Experiência completa com IA',
@@ -86,7 +86,6 @@ const PLANOS: Plano[] = [
   {
     id: 'mestre',
     nome: 'Mestre',
-    preco: 'R$ 199,90',
     precoNum: 199.9,
     periodo: '/mês',
     descricao: 'Tudo + consulta com oraculista',
@@ -109,6 +108,7 @@ const PLANOS: Plano[] = [
 export default function TelaPlanos() {
   const [planoSelecionado, setPlanoSelecionado] = useState<string>('explorador');
   const [processando, setProcessando] = useState(false);
+  const [moeda, setMoeda] = useState<MoedaSuportada>(moedaPadrao());
   const fadeAnim = useRef(new Animated.Value(Platform.OS === 'web' ? 1 : 0)).current;
   const slideAnim = useRef(new Animated.Value(Platform.OS === 'web' ? 0 : 30)).current;
   const { sessao, perfil } = useAuth();
@@ -135,26 +135,27 @@ export default function TelaPlanos() {
       );
       return;
     }
-
-    const planoMP = PLANOS_MP.find(p => p.id === planoSelecionado);
-    if (!planoMP) return;
-
+    const planoId = planoSelecionado as 'iniciante' | 'explorador' | 'mestre';
     setProcessando(true);
     Hapticos.impactoMedio();
-
     try {
-      const { checkoutUrl } = await MercadoPagoServico.criarPreferencia(planoMP);
-
+      const checkoutUrl = await criarCheckout(planoId, moeda);
       await Linking.openURL(checkoutUrl);
     } catch (e: any) {
-      const msg = e?.message?.includes('Configure')
-        ? e.message
-        : 'Erro ao iniciar pagamento. Tente novamente.';
-      mostrarAlerta('Erro', msg);
+      mostrarAlerta('Erro', e?.message ?? 'Erro ao iniciar pagamento. Tente novamente.');
     } finally {
       setProcessando(false);
     }
-  }, [planoSelecionado, sessao]);
+  }, [planoSelecionado, sessao, moeda]);
+
+  const aoGerenciar = useCallback(async () => {
+    try {
+      const portalUrl = await abrirPortalAssinatura();
+      await Linking.openURL(portalUrl);
+    } catch (e: any) {
+      mostrarAlerta('Erro', e?.message ?? 'Não foi possível abrir o gerenciamento.');
+    }
+  }, []);
 
   return (
     <GradientBackground>
@@ -171,6 +172,20 @@ export default function TelaPlanos() {
           <View style={estilos.headerTexto}>
             <Text style={estilos.headerTitulo}>Escolha seu Plano</Text>
             <Text style={estilos.headerSubtitulo}>Desbloqueie todo o poder do oráculo</Text>
+            <View style={estilos.moedaLinha}>
+              {MOEDAS_SUPORTADAS.map((m) => (
+                <Pressable
+                  key={m}
+                  onPress={() => setMoeda(m)}
+                  style={[estilos.moedaChip, moeda === m && estilos.moedaChipAtivo]}
+                  accessibilityLabel={`Moeda ${m.toUpperCase()}`}
+                >
+                  <Text style={[estilos.moedaChipTexto, moeda === m && estilos.moedaChipTextoAtivo]}>
+                    {m.toUpperCase()}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
         </Animated.View>
 
@@ -181,6 +196,7 @@ export default function TelaPlanos() {
         >
           {PLANOS.map((plano, index) => {
             const selecionado = planoSelecionado === plano.id;
+            const precoMoeda = PLANOS_STRIPE.find(p => p.id === plano.id)?.precos[moeda] ?? plano.precoNum;
             return (
               <Animated.View
                 key={plano.id}
@@ -245,7 +261,7 @@ export default function TelaPlanos() {
                           estilos.preco,
                           selecionado && estilos.precoSelecionado,
                         ]}>
-                          {plano.preco}
+                          {formatarPreco(precoMoeda, moeda)}
                         </Text>
                         <Text style={estilos.periodo}>{plano.periodo}</Text>
                       </View>
@@ -304,6 +320,11 @@ export default function TelaPlanos() {
           >
             <Text style={estilos.pularTexto}>Continuar gratuitamente</Text>
           </Pressable>
+          {perfil?.plano && perfil.plano !== 'gratuito' && (
+            <Pressable onPress={aoGerenciar} style={estilos.pularBotao}>
+              <Text style={estilos.pularTexto}>Gerenciar assinatura</Text>
+            </Pressable>
+          )}
         </View>
       </SafeAreaView>
     </GradientBackground>
@@ -343,6 +364,17 @@ const estilos = StyleSheet.create({
     color: Cores.textoSecundario,
     marginTop: 2,
   },
+  moedaLinha: { flexDirection: 'row', gap: 8, marginTop: Espacamento.sm },
+  moedaChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: RaioBorda.full,
+    borderWidth: 1,
+    borderColor: Cores.cardBorda,
+  },
+  moedaChipAtivo: { backgroundColor: Cores.acento, borderColor: Cores.acento },
+  moedaChipTexto: { fontFamily: Fontes.corpo, fontSize: 12, color: Cores.textoSecundario },
+  moedaChipTextoAtivo: { color: '#fff', fontFamily: Fontes.corpoNegrito },
   scroll: { flex: 1 },
   scrollContent: {
     paddingHorizontal: Espacamento.lg,

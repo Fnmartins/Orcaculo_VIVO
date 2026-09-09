@@ -77,54 +77,6 @@ export const DatabaseServico = {
     return data as Consulta | null;
   },
 
-  // ── ASSINATURAS ────────────────────────────────────────────
-  async criarAssinatura(dados: {
-    usuario_id: string;
-    plano: string;
-    valor: number;
-    periodo: string;
-    mp_preference_id?: string;
-  }) {
-    const { data, error } = await supabase
-      .from('assinaturas')
-      .insert({ ...dados, status: 'pendente' })
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
-  },
-
-  async confirmarAssinatura(assinaturaId: string, mpPaymentId: string, plano: string, usuarioId: string) {
-    const agora = new Date();
-    const expiracao = new Date(agora);
-    expiracao.setMonth(expiracao.getMonth() + 1);
-
-    await supabase
-      .from('assinaturas')
-      .update({
-        status: 'ativo',
-        mp_payment_id: mpPaymentId,
-        inicio_em: agora.toISOString(),
-        expira_em: expiracao.toISOString(),
-      })
-      .eq('id', assinaturaId);
-
-    const consultasMap: Record<string, number> = {
-      iniciante: 4,
-      explorador: 999,
-      mestre: 999,
-    };
-
-    await supabase
-      .from('perfis')
-      .update({
-        plano,
-        plano_valido_ate: expiracao.toISOString(),
-        consultas_restantes: consultasMap[plano] ?? 1,
-      })
-      .eq('id', usuarioId);
-  },
-
   // ── XP / NÍVEL ─────────────────────────────────────────────
   async adicionarXP(usuarioId: string, xpGanho: number) {
     const { data: perfil } = await supabase
