@@ -1,17 +1,17 @@
 // supabase/functions/_shared/planos.ts
-export type PlanoId = 'iniciante' | 'explorador' | 'mestre';
+export const PLANO_IDS = ['iniciante', 'explorador', 'mestre'] as const;
+export type PlanoId = (typeof PLANO_IDS)[number];
 
-export interface PlanoServidor {
-  /** Nome da env var (secret) que guarda o Price ID recorrente multi-moeda. */
-  priceEnv: string;
-  /** consultas_restantes ao ativar/renovar. */
-  cotaConsultas: number;
-}
-
-export const PLANOS: Record<PlanoId, PlanoServidor> = {
-  iniciante:  { priceEnv: 'STRIPE_PRICE_INICIANTE',  cotaConsultas: 4 },
-  explorador: { priceEnv: 'STRIPE_PRICE_EXPLORADOR', cotaConsultas: 999 },
-  mestre:     { priceEnv: 'STRIPE_PRICE_MESTRE',     cotaConsultas: 999 },
+/** Nome do Product na Stripe (criado pelo painel de planos). */
+export const NOMES_PLANOS: Record<PlanoId, string> = {
+  iniciante: 'Arcanus Iniciante',
+  explorador: 'Arcanus Explorador',
+  mestre: 'Arcanus Mestre',
 };
 
-export const MOEDAS: readonly string[] = ['brl', 'usd', 'eur', 'cad'];
+export const MOEDAS = ['brl', 'usd', 'eur', 'cad'] as const;
+export type Moeda = (typeof MOEDAS)[number];
+
+export function ehPlanoValido(v: unknown): v is PlanoId {
+  return typeof v === 'string' && (PLANO_IDS as readonly string[]).includes(v);
+}
