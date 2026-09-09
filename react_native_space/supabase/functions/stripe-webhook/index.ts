@@ -1,7 +1,8 @@
 // supabase/functions/stripe-webhook/index.ts
 import Stripe from 'npm:stripe@^17';
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
-import { PLANOS, type PlanoId } from '../_shared/planos.ts';
+import { ehPlanoValido, type PlanoId } from '../_shared/planos.ts';
+import { lerConfigPlano } from '../_shared/config-planos.ts';
 
 function resposta(status = 200) {
   return new Response(JSON.stringify({ recebido: true }), {
@@ -47,11 +48,13 @@ async function ativarPlano(
     : atualizacao.eq('stripe_subscription_id', sub.id);
   await atualizacao;
 
+  const cfg = await lerConfigPlano(supabaseAdmin, planoId);
+  const cota = cfg?.cota_consultas ?? 0; // fallback seguro: não libera consultas indevidas
   await supabaseAdmin.from('perfis')
     .update({
       plano: planoId,
       plano_valido_ate: fimPeriodo,
-      consultas_restantes: PLANOS[planoId].cotaConsultas,
+      consultas_restantes: cota,
     })
     .eq('id', usuarioId);
 }
@@ -98,7 +101,7 @@ Deno.serve(async (request) => {
         const session = evento.data.object as Stripe.Checkout.Session;
         const usuarioId = session.metadata?.usuario_id;
         const planoId = session.metadata?.plano_id as PlanoId | undefined;
-        if (!usuarioId || !planoId || !(planoId in PLANOS) || !session.subscription) {
+        if (!usuarioId || !ehPlanoValido(planoId) || !session.subscription) {
           return resposta(400);
         }
         const sub = await stripe.subscriptions.retrieve(String(session.subscription));
@@ -112,7 +115,7 @@ Deno.serve(async (request) => {
         const sub = await stripe.subscriptions.retrieve(String(invoiceSubId));
         const usuarioId = sub.metadata?.usuario_id;
         const planoId = sub.metadata?.plano_id as PlanoId | undefined;
-        if (!usuarioId || !planoId || !(planoId in PLANOS)) break;
+        if (!usuarioId || !ehPlanoValido(planoId)) break;
         await ativarPlano(supabaseAdmin, usuarioId, planoId, sub, String(sub.customer));
         break;
       }
