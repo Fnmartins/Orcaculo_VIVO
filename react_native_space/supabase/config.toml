@@ -3,3 +3,8 @@
 # criar-checkout-stripe e criar-portal-stripe usam o padrao (verify_jwt = true).
 [functions.stripe-webhook]
 verify_jwt = false
+
+# admin-configurar-plano: exige JWT valido (default). A funcao ainda checa
+# is_super_admin no perfil antes de tocar Stripe/banco (defesa em profundidade).
+[functions.admin-configurar-plano]
+verify_jwt = true
