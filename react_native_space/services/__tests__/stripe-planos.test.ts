@@ -1,6 +1,4 @@
-import {
-  moedaPadrao, formatarPreco, PLANOS_STRIPE, MOEDAS_SUPORTADAS,
-} from '../stripe-planos';
+import { moedaPadrao, formatarPreco } from '../stripe-planos';
 
 describe('moedaPadrao', () => {
   it('retorna brl para locale pt-BR', () => {
@@ -29,20 +27,5 @@ describe('formatarPreco', () => {
   });
   it('usa € e vírgula para eur', () => {
     expect(formatarPreco(16.9, 'eur')).toBe('€ 16,90');
-  });
-});
-
-describe('PLANOS_STRIPE', () => {
-  it('tem os 3 planos com preço em todas as moedas suportadas', () => {
-    expect(PLANOS_STRIPE.map(p => p.id)).toEqual(['iniciante', 'explorador', 'mestre']);
-    for (const plano of PLANOS_STRIPE) {
-      for (const moeda of MOEDAS_SUPORTADAS) {
-        expect(typeof plano.precos[moeda]).toBe('number');
-      }
-    }
-  });
-  it('mantém os preços BRL conhecidos', () => {
-    const brl = Object.fromEntries(PLANOS_STRIPE.map(p => [p.id, p.precos.brl]));
-    expect(brl).toEqual({ iniciante: 29.9, explorador: 79.9, mestre: 199.9 });
   });
 });

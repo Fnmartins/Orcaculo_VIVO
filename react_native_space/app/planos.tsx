@@ -9,6 +9,7 @@ import {
   Platform,
   Dimensions,
   Linking,
+  ActivityIndicator,
 } from 'react-native';
 import { mostrarAlerta, confirmarAcao } from '../utils/alerta';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -25,8 +26,9 @@ import { Hapticos } from '../utils/haptics';
 import { useAuth } from '../contexts/AuthContext';
 import {
   criarCheckout, abrirPortalAssinatura, moedaPadrao, formatarPreco,
-  MOEDAS_SUPORTADAS, PLANOS_STRIPE, type MoedaSuportada,
+  MOEDAS_SUPORTADAS, type MoedaSuportada,
 } from '../services/stripe';
+import { carregarConfigPlanos, type PlanoStripe } from '../services/configPlanos';
 
 const { width: LARGURA_TELA } = Dimensions.get('window');
 
@@ -109,6 +111,8 @@ export default function TelaPlanos() {
   const [planoSelecionado, setPlanoSelecionado] = useState<string>('explorador');
   const [processando, setProcessando] = useState(false);
   const [moeda, setMoeda] = useState<MoedaSuportada>(moedaPadrao());
+  const [config, setConfig] = useState<PlanoStripe[] | null>(null);
+  const [erroConfig, setErroConfig] = useState(false);
   const fadeAnim = useRef(new Animated.Value(Platform.OS === 'web' ? 1 : 0)).current;
   const slideAnim = useRef(new Animated.Value(Platform.OS === 'web' ? 0 : 30)).current;
   const { sessao, perfil } = useAuth();
@@ -119,6 +123,18 @@ export default function TelaPlanos() {
       Animated.timing(slideAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
     ]).start();
   }, [fadeAnim, slideAnim]);
+
+  useEffect(() => {
+    carregarConfigPlanos().then(setConfig).catch(() => setErroConfig(true));
+  }, []);
+
+  const planosVisiveis = config ? PLANOS.filter((p) => config.some((c) => c.id === p.id)) : [];
+
+  useEffect(() => {
+    if (config && config.length > 0 && !config.some((c) => c.id === planoSelecionado)) {
+      setPlanoSelecionado(config[0].id);
+    }
+  }, [config, planoSelecionado]);
 
   const aoSelecionarPlano = useCallback((id: string) => {
     Hapticos.impactoLeve();
@@ -194,9 +210,16 @@ export default function TelaPlanos() {
           contentContainerStyle={estilos.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {PLANOS.map((plano, index) => {
+          {erroConfig ? (
+            <Text style={estilos.aviso}>Não foi possível carregar os planos. Tente novamente.</Text>
+          ) : config === null ? (
+            <ActivityIndicator style={{ marginTop: 40 }} color={Cores.acento} />
+          ) : planosVisiveis.length === 0 ? (
+            <Text style={estilos.aviso}>Planos em breve.</Text>
+          ) : (
+            planosVisiveis.map((plano, index) => {
             const selecionado = planoSelecionado === plano.id;
-            const precoMoeda = PLANOS_STRIPE.find(p => p.id === plano.id)?.precos[moeda] ?? plano.precoNum;
+            const precoMoeda = config?.find((c) => c.id === plano.id)?.precos[moeda] ?? plano.precoNum;
             return (
               <Animated.View
                 key={plano.id}
@@ -292,28 +315,33 @@ export default function TelaPlanos() {
                 </Pressable>
               </Animated.View>
             );
-          })}
+            })
+          )}
 
           {/* Garantia */}
-          <Animated.View style={[estilos.garantiaContainer, { opacity: fadeAnim }]}>
-            <Ionicons name="shield-checkmark-outline" size={20} color={Cores.primaria} />
-            <Text style={estilos.garantiaTexto}>
-              7 dias de garantia. Cancele quando quiser.
-            </Text>
-          </Animated.View>
+          {planosVisiveis.length > 0 && (
+            <Animated.View style={[estilos.garantiaContainer, { opacity: fadeAnim }]}>
+              <Ionicons name="shield-checkmark-outline" size={20} color={Cores.primaria} />
+              <Text style={estilos.garantiaTexto}>
+                7 dias de garantia. Cancele quando quiser.
+              </Text>
+            </Animated.View>
+          )}
 
           <View style={{ height: 100 }} />
         </ScrollView>
 
         {/* Footer fixo */}
         <View style={estilos.footer}>
-          <Button
-            variante="primary"
-            label={processando ? 'Aguarde...' : `Assinar ${PLANOS.find(p => p.id === planoSelecionado)?.nome ?? ''}`}
-            larguraTotal
-            onPress={aoAssinar}
-            disabled={processando}
-          />
+          {planosVisiveis.length > 0 && (
+            <Button
+              variante="primary"
+              label={processando ? 'Aguarde...' : `Assinar ${PLANOS.find(p => p.id === planoSelecionado)?.nome ?? ''}`}
+              larguraTotal
+              onPress={aoAssinar}
+              disabled={processando}
+            />
+          )}
           <Pressable
             onPress={() => router.back()}
             style={estilos.pularBotao}
@@ -533,6 +561,13 @@ const estilos = StyleSheet.create({
     fontFamily: Fontes.corpo,
     fontSize: 13,
     color: Cores.textoSecundario,
+  },
+  aviso: {
+    fontFamily: Fontes.corpo,
+    fontSize: 15,
+    color: Cores.textoSecundario,
+    textAlign: 'center',
+    marginTop: 48,
   },
 
   // Footer
