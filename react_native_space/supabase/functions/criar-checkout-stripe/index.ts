@@ -1,7 +1,8 @@
 // supabase/functions/criar-checkout-stripe/index.ts
 import Stripe from 'npm:stripe@^17';
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { PLANOS, MOEDAS, type PlanoId } from '../_shared/planos.ts';
+import { ehMoedaValida, ehPlanoValido, type PlanoId } from '../_shared/planos.ts';
+import { lerConfigPlano } from '../_shared/config-planos.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -38,11 +39,12 @@ Deno.serve(async (request) => {
     const usuario = auth.user;
 
     const { planoId, moeda } = await request.json() as { planoId?: PlanoId; moeda?: string };
-    if (!planoId || !(planoId in PLANOS)) return resposta({ erro: 'Plano inválido' }, 400);
+    if (!ehPlanoValido(planoId)) return resposta({ erro: 'Plano inválido' }, 400);
     const moedaFinal = (moeda ?? 'brl').toLowerCase();
-    if (!MOEDAS.includes(moedaFinal)) return resposta({ erro: 'Moeda inválida' }, 400);
+    if (!ehMoedaValida(moedaFinal)) return resposta({ erro: 'Moeda inválida' }, 400);
 
-    const priceId = Deno.env.get(PLANOS[planoId].priceEnv);
+    const cfg = await lerConfigPlano(supabaseAdmin, planoId);
+    const priceId = cfg?.stripe_price_id ?? null;
     if (!priceId) return resposta({ erro: 'Pagamento temporariamente indisponível' }, 503);
 
     const stripe = new Stripe(secretKey, { apiVersion: '2024-09-30.acacia', httpClient: Stripe.createFetchHttpClient() });

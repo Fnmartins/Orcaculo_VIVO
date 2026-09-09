@@ -15,3 +15,7 @@ export type Moeda = (typeof MOEDAS)[number];
 export function ehPlanoValido(v: unknown): v is PlanoId {
   return typeof v === 'string' && (PLANO_IDS as readonly string[]).includes(v);
 }
+
+export function ehMoedaValida(v: string): v is Moeda {
+  return (MOEDAS as readonly string[]).includes(v);
+}
