@@ -1,0 +1,650 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Arcanus — oráculos e autoconhecimento guiados por IA. Tarô, astrologia, numerologia e mais, num app sereno.">
+<meta property="og:title" content="Arcanus">
+<meta property="og:description" content="Vários oráculos. Um só lugar. A clareza que você procura.">
+<meta name="theme-color" content="#24312D">
+<style>[hidden]{display:none!important}img{max-width:100%}</style>
+<title>Arcanus</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  /* ============ TOKENS ============ */
+  :root {
+    /* Light — o mundo creme do Arcanus */
+    --bg:        #F7F3EA;
+    --surface:   #FFFCF6;
+    --surface-2: #F2EEE3;
+    --ink:       #24312D;
+    --ink-soft:  #59665F;
+    --sage:      #587565;
+    --sage-deep: #365247;
+    --gold:      #B58B46;
+    --gold-lite: #C5A365;
+    --mystic:    #806B88;
+    --line:      #E0DAC9;
+    --line-soft: #EAE4D5;
+    --halo:      rgba(181,139,70,0.16);
+    --star:      rgba(88,117,101,0.55);
+    --panel:     radial-gradient(120% 90% at 50% 0%, #FCF8EF 0%, #F3EEE1 55%, #EFE9DA 100%);
+    --shadow:    0 18px 44px -24px rgba(36,49,45,0.35);
+    --shadow-sm: 0 6px 20px -14px rgba(36,49,45,0.4);
+    --hero-ink:  #24312D;
+    --hero-soft: #59665F;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:        #161E1A;
+      --surface:   #1F2A25;
+      --surface-2: #1B2420;
+      --ink:       #F1EBDB;
+      --ink-soft:  #A7B2A9;
+      --sage:      #86A392;
+      --sage-deep: #6E8C7B;
+      --gold:      #D8B978;
+      --gold-lite: #E7CE96;
+      --mystic:    #B29ABA;
+      --line:      rgba(216,185,120,0.20);
+      --line-soft: rgba(216,185,120,0.12);
+      --halo:      rgba(216,185,120,0.20);
+      --star:      rgba(231,206,150,0.85);
+      --panel:     radial-gradient(120% 90% at 50% 0%, #223029 0%, #1A241F 55%, #141C18 100%);
+      --shadow:    0 24px 54px -26px rgba(0,0,0,0.7);
+      --shadow-sm: 0 8px 24px -16px rgba(0,0,0,0.65);
+      --hero-ink:  #F1EBDB;
+      --hero-soft: #B9C3BA;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg:        #161E1A;
+    --surface:   #1F2A25;
+    --surface-2: #1B2420;
+    --ink:       #F1EBDB;
+    --ink-soft:  #A7B2A9;
+    --sage:      #86A392;
+    --sage-deep: #6E8C7B;
+    --gold:      #D8B978;
+    --gold-lite: #E7CE96;
+    --mystic:    #B29ABA;
+    --line:      rgba(216,185,120,0.20);
+    --line-soft: rgba(216,185,120,0.12);
+    --halo:      rgba(216,185,120,0.20);
+    --star:      rgba(231,206,150,0.85);
+    --panel:     radial-gradient(120% 90% at 50% 0%, #223029 0%, #1A241F 55%, #141C18 100%);
+    --shadow:    0 24px 54px -26px rgba(0,0,0,0.7);
+    --shadow-sm: 0 8px 24px -16px rgba(0,0,0,0.65);
+    --hero-ink:  #F1EBDB;
+    --hero-soft: #B9C3BA;
+    color-scheme: dark;
+  }
+
+  /* ============ BASE ============ */
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Nunito", system-ui, "Segoe UI", Arial, sans-serif;
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  h1, h2, h3 {
+    font-family: "Playfair Display", Georgia, "Times New Roman", serif;
+    color: var(--ink);
+    text-wrap: balance;
+    margin: 0;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  p { margin: 0; }
+  a { color: inherit; }
+  .wrap { width: min(1080px, 92vw); margin-inline: auto; }
+  .narrow { width: min(680px, 92vw); margin-inline: auto; }
+
+  .eyebrow {
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin: 0 0 18px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .eyebrow::before, .eyebrow.center::after {
+    content: "";
+    width: 26px; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold));
+  }
+  .eyebrow.center::before { background: linear-gradient(90deg, var(--gold), transparent); }
+
+  /* ============ BUTTONS ============ */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    font-family: "Nunito", sans-serif; font-weight: 700; font-size: 16px;
+    padding: 15px 28px; border-radius: 999px; border: 1px solid transparent;
+    cursor: pointer; text-decoration: none; transition: transform .18s ease, box-shadow .25s ease, background .2s;
+    white-space: nowrap;
+  }
+  .btn-primary {
+    color: #23180A;
+    background: linear-gradient(135deg, var(--gold-lite), var(--gold));
+    box-shadow: 0 10px 30px -10px var(--halo), 0 0 0 6px var(--halo);
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 16px 38px -12px var(--halo), 0 0 0 8px var(--halo); }
+  .btn-ghost { color: var(--ink); border-color: var(--line); background: transparent; }
+  .btn-ghost:hover { border-color: var(--gold); color: var(--gold); }
+  .btn svg { width: 18px; height: 18px; }
+
+  /* ============ HEADER ============ */
+  .site-header {
+    position: sticky; top: 0; z-index: 40;
+    backdrop-filter: blur(10px);
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .header-in { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; gap: 16px; }
+  .brand { display: inline-flex; align-items: center; gap: 11px; font-family: "Playfair Display", serif; font-weight: 700; font-size: 22px; letter-spacing: 0.02em; }
+  .brand .mark { width: 30px; height: 30px; color: var(--gold); flex: none; }
+  .nav { display: flex; align-items: center; gap: 26px; }
+  .nav a { font-size: 15px; font-weight: 600; color: var(--ink-soft); text-decoration: none; transition: color .2s; }
+  .nav a:hover { color: var(--gold); }
+  .header-cta { display: inline-flex; align-items: center; gap: 12px; }
+  .icon-btn {
+    width: 40px; height: 40px; border-radius: 999px; border: 1px solid var(--line);
+    background: transparent; color: var(--ink-soft); cursor: pointer; display: inline-grid; place-items: center;
+    transition: color .2s, border-color .2s;
+  }
+  .icon-btn:hover { color: var(--gold); border-color: var(--gold); }
+  .icon-btn svg { width: 19px; height: 19px; }
+  @media (max-width: 720px) { .nav { display: none; } .header-cta .btn { display: none; } }
+
+  /* ============ HERO ============ */
+  .hero { position: relative; text-align: center; padding: clamp(56px, 9vw, 104px) 0 clamp(64px, 9vw, 108px); overflow: hidden; background:#141C18; --star: rgba(231,206,150,0.85); }
+  .hero-bg { position: absolute; inset: 0; background: var(--panel); z-index: 0; }
+  .hero-video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0; filter:blur(2px) saturate(1.05) brightness(0.92); transform:scale(1.06); }
+  .hero-scrim { position:absolute; inset:0; z-index:1; background:
+      radial-gradient(90% 70% at 50% 28%, rgba(181,139,70,0.20), transparent 60%),
+      linear-gradient(180deg, rgba(15,22,18,0.66) 0%, rgba(15,22,18,0.48) 42%, rgba(15,22,18,0.82) 100%); }
+  .hero canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; }
+  .hero-in { position: relative; z-index: 2; }
+  .emblem { width: 132px; height: 132px; margin: 0 auto 30px; position: relative; }
+  .emblem .halo { position: absolute; inset: -22%; border-radius: 50%; background: radial-gradient(circle, var(--halo) 0%, transparent 68%); }
+  .emblem .ring { position: absolute; inset: 0; color: var(--gold); animation: spin 34s linear infinite; }
+  .emblem .eye { position: absolute; inset: 24%; color: var(--gold); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .hero h1 { font-size: clamp(38px, 6.4vw, 66px); line-height: 1.04; color: #F4EDDD; max-width: 16ch; margin: 0 auto; }
+  .hero h1 em { font-style: italic; color: var(--gold-lite); }
+  .hero .sub { margin: 24px auto 0; max-width: 56ch; font-size: clamp(17px, 2.1vw, 20px); color: #DCE1D7; }
+  .hero .microcopy { color:#CBD2C8; }
+  .hero .microcopy svg { color: var(--gold-lite); }
+  .hero-actions { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-top: 36px; }
+  .microcopy { margin-top: 16px; font-size: 14px; color: var(--ink-soft); display: inline-flex; gap: 8px; align-items: center; }
+  .microcopy svg { width: 15px; height: 15px; color: var(--sage); }
+
+  /* ============ SECTION SHELL ============ */
+  section.block { padding: clamp(58px, 8vw, 96px) 0; }
+  .surface-alt { background: var(--surface-2); }
+  .section-head { text-align: center; margin-bottom: clamp(34px, 5vw, 56px); }
+  .section-head h2 { font-size: clamp(28px, 4vw, 40px); line-height: 1.12; }
+  .section-head p { margin: 16px auto 0; max-width: 54ch; color: var(--ink-soft); }
+
+  /* constellation divider */
+  .divider { display: flex; align-items: center; justify-content: center; gap: 14px; padding: 4px 0; color: var(--gold); }
+  .divider::before, .divider::after { content: ""; height: 1px; width: min(120px, 22vw); background: linear-gradient(90deg, transparent, var(--line)); }
+  .divider::after { background: linear-gradient(90deg, var(--line), transparent); }
+  .divider svg { width: 16px; height: 16px; opacity: .9; }
+
+  /* ============ DOR / VIRADA (editorial) ============ */
+  .statement { text-align: center; }
+  .statement h2 { font-size: clamp(26px, 3.6vw, 38px); line-height: 1.22; max-width: 20ch; margin: 0 auto; }
+  .statement p { margin: 22px auto 0; max-width: 52ch; color: var(--ink-soft); font-size: 18px; }
+  .statement .lead-gold { color: var(--gold); font-style: italic; font-family: "Playfair Display", serif; }
+
+  /* ============ COMO FUNCIONA ============ */
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+  .step { position: relative; padding: 30px 26px; }
+  .step + .step { border-left: 1px solid var(--line-soft); }
+  .step .num { font-family: "Playfair Display", serif; font-style: italic; font-size: 30px; color: var(--gold); line-height: 1; }
+  .step h3 { font-size: 20px; margin: 16px 0 8px; }
+  .step p { color: var(--ink-soft); font-size: 15.5px; }
+  @media (max-width: 760px) { .steps { grid-template-columns: 1fr; } .step + .step { border-left: none; border-top: 1px solid var(--line-soft); } }
+
+  /* ============ ORÁCULOS ============ */
+  .oracles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .oracle {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 26px 24px;
+    box-shadow: var(--shadow-sm); transition: transform .2s ease, border-color .2s;
+  }
+  .oracle:hover { transform: translateY(-3px); border-color: var(--gold); }
+  .oracle .glyph { width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; color: var(--gold);
+    background: color-mix(in srgb, var(--gold) 12%, transparent); margin-bottom: 16px; }
+  .oracle .glyph svg { width: 26px; height: 26px; }
+  .oracle h3 { font-size: 19px; margin-bottom: 7px; }
+  .oracle p { color: var(--ink-soft); font-size: 15px; line-height: 1.55; }
+  @media (max-width: 860px) { .oracles { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 540px) { .oracles { grid-template-columns: 1fr; } }
+
+  /* ============ POR QUE ARCANUS ============ */
+  .reasons { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 40px; max-width: 860px; margin-inline: auto; }
+  .reason { display: flex; gap: 16px; padding: 18px 0; border-bottom: 1px solid var(--line-soft); }
+  .reason .tick { flex: none; width: 30px; height: 30px; border-radius: 999px; display: grid; place-items: center; color: var(--gold);
+    border: 1px solid color-mix(in srgb, var(--gold) 45%, var(--line)); }
+  .reason .tick svg { width: 15px; height: 15px; }
+  .reason h3 { font-size: 17px; margin-bottom: 3px; font-family: "Nunito", sans-serif; font-weight: 700; }
+  .reason p { color: var(--ink-soft); font-size: 15px; }
+  @media (max-width: 680px) { .reasons { grid-template-columns: 1fr; gap: 0; } }
+
+  /* ============ PLANOS ============ */
+  .plans { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; align-items: stretch; }
+  .plan {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 28px 22px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .plan.featured {
+    border-color: var(--gold); box-shadow: var(--shadow);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--gold) 8%, var(--surface)), var(--surface));
+    position: relative;
+  }
+  .plan .tag { position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+    background: linear-gradient(135deg, var(--gold-lite), var(--gold)); color: #23180A; font-size: 11.5px; font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase; padding: 5px 14px; border-radius: 999px; white-space: nowrap; }
+  .plan .pname { font-family: "Playfair Display", serif; font-size: 22px; font-weight: 700; }
+  .plan .price { display: flex; align-items: baseline; gap: 4px; margin: 6px 0 4px; }
+  .plan .price .amount { font-family: "Playfair Display", serif; font-size: 34px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .plan .price .per { font-size: 14px; color: var(--ink-soft); }
+  .plan .quota { font-size: 15px; color: var(--sage); font-weight: 700; }
+  .plan .desc { font-size: 14.5px; color: var(--ink-soft); min-height: 42px; }
+  .plan .btn { margin-top: auto; width: 100%; }
+  .plan .btn-mini { padding: 12px 18px; font-size: 15px; }
+  .plans-note { text-align: center; color: var(--ink-soft); font-size: 14.5px; margin-top: 22px; }
+  @media (max-width: 880px) { .plans { grid-template-columns: repeat(2, 1fr); } .plan .tag { font-size: 11px; } }
+  @media (max-width: 460px) { .plans { grid-template-columns: 1fr; } }
+
+  /* ============ FAQ ============ */
+  .faq { max-width: 720px; margin-inline: auto; }
+  .faq details { border-bottom: 1px solid var(--line); padding: 6px 0; }
+  .faq summary {
+    cursor: pointer; list-style: none; padding: 18px 40px 18px 0; position: relative;
+    font-family: "Playfair Display", serif; font-size: 19px; font-weight: 600; color: var(--ink);
+  }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary::after { content: "+"; position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+    font-family: "Nunito", sans-serif; font-size: 24px; color: var(--gold); transition: transform .2s; }
+  .faq details[open] summary::after { content: "–"; }
+  .faq .answer { padding: 0 0 20px; color: var(--ink-soft); font-size: 16px; max-width: 62ch; }
+
+  /* ============ CTA FINAL ============ */
+  .cta-final { position: relative; text-align: center; padding: clamp(66px, 10vw, 120px) 0; overflow: hidden; }
+  .cta-final .hero-bg { background: var(--panel); }
+  .cta-final canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; }
+  .cta-in { position: relative; z-index: 2; }
+  .cta-in h2 { font-size: clamp(30px, 5vw, 50px); color: var(--hero-ink); max-width: 18ch; margin: 0 auto; line-height: 1.08; }
+  .cta-in .microcopy { margin-top: 18px; }
+  .cta-in .btn { margin-top: 30px; }
+
+  /* ============ FOOTER ============ */
+  footer { padding: 40px 0 56px; border-top: 1px solid var(--line-soft); }
+  .foot-in { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: space-between; }
+  .foot-brand { display: inline-flex; align-items: center; gap: 10px; font-family: "Playfair Display", serif; font-weight: 700; font-size: 18px; }
+  .foot-brand .mark { width: 24px; height: 24px; color: var(--gold); }
+  .disclaimer { color: var(--ink-soft); font-size: 13px; max-width: 62ch; margin-top: 18px; line-height: 1.6; }
+  .foot-links { display: flex; gap: 20px; font-size: 14px; }
+  .foot-links a { color: var(--ink-soft); text-decoration: none; }
+  .foot-links a:hover { color: var(--gold); }
+
+  :focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; border-radius: 4px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .emblem .ring { animation: none; }
+    .btn, .oracle { transition: none; }
+    .hero-video { display: none; }
+  }
+</style>
+</head>
+<body>
+
+
+<!-- ================= HEADER ================= -->
+<header class="site-header">
+  <div class="wrap header-in">
+    <span class="brand">
+      <svg class="mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <path d="M12 5c-5 0-8.5 4.2-9.5 6.6-.2.4-.2.9 0 1.3C3.5 15.3 7 19 12 19s8.5-3.7 9.5-6.1c.2-.4.2-.9 0-1.3C20.5 9.2 17 5 12 5Z"/>
+        <circle cx="12" cy="12" r="3.1"/>
+      </svg>
+      Arcanus
+    </span>
+    <nav class="nav" aria-label="Navegação">
+      <a href="#oraculos">Oráculos</a>
+      <a href="#como">Como funciona</a>
+      <a href="#planos">Planos</a>
+    </nav>
+    <div class="header-cta">
+      <button class="icon-btn" id="themeBtn" type="button" aria-label="Alternar tema claro e escuro">
+        <svg class="ico-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <svg class="ico-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true" hidden><path d="M20 14.2A8 8 0 1 1 9.8 4 6.4 6.4 0 0 0 20 14.2Z"/></svg>
+      </button>
+      <a href="#planos" class="btn btn-primary btn-mini" style="padding:11px 20px;font-size:15px">Começar</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- ================= HERO ================= -->
+  <section class="hero">
+    <video class="hero-video" autoplay muted loop playsinline preload="auto" aria-hidden="true" src="videos/buzios.mp4"></video>
+    <div class="hero-scrim"></div>
+    <canvas data-stars aria-hidden="true"></canvas>
+    <div class="wrap hero-in">
+      <div class="emblem" aria-hidden="true">
+        <span class="halo"></span>
+        <svg class="ring" viewBox="0 0 120 120" fill="currentColor">
+          <g>
+            <circle cx="60" cy="8" r="2.6"/><circle cx="103" cy="30" r="1.8"/><circle cx="112" cy="60" r="2.2"/>
+            <circle cx="103" cy="90" r="1.6"/><circle cx="60" cy="112" r="2.4"/><circle cx="17" cy="90" r="1.8"/>
+            <circle cx="8" cy="60" r="2.1"/><circle cx="17" cy="30" r="1.5"/>
+          </g>
+          <circle cx="60" cy="60" r="52" fill="none" stroke="currentColor" stroke-width="0.6" opacity="0.4"/>
+        </svg>
+        <svg class="eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+          <path d="M12 4C6 4 2.2 9 1.2 11.5c-.2.4-.2.7 0 1.1C2.2 15 6 20 12 20s9.8-5 10.8-7.4c.2-.4.2-.7 0-1.1C21.8 9 18 4 12 4Z"/>
+          <circle cx="12" cy="12" r="3.4"/><circle cx="12" cy="12" r="0.9" fill="currentColor"/>
+        </svg>
+      </div>
+      <p class="eyebrow center" style="justify-content:center">Oráculos · Autoconhecimento</p>
+      <h1>Vários oráculos. Um só lugar. A <em>clareza</em> que você procura.</h1>
+      <p class="sub">O Arcanus reúne tarô, búzios, numerologia, mapa astral e lei da atração num app sereno, guiado por inteligência artificial. Sua jornada de autoconhecimento começa com uma leitura.</p>
+      <div class="hero-actions">
+        <a href="#planos" class="btn btn-primary">Fazer minha primeira leitura
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+        <a href="#oraculos" class="btn btn-ghost">Conhecer os oráculos</a>
+      </div>
+      <p class="microcopy">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+        Comece de graça, sem cartão.
+      </p>
+    </div>
+  </section>
+
+  <!-- ================= DOR ================= -->
+  <section class="block statement">
+    <div class="narrow">
+      <p class="eyebrow center" style="justify-content:center">Um momento seu</p>
+      <h2>Tem dias que a gente só precisa parar e se ouvir.</h2>
+      <p>Mas o horóscopo genérico do signo não fala com o <em class="lead-gold">seu</em> momento. E nem sempre dá pra marcar uma consulta — ou se abrir com alguém sobre aquilo que só você sabe que está sentindo. Aí a dúvida continua girando na cabeça.</p>
+    </div>
+  </section>
+
+  <!-- ================= VIRADA ================= -->
+  <section class="block statement surface-alt">
+    <div class="narrow">
+      <div class="divider" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.6 6.9L20 12l-6.4 3.1L12 22l-1.6-6.9L4 12l6.4-3.1z"/></svg></div>
+      <h2>E se a clareza coubesse no seu bolso?</h2>
+      <p>No Arcanus, você escolhe o oráculo, faz a sua pergunta e recebe uma leitura pra refletir — na hora, no seu tempo, só seu. Um ritual de reconexão sempre que precisar, sem marcar horário e sem se expor.</p>
+    </div>
+  </section>
+
+  <!-- ================= COMO FUNCIONA ================= -->
+  <section class="block" id="como">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow center" style="justify-content:center">Como funciona</p>
+        <h2>Três passos até a sua leitura</h2>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <div class="num">I</div>
+          <h3>Escolha seu oráculo</h3>
+          <p>Tarô, búzios, mapa astral, numerologia, lei da atração e mais.</p>
+        </div>
+        <div class="step">
+          <div class="num">II</div>
+          <h3>Faça sua pergunta</h3>
+          <p>Sobre o amor, o trabalho, uma fase que passa ou uma decisão que não sai da cabeça.</p>
+        </div>
+        <div class="step">
+          <div class="num">III</div>
+          <h3>Receba sua leitura</h3>
+          <p>Uma interpretação pra refletir — e que fica guardada na sua jornada.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= ORÁCULOS ================= -->
+  <section class="block surface-alt" id="oraculos">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow center" style="justify-content:center">Os oráculos</p>
+        <h2>Seis caminhos pra se entender melhor</h2>
+        <p>Cada oráculo é uma lente diferente sobre a mesma pergunta: você.</p>
+      </div>
+      <div class="oracles">
+        <article class="oracle">
+          <div class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="6" y="3" width="12" height="18" rx="2"/><path d="M12 7.2l1 2.1 2.2.3-1.6 1.6.4 2.2-2-1-2 1 .4-2.2L8.8 9.6l2.2-.3z"/></svg></div>
+          <h3>Tarô</h3>
+          <p>Os arcanos iluminam o que está por trás da sua pergunta.</p>
+        </article>
+        <article class="oracle">
+          <div class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 21c5 0 8-3.4 8-8.5C20 7 16.4 3 12 3S4 7 4 12.5C4 17.6 7 21 12 21Z"/><path d="M12 21c-1.2-2.5-1.8-5.3-1.8-8.4M12 21c1.2-2.5 1.8-5.3 1.8-8.4M12 21V8.5M8.4 20c-.4-2-.6-4-.6-6M15.6 20c.4-2 .6-4 .6-6"/></svg></div>
+          <h3>Búzios</h3>
+          <p>A sabedoria ancestral pra ouvir o que a intuição já sabe.</p>
+        </article>
+        <article class="oracle">
+          <div class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M9.4 9.6c0-1.3 1.1-2.3 2.6-2.3s2.6 1 2.6 2.3c0 1-.6 1.6-1.7 2.4-1.2.9-1.9 1.6-1.9 3.1v.4M12 16.9v.05" stroke-linecap="round"/></svg></div>
+          <h3>Numerologia</h3>
+          <p>Os números que desenham o seu caminho e o seu momento.</p>
+        </article>
+        <article class="oracle">
+          <div class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="9" ry="3.4"/><circle cx="12" cy="12" r="2"/><path d="M12 3v3M12 18v3"/></svg></div>
+          <h3>Mapa astral</h3>
+          <p>O céu do seu nascimento e o que ele revela sobre você.</p>
+        </article>
+        <article class="oracle">
+          <div class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="13" r="4"/><path d="M12 5V2M12 24v-3M5.5 13H2M22 13h-3.5M6.8 7.8 4.7 5.7M19.3 5.7l-2.1 2.1M6.8 18.2l-2.1 2.1M19.3 20.3l-2.1-2.1" stroke-linecap="round"/></svg></div>
+          <h3>Lei da atração</h3>
+          <p>Dê forma aos seus desejos e acompanhe a sua manifestação.</p>
+        </article>
+        <article class="oracle">
+          <div class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 11V5.2a1.4 1.4 0 0 1 2.8 0V10m0-.4a1.4 1.4 0 0 1 2.8 0v1m0-.6a1.4 1.4 0 0 1 2.8 0V14c0 3.3-2.2 6-5.6 6-2 0-3.2-.8-4.4-2.3l-2.3-3c-.7-1 .5-2.4 1.6-1.8L9 14"/></svg></div>
+          <h3>Leitura de imagem</h3>
+          <p>Borra de café e as linhas das mãos, decifradas.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= POR QUE ARCANUS ================= -->
+  <section class="block">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow center" style="justify-content:center">Por que Arcanus</p>
+        <h2>Não é mais um app de horóscopo</h2>
+      </div>
+      <div class="reasons">
+        <div class="reason"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg></span><div><h3>Tudo num lugar só</h3><p>Vários oráculos, sem pular de app em app.</p></div></div>
+        <div class="reason"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg></span><div><h3>Na hora, 24h</h3><p>Sua leitura quando a dúvida aparece, não quando cabe na agenda de alguém.</p></div></div>
+        <div class="reason"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg></span><div><h3>Sem se expor</h3><p>O seu momento é só seu — sem julgamento, sem plateia.</p></div></div>
+        <div class="reason"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg></span><div><h3>Sua jornada guardada</h3><p>Reveja suas leituras e enxergue como você evoluiu.</p></div></div>
+        <div class="reason"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg></span><div><h3>Feito pra acalmar</h3><p>Uma estética serena, longe do caos do feed.</p></div></div>
+        <div class="reason"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg></span><div><h3>No seu idioma e no seu tempo</h3><p>Um ritual pensado pra caber na sua rotina, do seu jeito.</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= PLANOS ================= -->
+  <section class="block surface-alt" id="planos">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow center" style="justify-content:center">Planos</p>
+        <h2>Comece de graça. Aprofunde quando quiser.</h2>
+        <p>Conheça os oráculos sem pagar nada. Quando quiser fazer suas leituras, escolha o ritmo da sua jornada.</p>
+      </div>
+      <div class="plans">
+        <div class="plan">
+          <span class="pname">Grátis</span>
+          <div class="price"><span class="amount">R$ 0</span></div>
+          <span class="quota">Conheça os oráculos</span>
+          <p class="desc">Navegue e sinta o Arcanus antes de fazer sua primeira leitura.</p>
+          <a href="#" class="btn btn-ghost btn-mini">Criar conta grátis</a>
+        </div>
+        <div class="plan">
+          <span class="pname">Iniciante</span>
+          <div class="price"><span class="amount">R$ 29,90</span><span class="per">/mês</span></div>
+          <span class="quota">4 leituras por mês</span>
+          <p class="desc">Pra quem quer experimentar de verdade, sem compromisso.</p>
+          <a href="#" class="btn btn-ghost btn-mini">Assinar</a>
+        </div>
+        <div class="plan featured">
+          <span class="tag">Mais popular</span>
+          <span class="pname">Explorador</span>
+          <div class="price"><span class="amount">R$ 79,90</span><span class="per">/mês</span></div>
+          <span class="quota">Leituras ilimitadas</span>
+          <p class="desc">Sua jornada sem limites, o mês inteiro. O favorito de quem faz do ritual um hábito.</p>
+          <a href="#" class="btn btn-primary btn-mini">Assinar</a>
+        </div>
+        <div class="plan">
+          <span class="pname">Mestre</span>
+          <div class="price"><span class="amount">R$ 199,90</span><span class="per">/mês</span></div>
+          <span class="quota">Ilimitado · experiência completa</span>
+          <p class="desc">Pra quem vive a jornada por inteiro, com tudo o que o Arcanus oferece.</p>
+          <a href="#" class="btn btn-ghost btn-mini">Assinar</a>
+        </div>
+      </div>
+      <p class="plans-note">Menos que uma consulta avulsa — e disponível sempre que você precisar. Cancele quando quiser.</p>
+    </div>
+  </section>
+
+  <!-- ================= FAQ ================= -->
+  <section class="block">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow center" style="justify-content:center">Dúvidas</p>
+        <h2>O que costuma passar pela cabeça</h2>
+      </div>
+      <div class="faq">
+        <details open>
+          <summary>Os apps grátis já não fazem isso?</summary>
+          <p class="answer">Horóscopo do signo é genérico. O Arcanus responde à <em>sua</em> pergunta, com vários oráculos, no seu momento — e guarda a sua jornada.</p>
+        </details>
+        <details>
+          <summary>Isso funciona mesmo?</summary>
+          <p class="answer">O Arcanus não promete adivinhar o futuro. Ele te dá uma nova perspectiva pra refletir sobre o que você já sente — e, muitas vezes, é exatamente o que faltava pra enxergar com clareza.</p>
+        </details>
+        <details>
+          <summary>Preciso acreditar em tarô?</summary>
+          <p class="answer">Não. Muita gente usa como um espelho pra se conhecer melhor. Experimente e sinta.</p>
+        </details>
+        <details>
+          <summary>E os meus dados?</summary>
+          <p class="answer">Usamos suas informações só pra personalizar suas leituras. Você pode apagar sua conta quando quiser.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= CTA FINAL ================= -->
+  <section class="cta-final">
+    <div class="hero-bg"></div>
+    <canvas data-stars aria-hidden="true"></canvas>
+    <div class="wrap cta-in">
+      <div class="emblem" style="width:76px;height:76px;margin-bottom:22px" aria-hidden="true">
+        <span class="halo"></span>
+        <svg class="eye" style="inset:8%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M12 4C6 4 2.2 9 1.2 11.5c-.2.4-.2.7 0 1.1C2.2 15 6 20 12 20s9.8-5 10.8-7.4c.2-.4.2-.7 0-1.1C21.8 9 18 4 12 4Z"/><circle cx="12" cy="12" r="3.4"/><circle cx="12" cy="12" r="0.9" fill="currentColor"/></svg>
+      </div>
+      <h2>Sua jornada de autoconhecimento começa aqui.</h2>
+      <a href="#planos" class="btn btn-primary">Fazer minha primeira leitura
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
+      <p class="microcopy">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+        Comece de graça, sem cartão.
+      </p>
+    </div>
+  </section>
+
+  <!-- ================= FOOTER ================= -->
+  <footer>
+    <div class="wrap foot-in">
+      <span class="foot-brand">
+        <svg class="mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 5c-5 0-8.5 4.2-9.5 6.6-.2.4-.2.9 0 1.3C3.5 15.3 7 19 12 19s8.5-3.7 9.5-6.1c.2-.4.2-.9 0-1.3C20.5 9.2 17 5 12 5Z"/><circle cx="12" cy="12" r="3.1"/></svg>
+        Arcanus
+      </span>
+      <div class="foot-links">
+        <a href="#oraculos">Oráculos</a>
+        <a href="#planos">Planos</a>
+        <a href="#">Privacidade</a>
+        <a href="#">Termos</a>
+      </div>
+    </div>
+    <div class="wrap">
+      <p class="disclaimer">Arcanus é uma ferramenta de reflexão, bem-estar e entretenimento. Não faz previsões garantidas e não substitui aconselhamento profissional. © 2026 Arcanus.</p>
+    </div>
+  </footer>
+</main>
+
+<script>
+  // ---- Tema: alterna e lembra ----
+  (function () {
+    var root = document.documentElement, btn = document.getElementById('themeBtn');
+    var sun = btn.querySelector('.ico-sun'), moon = btn.querySelector('.ico-moon');
+    function prefersDark(){ return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches; }
+    function isDark(){ var t = root.getAttribute('data-theme'); return t ? t === 'dark' : prefersDark(); }
+    function sync(){ var d = isDark(); sun.hidden = d; moon.hidden = !d; }
+    try { var saved = localStorage.getItem('arcanus-theme'); if (saved) root.setAttribute('data-theme', saved); } catch (e) {}
+    sync();
+    btn.addEventListener('click', function () {
+      var next = isDark() ? 'light' : 'dark';
+      root.setAttribute('data-theme', next);
+      try { localStorage.setItem('arcanus-theme', next); } catch (e) {}
+      sync();
+    });
+  })();
+
+  // ---- Campo de estrelas (canvas, respeita reduce-motion) ----
+  (function () {
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    function starColor(){ return getComputedStyle(document.documentElement).getPropertyValue('--star').trim() || 'rgba(120,120,120,.5)'; }
+    document.querySelectorAll('canvas[data-stars]').forEach(function (cv) {
+      var ctx = cv.getContext('2d'), stars = [], raf, W, H, dpr = Math.min(window.devicePixelRatio || 1, 2);
+      function resize(){
+        var r = cv.getBoundingClientRect(); W = r.width; H = r.height;
+        cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+        var count = Math.round(W * H / 9000);
+        stars = []; for (var i=0;i<count;i++){ stars.push({ x: Math.random()*W, y: Math.random()*H, r: Math.random()*1.4+0.3, p: Math.random()*Math.PI*2, s: Math.random()*0.9+0.3 }); }
+      }
+      function draw(t){
+        ctx.clearRect(0,0,W,H);
+        var col = starColor();
+        for (var i=0;i<stars.length;i++){ var st = stars[i];
+          var a = reduce ? 0.55 : 0.35 + 0.45 * (0.5 + 0.5 * Math.sin(t*0.001*st.s + st.p));
+          ctx.globalAlpha = a; ctx.fillStyle = col;
+          ctx.beginPath(); ctx.arc(st.x, st.y, st.r, 0, Math.PI*2); ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+        if (!reduce) raf = requestAnimationFrame(draw);
+      }
+      resize(); draw(0);
+      if (reduce) draw(0);
+      window.addEventListener('resize', function(){ cancelAnimationFrame(raf); resize(); draw(0); });
+    });
+  })();
+</script>
+
+<script>/*APP_CTA*/(function(){var APP="https://app.arcanus.com.br";document.querySelectorAll("a.btn-primary, .plan a.btn").forEach(function(a){a.setAttribute("href",APP);});})();</script>
+
+</body>
+</html>
