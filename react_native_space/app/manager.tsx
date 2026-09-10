@@ -19,6 +19,9 @@ export default function Manager() {
   const [planos, setPlanos] = useState<PlanoStripe[] | null>(null);
   const [salvando, setSalvando] = useState<string | null>(null);
 
+  // Aberto direto pela URL (sem histórico), router.back() é no-op: cai no perfil.
+  const voltar = () => (router.canGoBack() ? router.back() : router.replace('/perfil'));
+
   const recarregar = () =>
     carregarConfigPlanos({ incluirNaoConfigurados: true })
       .then(setPlanos)
@@ -33,7 +36,7 @@ export default function Manager() {
       <GradientBackground>
         <SafeAreaView style={estilos.safe}>
           <View style={estilos.header}>
-            <Pressable onPress={() => router.back()} style={estilos.voltar} accessibilityLabel="Voltar">
+            <Pressable onPress={voltar} style={estilos.voltar} accessibilityLabel="Voltar">
               <Ionicons name="arrow-back" size={22} color={Cores.textoClaro} />
             </Pressable>
             <Text style={estilos.titulo}>Painel de planos</Text>
@@ -71,7 +74,7 @@ export default function Manager() {
     <GradientBackground>
       <SafeAreaView style={estilos.safe}>
         <View style={estilos.header}>
-          <Pressable onPress={() => router.back()} style={estilos.voltar} accessibilityLabel="Voltar">
+          <Pressable onPress={voltar} style={estilos.voltar} accessibilityLabel="Voltar">
             <Ionicons name="arrow-back" size={22} color={Cores.textoClaro} />
           </Pressable>
           <Text style={estilos.titulo}>Painel de planos</Text>
