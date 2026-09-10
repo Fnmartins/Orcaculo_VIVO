@@ -12,6 +12,7 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { GradientBackground } from '../components/GradientBackground';
 import { Cores } from '../constants/colors';
 import { Fontes } from '../constants/typography';
+import { chegouPorRecuperacaoDeSenha } from '../services/supabase';
 
 const { width: LARGURA_TELA } = Dimensions.get('window');
 
@@ -67,7 +68,7 @@ export default function TelaSplash() {
       subtituloOpacidade.setValue(1);
 
       const timer = setTimeout(() => {
-        router.replace('/(tabs)');
+        router.replace(chegouPorRecuperacaoDeSenha ? '/auth/nova-senha' : '/(tabs)');
       }, 2900);
       return () => clearTimeout(timer);
     }
@@ -165,7 +166,7 @@ export default function TelaSplash() {
         duration: 400,
         useNativeDriver: true,
       }).start(() => {
-        router.replace('/(tabs)');
+        router.replace(chegouPorRecuperacaoDeSenha ? '/auth/nova-senha' : '/(tabs)');
       });
     }, 2500);
 

@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase, ehWeb } from './supabase';
 import type { User, Session } from '@supabase/supabase-js';
 
 export interface DadosCadastro {
@@ -64,9 +64,16 @@ export const AuthServico = {
   },
 
   async recuperarSenha(email: string) {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: 'arcanus://recuperar-senha',
-    });
+    // Web volta pro próprio site; nativo usa o deep link. Os dois caem em /auth/nova-senha.
+    const redirectTo = ehWeb
+      ? `${window.location.origin}/auth/nova-senha`
+      : 'arcanus://auth/nova-senha';
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    if (error) throw error;
+  },
+
+  async definirNovaSenha(senha: string) {
+    const { error } = await supabase.auth.updateUser({ password: senha });
     if (error) throw error;
   },
 
