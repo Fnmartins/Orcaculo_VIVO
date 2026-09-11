@@ -53,7 +53,9 @@ Eram três problemas somados:
 
 ## 5. O que falta, em ordem
 
-### Bloco A — destravar o acesso (hoje)
+### Bloco A — destravar o acesso ✅ FEITO 11/09
+(Site URL e Redirect URLs arcanus + `app.arcanus.com.br/**` salvos e testados; `APP_BASE_URL`
+= `https://www.arcanus.com.br`; redefinição de senha do `fmcabr@gmail.com` funcionou.)
 - **A1 (você, Supabase):** Authentication → URL Configuration.
   - Site URL: `https://www.arcanus.com.br`
   - Redirect URLs: `https://www.arcanus.com.br/**`, `https://arcanus.com.br/**`, `arcanus://**`
@@ -87,6 +89,10 @@ Já feito: migrações (`config-planos.sql`, `stripe-migration.sql`), 4 function
 - **D4 — Mapa de Vocação:** escolher efemérides (Moshier recomendado), geocoding (GeoNames offline) e escopo do MVP.
 
 ### Bloco E — backlog técnico
+- **Revisar (pedido do Fabiano 11/09):** depois de salvar a nova senha, o usuário entra direto, sem
+  pedir login de novo. Hoje é proposital (`app/auth/nova-senha.tsx` usa a sessão de recuperação e vai
+  pra `/(tabs)`). Alternativa: `signOut()` após o `updateUser` e mandar pro `/auth/login` com aviso
+  "senha alterada, entre com a nova senha". Decidir e ajustar.
 - Redefinição de senha no **app nativo**: o deep link `arcanus://auth/nova-senha` ainda não consome o token (web resolvida; só importa quando for pras lojas).
 - SEO/Open Graph (`app/+html.tsx`), exclusão de conta real (botão sem ação), teste responsivo do `/planos` (375/768px).
 - Bundle IDs `com.abacusai.oraculovivo` (só pra lojas); projeto antigo `oraculo-vivo.vercel.app`.
