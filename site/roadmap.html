@@ -163,21 +163,28 @@
     <div id="phases"></div>
   </div>
 
-  <footer>Arcanus · Roadmap interno — conteúdo confidencial. Atualizado em <span id="dataAtual">—</span>.</footer>
+  <footer>Arcanus · Roadmap interno. Atualizado em <span id="dataAtual">—</span>.</footer>
 </main>
 
 <script>
   /* =========================================================
-     ⚠️  SENHAS DE ACESSO — TROQUE ESTES VALORES.
-     Cada chave é uma senha; o valor é o nome exibido ao entrar.
-     (Gate simples do lado do cliente: mantém curiosos de fora,
-      mas não é segurança forte — quem abrir o código-fonte vê.
-      Para segurança real depois: login via Supabase.)
+     SENHAS DE ACESSO — guardadas só como SHA-256 (o repo é público).
+     Cada chave é o hash da senha; o valor é o nome exibido ao entrar.
+     Para trocar: gere o hash da nova senha (ex.: `printf %s 'senha' | sha256sum`)
+     e substitua a chave. As senhas em texto ficam fora do git.
+     Gate do lado do cliente: esconde a página de quem visita o site,
+     mas o conteúdo abaixo continua legível no código-fonte e no GitHub.
+     Não coloque aqui nada que não possa ser público.
      ========================================================= */
   var ACESSOS = {
-    "arcanus-fabiano-2026": "Fabiano",
-    "arcanus-parceiro-2026": "Parceiro"
+    "a9de526229cbbd627ca361996db22f1a7a34f7e404d80bd72a20620471b9d474": "Fabiano",
+    "ecd291fae1527090403d77df3a58e738a36387c3421397d9d89686e3cf108a40": "Marcio"
   };
+  function sha256(texto){
+    return crypto.subtle.digest('SHA-256', new TextEncoder().encode(texto)).then(function(buf){
+      return Array.prototype.map.call(new Uint8Array(buf), function(b){ return ('0' + b.toString(16)).slice(-2); }).join('');
+    });
+  }
   var STORE_KEY = "arcanus-roadmap-user";
 
   /* ---------- Conteúdo do roadmap ---------- */
@@ -185,27 +192,32 @@
     { fase:"Marca & Produto", itens:[
       { s:"ok",   t:"Rebrand Oráculo Vivo → Arcanus", d:"Nome, telas, scheme e e-mails trocados em todo o app e deployados." },
       { s:"ok",   t:"6 oráculos no app", d:"Tarô, búzios, numerologia, mapa astral, lei da atração e leitura de imagem." },
-      { s:"run",  t:"Identidade visual do site", d:"Landing e materiais na paleta e nas fontes da marca." }
+      { s:"ok",   t:"Identidade visual do site", d:"Landing e roadmap na paleta e nas fontes da marca." }
     ]},
     { fase:"Infra & Backend", itens:[
       { s:"ok",   t:"Supabase próprio (auth + banco)", d:"Conta do Fabiano, RLS corrigido, cadastro ponta a ponta funcionando." },
-      { s:"ok",   t:"Deploy web (Vercel + Expo)", d:"App no ar; build no servidor, root directory corrigido." }
+      { s:"ok",   t:"Deploy web (Vercel + Expo)", d:"App no ar; build no servidor, root directory corrigido." },
+      { s:"ok",   t:"Recuperação de senha na web", d:"Tela de nova senha e URLs de retorno do Supabase corrigidas (11/09)." }
     ]},
     { fase:"Pagamento (Stripe)", itens:[
-      { s:"ok",    t:"Migração para Stripe (código)", d:"Assinatura recorrente multi-moeda BRL/USD/EUR/CAD; webhook endurecido. Pronto na branch." },
-      { s:"todo",  t:"Teste em test mode + go-live", d:"Cartão 4242, renovação, cancelamento; criar produtos/preços e ligar as chaves." }
+      { s:"ok",    t:"Migração para Stripe", d:"Assinatura recorrente multi-moeda BRL/USD/EUR/CAD, webhook endurecido. No ar desde 10/09." },
+      { s:"ok",    t:"Painel de planos (/manager)", d:"Super-admin cria e atualiza preços na Stripe sem mexer em código." },
+      { s:"run",   t:"Teste em test mode", d:"Portal do cliente pronto; 1 de 3 planos cadastrado. Faltam Explorador, Mestre e o roteiro de compra, renovação e cancelamento." },
+      { s:"todo",  t:"Go-live", d:"Chaves live, planos recadastrados em live, 1 compra e 1 renovação reais." }
     ]},
     { fase:"E-mail & Domínio", itens:[
-      { s:"run",   t:"Domínio arcanus.com.br", d:"DNS em configuração; apontar site e app." },
-      { s:"todo",  t:"Resend + SMTP + templates", d:"Verificar domínio, ligar remetente da marca e o e-mail de boas-vindas." }
+      { s:"run",   t:"Site e app no domínio", d:"Site em arcanus.com.br, app em app.arcanus.com.br. Migração em andamento." },
+      { s:"ok",    t:"Resend + SMTP + templates", d:"Domínio verificado, remetente contato@arcanus.com.br, e-mails com a marca." },
+      { s:"todo",  t:"E-mail de boas-vindas", d:"Ligar a função que envia o e-mail no cadastro." },
+      { s:"todo",  t:"Receber contato@arcanus.com.br", d:"Encaminhar para o Gmail; o endereço já aparece nos Termos." }
     ]},
     { fase:"Site & Marketing", itens:[
-      { s:"ok",    t:"Landing, lista de espera e landing de decisão", d:"Três páginas prontas na estética do Arcanus." },
+      { s:"run",   t:"Landing institucional", d:"Pronta; publicação junto com a migração do domínio." },
       { s:"ok",    t:"Estratégia de marketing", d:"Personas, posicionamento, copy, canais e playbook de lançamento." },
-      { s:"todo",  t:"Lista de espera no Supabase", d:"Rodar o SQL da tabela lista_espera; a página já grava via REST." },
-      { s:"todo",  t:"Campanha de lançamento", d:"Aquecer lista de espera → estreia com oferta de fundador." }
+      { s:"todo",  t:"Campanha de lançamento", d:"Depois do go-live do pagamento, com oferta de fundador." }
     ]},
     { fase:"App / Web — polimento", itens:[
+      { s:"todo",  t:"Perfil rico", d:"Nome completo, hora e local de nascimento num lugar só, pré-preenchendo as ferramentas." },
       { s:"todo",  t:"SEO / Open Graph", d:"Título, descrição e imagem de compartilhamento do app." },
       { s:"todo",  t:"Exclusão de conta real", d:"Implementar o fluxo de deleção (LGPD/lojas)." }
     ]}
@@ -227,14 +239,16 @@
 
   form.addEventListener('submit', function(e){
     e.preventDefault();
-    var nome = ACESSOS[(inp.value||'').trim()];
-    if(nome){
-      try { sessionStorage.setItem(STORE_KEY, nome); } catch(e){}
-      err.textContent=''; entrar(nome);
-    } else {
-      err.textContent = 'Senha incorreta. Tente novamente.';
-      inp.value=''; inp.focus();
-    }
+    sha256((inp.value||'').trim()).then(function(hash){
+      var nome = ACESSOS[hash];
+      if(nome){
+        try { sessionStorage.setItem(STORE_KEY, nome); } catch(e){}
+        err.textContent=''; entrar(nome);
+      } else {
+        err.textContent = 'Senha incorreta. Tente novamente.';
+        inp.value=''; inp.focus();
+      }
+    });
   });
   document.getElementById('sair').addEventListener('click', function(){
     try { sessionStorage.removeItem(STORE_KEY); } catch(e){}

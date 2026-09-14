@@ -2,3 +2,6 @@
 .abacusai/
 .abacus.donotdelete
 Videos/
+
+# Link local da CLI da Vercel (projeto do site)
+site/.vercel/

@@ -1,5 +1,12 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "cleanUrls": true,
-  "trailingSlash": false
+  "trailingSlash": false,
+  "redirects": [
+    {
+      "source": "/:rota(auth|consulta|consultas|ia|jornada|legal|lei-atracao|leitura-do-dia|manager|mapa-astral|mapa-numerologico|matriz-destino|numerologia|onboarding|pagamento|perfil|planos|rituais|welcome)/:resto*",
+      "destination": "https://app.arcanus.com.br/:rota/:resto*",
+      "permanent": false
+    }
+  ]
 }
