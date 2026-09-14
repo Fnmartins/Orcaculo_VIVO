@@ -59,7 +59,7 @@ function corpoEmail(primeiroNome: string | null): string {
       <tr><td align="center" style="padding:14px 40px 8px 40px;">
         <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
           <td align="center" style="border-radius:999px; background-color:#B58B46;">
-            <a href="https://arcanus.com.br" target="_blank" style="display:inline-block; padding:15px 40px; font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; font-size:16px; font-weight:600; color:#FFFCF6; text-decoration:none; border-radius:999px;">Abrir o Arcanus</a>
+            <a href="https://app.arcanus.com.br" target="_blank" style="display:inline-block; padding:15px 40px; font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; font-size:16px; font-weight:600; color:#FFFCF6; text-decoration:none; border-radius:999px;">Abrir o Arcanus</a>
           </td>
         </tr></table>
       </td></tr>

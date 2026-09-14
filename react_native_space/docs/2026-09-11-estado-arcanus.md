@@ -51,6 +51,41 @@ Eram três problemas somados:
 - Push da correção da senha (`08213bc4`) + este documento → deploy Vercel.
 - Memória do projeto atualizada.
 
+## 4.1 Atualização de 14/09 — decisões tomadas e estado conferido
+
+Conferido ao vivo (curl nos domínios, `/planos` em produção, Vercel CLI, histórico das sessões):
+
+- **B1 ✅** portal do cliente com cancelamento ligado (salvo em 11/09, 18h25).
+- **B2 1/3:** `/planos` em produção mostra só o **Iniciante** — a tela só lista plano com `stripe_price_id`,
+  então Explorador e Mestre ainda não foram salvos no `/manager`.
+- **O repo `Fnmartins/Orcaculo_VIVO` é público.** Nenhum `.env` nem chave está versionado (conferido), mas
+  tudo que entra no git é visível. As senhas do roadmap passaram a ser guardadas só como hash.
+- **DNS no registro.br** (`a.sec.dns.br`/`b.sec.dns.br`); `arcanus.com.br` e `www` já apontam pra Vercel.
+
+**D1 decidido — site × app:** site institucional em `arcanus.com.br`/`www`, app em `app.arcanus.com.br`.
+Motivo: é o desenho que o site já assume (CTAs apontam pro `app.`), o app praticamente não tem usuário real
+ainda, e mudar **antes** do go-live evita gravar os secrets live e os preços com o domínio errado.
+O redirecionamento de senha usa `window.location.origin` (`services/auth.ts`), então o app não precisa de
+mudança de código — só Vercel, DNS, URL Configuration e `APP_BASE_URL`. Passo a passo em `site/README.md`.
+
+**Acesso do Marcio decidido:** `marciogayerdacosta@gmail.com` vira super-admin completo. A conta já existe
+no Arcanus (criada em 08/09, `is_super_admin = false` na consulta de 10/09) e era a intenção original do
+`supabase_schema.sql`. Vale saber: a flag libera o `/manager` (cria/arquiva preços na Stripe, checado no
+servidor pela `admin-configurar-plano`) **e** todo recurso premium sem cota (`hooks/usePlano.ts`). Não
+existe papel intermediário. Rever antes do go-live se ele deve manter o acesso ao painel em live mode.
+
+```sql
+update public.perfis
+   set role = 'super_admin', is_super_admin = true
+ where id = (select id from auth.users where email = 'marciogayerdacosta@gmail.com');
+```
+
+**Lista de espera:** fora por enquanto (ver `site/README.md`).
+
+**Ordem daqui pra frente:** (1) SQL do Marcio · (2) salvar Explorador e Mestre no `/manager` + E2E 7.1–7.6 ·
+(3) migração do domínio conforme `site/README.md` · (4) go-live com `APP_BASE_URL=https://app.arcanus.com.br` ·
+(5) boas-vindas, `contato@`, perfil rico, Mapa de Vocação.
+
 ## 5. O que falta, em ordem
 
 ### Bloco A — destravar o acesso ✅ FEITO 11/09
