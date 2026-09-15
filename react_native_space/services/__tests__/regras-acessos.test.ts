@@ -1,4 +1,3 @@
-// @ts-nocheck
 import {
   validarMudancaAdmin,
   ERRO_REMOVER_SI_MESMO,
