@@ -5,3 +5,6 @@ Videos/
 
 # Link local da CLI da Vercel (projeto do site)
 site/.vercel/
+
+# Worktrees locais (desenvolvimento isolado por feature)
+.worktrees/
