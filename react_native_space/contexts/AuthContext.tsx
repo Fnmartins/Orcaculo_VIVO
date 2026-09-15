@@ -3,6 +3,8 @@ import type { Session } from '@supabase/supabase-js';
 import { AuthServico, type Perfil } from '../services/auth';
 import { migrarConsultaPendente } from '../services/consultaPendente';
 
+export const ERRO_SEM_SESSAO = 'Entre na sua conta para editar o perfil.';
+
 interface AuthContextTipo {
   sessao: Session | null;
   perfil: Perfil | null;
@@ -57,7 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [carregarPerfil]);
 
   const atualizarPerfil = useCallback(async (dados: Partial<Perfil>) => {
-    if (!sessao?.user?.id) return;
+    if (!sessao?.user?.id) throw new Error(ERRO_SEM_SESSAO);
     const atualizado = await AuthServico.atualizarPerfil(sessao.user.id, dados);
     setPerfil(atualizado);
   }, [sessao]);

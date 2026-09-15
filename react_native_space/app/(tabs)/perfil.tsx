@@ -102,8 +102,11 @@ export default function TelaPerfil() {
     try {
       await atualizarPerfil({ nome });
       setEditandoNome(false);
-    } catch {
-      mostrarAlerta('Erro', 'Nao foi possivel salvar o nome. Tente novamente.');
+    } catch (e) {
+      mostrarAlerta(
+        'Não foi possível salvar o nome',
+        e instanceof Error && e.message ? e.message : 'Tente novamente.',
+      );
     } finally {
       setSalvandoNome(false);
     }
@@ -208,9 +211,17 @@ export default function TelaPerfil() {
                   }
                 </Pressable>
               </View>
-              <Pressable onPress={abrirEditarNome} style={estilos.nomeContainer}>
+              <Pressable
+                onPress={abrirEditarNome}
+                disabled={!sessao}
+                style={estilos.nomeContainer}
+                accessibilityRole="button"
+                accessibilityLabel={sessao ? 'Editar nome' : undefined}
+              >
                 <Text style={estilos.perfilNome}>{nomeExibido}</Text>
-                <Ionicons name="pencil-outline" size={14} color={Cores.textoSecundario} style={estilos.nomeIconeEditar} />
+                {sessao ? (
+                  <Ionicons name="pencil-outline" size={14} color={Cores.textoSecundario} style={estilos.nomeIconeEditar} />
+                ) : null}
               </Pressable>
               <Text style={estilos.perfilEmail}>{sessao?.user?.email ?? ''}</Text>
               <View style={estilos.perfilBadges}>
@@ -843,10 +854,10 @@ const estilos = StyleSheet.create({
   },
   modalCard: {
     width: '100%',
-    backgroundColor: '#1E1B2E',
+    backgroundColor: Cores.superficie,
     borderRadius: RaioBorda.xl,
     borderWidth: 1,
-    borderColor: 'rgba(212,175,55,0.2)',
+    borderColor: Cores.cardBorda,
     padding: Espacamento.lg,
   },
   modalTitulo: {
@@ -862,15 +873,15 @@ const estilos = StyleSheet.create({
     marginBottom: Espacamento.md,
   },
   modalInput: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Cores.inputFundo,
     borderRadius: RaioBorda.md,
     borderWidth: 1,
-    borderColor: 'rgba(212,175,55,0.25)',
+    borderColor: Cores.inputBorda,
     paddingHorizontal: Espacamento.md,
     paddingVertical: 12,
     fontFamily: Fontes.corpo,
     fontSize: 16,
-    color: Cores.textoClaro,
+    color: Cores.textoPrimario,
     marginBottom: Espacamento.md,
   },
   modalBotoes: {
@@ -881,7 +892,9 @@ const estilos = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     borderRadius: RaioBorda.md,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Cores.fundoClaro,
+    borderWidth: 1,
+    borderColor: Cores.cardBorda,
     alignItems: 'center',
   },
   modalCancelarTexto: {
