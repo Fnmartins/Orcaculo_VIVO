@@ -41,6 +41,11 @@ Supabase precisa apontar pra lá ANTES de o domínio raiz virar o site.**
 8. **Conferir:** `www.arcanus.com.br` mostra a landing, os botões levam ao app, `/roadmap` abre com senha e
    `www.arcanus.com.br/planos` redireciona pro app.
 
+**Login não atravessa endereços:** o navegador guarda a sessão do Supabase separada por endereço, então
+quem está logado em `www.arcanus.com.br` aparece **deslogado** em `app.arcanus.com.br` (e vice-versa) e
+precisa entrar uma vez no endereço novo. Deslogado, o Perfil mostra "Buscador de Luz" com avatar "?".
+Vale avisar os usuários na migração.
+
 **Voltar atrás:** devolver `arcanus.com.br`/`www` ao projeto `oraculo_vivo` (passo 7 ao contrário). O app
 continua respondendo em `app.` e `oraculovivo.vercel.app`, e o Supabase já aceita os dois endereços.
 

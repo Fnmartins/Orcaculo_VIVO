@@ -80,6 +80,28 @@ update public.perfis
  where id = (select id from auth.users where email = 'marciogayerdacosta@gmail.com');
 ```
 
+**Falha de UPDATE em `perfis` — corrigida em produção em 15/09.** Qualquer usuário logado podia gravar
+`is_super_admin`, `plano` e `stripe_customer_id` na própria linha (policy sem limite de coluna + grant de
+UPDATE na tabela inteira). Aplicado no SQL Editor:
+
+```sql
+revoke insert, update, delete, truncate, references, trigger on public.perfis from anon, authenticated;
+grant update (nome, avatar_url, data_nascimento, signo, caminho_espiritual, intencao, xp, nivel, ultima_consulta_em)
+  on public.perfis to authenticated;
+```
+
+Conferido: `has_column_privilege('authenticated','public.perfis','is_super_admin','UPDATE')` = false e
+`nome` = true; simulação como `authenticated` gravando `nome` devolveu a linha. Nenhum abuso encontrado
+(só `fmcabr@gmail.com` e `marciogayerdacosta@gmail.com` são admin; ninguém com plano pago ou Stripe).
+**Não rodar `grant update on public.perfis to authenticated`** — foi o que reabriu a falha uma vez no
+mesmo dia. Colunas novas de perfil (ex.: perfil rico) precisam de `grant update (coluna)` explícito.
+Design completo do painel: `docs/superpowers/specs/2026-09-14-painel-unificado-design.md`.
+
+**DNS do `app` (15/09):** publicado → `909972bdddff1054.vercel-dns-017.com.`; `https://app.arcanus.com.br`
+= 200. Lição: no registro.br, trocar o valor de um CNAME exige dois salvamentos (remover, depois criar), e
+uma linha cinza no painel não garante publicação — conferir o serial do SOA (`nslookup -type=SOA
+arcanus.com.br a.sec.dns.br`), que muda a cada publicação.
+
 **Lista de espera:** fora por enquanto (ver `site/README.md`).
 
 **Ordem daqui pra frente:** (1) SQL do Marcio · (2) salvar Explorador e Mestre no `/manager` + E2E 7.1–7.6 ·
@@ -124,6 +146,18 @@ Já feito: migrações (`config-planos.sql`, `stripe-migration.sql`), 4 function
 - **D4 — Mapa de Vocação:** escolher efemérides (Moshier recomendado), geocoding (GeoNames offline) e escopo do MVP.
 
 ### Bloco E — backlog técnico
+
+**Anotados em 15/09 (pedido do Fabiano: ajustar depois da etapa do painel/domínio):**
+- **Modal "Editar Nome" ilegível.** `app/(tabs)/perfil.tsx`, estilo `modalCard`, fixa `backgroundColor:
+  '#1E1B2E'` (roxo escuro do tema antigo), mas `Cores.textoClaro` virou `#24312D` (escuro) no tema creme
+  do rebrand. Resultado: título, texto digitado e subtítulo escuros sobre fundo escuro — só dá pra ler
+  selecionando. É a única ocorrência de `#1E1B2E` em `app/` e `components/`. Ajuste: fundo do card pelo
+  token de superfície do tema (`Cores.superficie`) em vez da cor fixa, e conferir contraste de título,
+  subtítulo, campo e botões.
+- **Editar nome sem login é ignorado em silêncio.** Sem sessão, o Perfil mostra "Buscador de Luz" e deixa
+  abrir o modal; `AuthContext.atualizarPerfil` retorna sem fazer nada (`if (!sessao?.user?.id) return;`)
+  e o modal fecha como se tivesse salvo. Ajuste: esconder o lápis sem login ou trocar por "Entre para
+  editar", e fazer `atualizarPerfil` falhar de forma visível em vez de retornar calado.
 - **Revisar (pedido do Fabiano 11/09):** depois de salvar a nova senha, o usuário entra direto, sem
   pedir login de novo. Hoje é proposital (`app/auth/nova-senha.tsx` usa a sessão de recuperação e vai
   pra `/(tabs)`). Alternativa: `signOut()` após o `updateUser` e mandar pro `/auth/login` com aviso
