@@ -38,9 +38,22 @@ pública do app, grava na **própria linha** `is_super_admin = true` (abre o `/m
 `admin-configurar-plano`, que confere essa coluna), `plano`/`plano_valido_ate` (acesso pago sem pagar) e
 `stripe_customer_id` (o portal de pagamento abriria o cliente de outra pessoa).
 
-O banco de produção **não foi inspecionado** (CLI não vinculada). A migração começa com uma consulta de
-conferência (ver "Ordem de entrega"). Uma aba de Acessos não faz sentido enquanto qualquer um pode se
-promover, então a correção é a Fase 1 deste trabalho.
+**Confirmado em produção em 14/09** (consultas só leitura no SQL Editor):
+
+- `pg_policies`: UPDATE `((auth.uid() = id) OR is_super_admin())` com `with_check` nulo; SELECT igual.
+  Não há policy de INSERT nem de DELETE (a RLS nega os dois).
+- `role_table_grants`: `anon` e `authenticated` com `DELETE, INSERT, REFERENCES, SELECT, TRIGGER,
+  TRUNCATE, UPDATE` na tabela inteira (padrão do Supabase).
+- Único gatilho: `perfis_atualizado_em` (só carimba a data).
+
+O que é explorável pela API pública: **UPDATE da própria linha, qualquer coluna, por usuário logado.**
+INSERT/DELETE são barrados pela RLS; TRUNCATE não é exposto pelo PostgREST; `anon` não casa com nenhuma
+linha. Uma aba de Acessos não faz sentido enquanto qualquer um pode se promover, então a correção é a
+Fase 1 deste trabalho — e pode ser antecipada sozinha, porque não depende de nenhuma tela.
+
+Edge Functions conferidas: `stripe-webhook`, `criar-checkout-stripe`, `criar-portal-stripe`,
+`admin-configurar-plano` e `enviar-boas-vindas` leem/gravam `perfis` com service role (não são afetadas
+pelos grants); `ia-oraculo` não toca `perfis`.
 
 ## Decisões travadas (brainstorming 2026-09-14)
 
@@ -72,7 +85,7 @@ Arquivo novo `supabase/painel-seguranca-perfis.sql` (idempotente, rodado no SQL 
 SQL deste diretório):
 
 ```sql
-revoke insert, update, delete on public.perfis from anon, authenticated;
+revoke insert, update, delete, truncate, references, trigger on public.perfis from anon, authenticated;
 grant update (nome, avatar_url, data_nascimento, signo, caminho_espiritual, intencao,
               xp, nivel, ultima_consulta_em)
   on public.perfis to authenticated;
@@ -215,8 +228,9 @@ Roteiro manual antes do push (registrar resultado no PR/commit):
 
 ## Ordem de entrega
 
-1. **Conferência do banco real** (SQL Editor, só leitura): `pg_policies` e privilégios de coluna de
-   `perfis`. Se divergir do repo, ajustar a migração antes de rodar.
+1. ~~Conferência do banco real~~ — **feita em 14/09**, bate com o repo (ver "Achado de segurança").
+   O `revoke` de tabela precisa vir **antes** do `grant` por coluna: no Postgres, revogar o privilégio da
+   tabela também remove os de coluna.
 2. **Segurança:** `painel-seguranca-perfis.sql` + `admin-acessos` (function, `config.toml`,
    `_shared/regras-acessos.ts` + testes) + remoção de `services/admin.ts`.
 3. **Moldura** do `/manager` com a aba Planos movida + link "Painel" no Perfil.
