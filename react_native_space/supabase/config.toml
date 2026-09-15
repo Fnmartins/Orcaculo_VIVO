@@ -8,3 +8,8 @@ verify_jwt = false
 # is_super_admin no perfil antes de tocar Stripe/banco (defesa em profundidade).
 [functions.admin-configurar-plano]
 verify_jwt = true
+
+# admin-acessos: exige JWT valido (default). A funcao ainda checa
+# is_super_admin no perfil antes de ler/gravar papeis (defesa em profundidade).
+[functions.admin-acessos]
+verify_jwt = true
