@@ -87,4 +87,43 @@ describe('AbaRoadmap', () => {
     fireEvent.press(screen.getByText('Tentar de novo'));
     expect(await screen.findByText('1 de 2 concluídos')).toBeTruthy();
   });
+
+  it('excluir remove o item (com confirmação) e recarrega a lista', async () => {
+    mockListar.mockResolvedValue(itens);
+    mockExcluir.mockResolvedValue(undefined);
+    render(<AbaRoadmap aoPerderAcesso={jest.fn()} />);
+    fireEvent.press(await screen.findByLabelText('Editar Item A'));
+    fireEvent.press(screen.getByText('Excluir item'));
+    await waitFor(() => expect(mockExcluir).toHaveBeenCalledWith('a'));
+    await waitFor(() => expect(mockListar).toHaveBeenCalledTimes(2));
+  });
+
+  it('falha ao salvar mantém o formulário aberto com os dados digitados', async () => {
+    mockListar.mockResolvedValue(itens);
+    mockAtualizar.mockRejectedValue(new Error('rede'));
+    render(<AbaRoadmap aoPerderAcesso={jest.fn()} />);
+    fireEvent.press(await screen.findByLabelText('Editar Item A'));
+    fireEvent.changeText(screen.getByLabelText('Título'), 'Item A3');
+    fireEvent.press(screen.getByText('Salvar'));
+    await waitFor(() => expect(mockAlerta).toHaveBeenCalledWith('Falha ao salvar', 'rede'));
+    expect(screen.getByLabelText('Título').props.value).toBe('Item A3');
+    expect(mockListar).toHaveBeenCalledTimes(1);
+  });
+
+  it('escolher fase pelo chip usa a fase existente e calcula a ordem', async () => {
+    mockListar.mockResolvedValue(itens);
+    mockCriar.mockResolvedValue({ ...itens[0], id: 'c' });
+    render(<AbaRoadmap aoPerderAcesso={jest.fn()} />);
+    fireEvent.press(await screen.findByText('+ Novo item'));
+    fireEvent.changeText(screen.getByLabelText('Título'), 'Item D');
+    // "Fase 2" aparece duas vezes: como cabeçalho do grupo na lista (renderizado
+    // antes, fora do modal) e como chip dentro do editor (renderizado depois).
+    // O chip é sempre o último da lista de matches, na ordem do documento.
+    const ocorrenciasFase2 = screen.getAllByText('Fase 2');
+    fireEvent.press(ocorrenciasFase2[ocorrenciasFase2.length - 1]);
+    fireEvent.press(screen.getByText('Salvar'));
+    await waitFor(() => expect(mockCriar).toHaveBeenCalledWith({
+      titulo: 'Item D', fase: 'Fase 2', descricao: null, status: 'todo', ordem: 3,
+    }));
+  });
 });
