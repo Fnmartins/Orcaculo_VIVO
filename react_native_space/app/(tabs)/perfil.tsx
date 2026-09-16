@@ -266,7 +266,7 @@ export default function TelaPerfil() {
                   }]}
                 >
                   <MaterialCommunityIcons name="tune-variant" size={20} color={Cores.acento} />
-                  <Text style={{ fontSize: 15, fontWeight: '700', color: Cores.textoClaro }}>Painel de planos</Text>
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: Cores.textoClaro }}>Painel</Text>
                   <Ionicons name="chevron-forward" size={18} color={Cores.textoSecundario} style={{ marginLeft: 'auto' }} />
                 </Pressable>
               </View>
