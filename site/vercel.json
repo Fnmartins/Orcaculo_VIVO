@@ -4,6 +4,11 @@
   "trailingSlash": false,
   "redirects": [
     {
+      "source": "/roadmap",
+      "destination": "https://app.arcanus.com.br/manager?aba=roadmap",
+      "permanent": false
+    },
+    {
       "source": "/:rota(auth|consulta|consultas|ia|jornada|legal|lei-atracao|leitura-do-dia|manager|mapa-astral|mapa-numerologico|matriz-destino|numerologia|onboarding|pagamento|perfil|planos|rituais|welcome)/:resto*",
       "destination": "https://app.arcanus.com.br/:rota/:resto*",
       "permanent": false

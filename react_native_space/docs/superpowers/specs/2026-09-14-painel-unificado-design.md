@@ -2,7 +2,7 @@
 
 - **Data:** 2026-09-14
 - **Branch:** `feat/painel-unificado` (de `main`)
-- **Status:** aprovado no brainstorming, aguardando plano de implementação
+- **Status:** implementado na branch `feat/painel-unificado`; produção pendente (Task 10 do plano `docs/superpowers/plans/2026-09-15-painel-unificado.md`)
 
 ## Contexto e objetivo
 
