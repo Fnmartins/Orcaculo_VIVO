@@ -137,10 +137,9 @@ Já feito: migrações (`config-planos.sql`, `stripe-migration.sql`), 4 function
 - **C2 (Fase E):** receber `contato@arcanus.com.br` (encaminhamento pro Gmail). Termos/Privacidade citam esse endereço.
 
 ### Bloco D — decisões de produto (suas)
-- **D1 — site × app:** hoje `www.arcanus.com.br` é o **app**. O `site/` (landing + roadmap) não está
-  publicado. Se o app for pra `app.arcanus.com.br`, Site URL, Redirect URLs e `APP_BASE_URL` mudam
-  de novo. Decidir antes de mexer. Confirmar se `lista-espera.sql` foi rodado e trocar as senhas
-  placeholder do `roadmap.html`.
+- **D1 — site × app:** ✅ decidido em 14/09 (ver seção 4.1): site em `arcanus.com.br`, app em
+  `app.arcanus.com.br`. O roadmap saiu do site em 15/09 e está no Painel do app
+  (`/manager?aba=roadmap`); a página `roadmap.html` e as senhas dela não existem mais.
 - **D2 — marca:** "Oráculo Vivo" some de vez, vira tagline ("Arcanus — seu oráculo vivo") ou outra tagline. Usar a skill `marketing-arcanus`.
 - **D3 — perfil rico:** spec pronto em `docs/superpowers/specs/2026-09-09-perfil-rico-design.md`, falta plano + código.
 - **D4 — Mapa de Vocação:** escolher efemérides (Moshier recomendado), geocoding (GeoNames offline) e escopo do MVP.
