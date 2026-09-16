@@ -74,4 +74,14 @@ describe('AbaAcessos', () => {
     render(<AbaAcessos aoPerderAcesso={aoPerderAcesso} />);
     await waitFor(() => expect(aoPerderAcesso).toHaveBeenCalled());
   });
+
+  it('falha de rede mostra "Tentar de novo" e recarrega', async () => {
+    mockListar.mockRejectedValueOnce(new Error('rede')).mockResolvedValueOnce([fabiano, marcio]);
+    const aoPerderAcesso = jest.fn();
+    render(<AbaAcessos aoPerderAcesso={aoPerderAcesso} />);
+    expect(await screen.findByText('Não foi possível carregar os usuários.')).toBeTruthy();
+    fireEvent.press(screen.getByText('Tentar de novo'));
+    expect(await screen.findByText('Marcio')).toBeTruthy();
+    expect(aoPerderAcesso).not.toHaveBeenCalled();
+  });
 });
