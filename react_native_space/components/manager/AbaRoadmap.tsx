@@ -7,6 +7,7 @@ import {
   atualizarItemRoadmap, criarItemRoadmap, excluirItemRoadmap, listarRoadmap,
 } from '../../services/roadmap';
 import { ehAcessoNegado } from '../../services/acessoNegado';
+import { ehItemRemovido } from '../../services/itemRemovido';
 import {
   agruparPorFase, calcularProgresso, proximaOrdem, ROTULO_STATUS, type ItemRoadmap,
 } from '../../utils/roadmap';
@@ -48,6 +49,12 @@ export function AbaRoadmap({ aoPerderAcesso }: PropsAbaManager) {
   function tratarFalha(e: unknown, titulo: string) {
     if (ehAcessoNegado(e)) {
       aoPerderAcesso();
+      return;
+    }
+    if (ehItemRemovido(e)) {
+      mostrarAlerta('Item não encontrado', e instanceof Error ? e.message : String(e));
+      setEdicao(null);
+      carregar();
       return;
     }
     mostrarAlerta(titulo, e instanceof Error ? e.message : String(e));

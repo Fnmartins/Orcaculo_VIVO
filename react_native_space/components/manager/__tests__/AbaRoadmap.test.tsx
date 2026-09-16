@@ -19,6 +19,7 @@ jest.mock('../../../utils/alerta', () => ({
 
 import { AbaRoadmap } from '../AbaRoadmap';
 import { AcessoNegadoError } from '../../../services/acessoNegado';
+import { ItemRemovidoError, MENSAGEM_ITEM_REMOVIDO } from '../../../services/itemRemovido';
 
 const datas = { criado_em: '2026-09-15T00:00:00Z', atualizado_em: '2026-09-15T00:00:00Z' };
 const itens = [
@@ -108,6 +109,19 @@ describe('AbaRoadmap', () => {
     await waitFor(() => expect(mockAlerta).toHaveBeenCalledWith('Falha ao salvar', 'rede'));
     expect(screen.getByLabelText('Título').props.value).toBe('Item A3');
     expect(mockListar).toHaveBeenCalledTimes(1);
+  });
+
+  it('item apagado por outro admin mostra aviso, fecha o editor e recarrega', async () => {
+    mockListar.mockResolvedValue(itens);
+    mockAtualizar.mockRejectedValue(new ItemRemovidoError());
+    const aoPerderAcesso = jest.fn();
+    render(<AbaRoadmap aoPerderAcesso={aoPerderAcesso} />);
+    fireEvent.press(await screen.findByLabelText('Editar Item A'));
+    fireEvent.press(screen.getByText('Salvar'));
+    await waitFor(() => expect(mockAlerta).toHaveBeenCalledWith('Item não encontrado', MENSAGEM_ITEM_REMOVIDO));
+    expect(screen.queryByLabelText('Título')).toBeNull();
+    expect(mockListar).toHaveBeenCalledTimes(2);
+    expect(aoPerderAcesso).not.toHaveBeenCalled();
   });
 
   it('escolher fase pelo chip usa a fase existente e calcula a ordem', async () => {

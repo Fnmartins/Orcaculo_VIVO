@@ -1,8 +1,12 @@
 type Resultado = { data: unknown; error: { code?: string; message?: string } | null };
 
 const mockFrom = jest.fn();
+const mockRpc = jest.fn();
 jest.mock('../supabase', () => ({
-  supabase: { from: (...args: unknown[]) => mockFrom(...args) },
+  supabase: {
+    from: (...args: unknown[]) => mockFrom(...args),
+    rpc: (...args: unknown[]) => mockRpc(...args),
+  },
 }));
 
 import {
@@ -26,7 +30,10 @@ const itemA = {
 };
 const dados = { fase: 'A', titulo: 'Item A', descricao: null, status: 'todo' as const, ordem: 1 };
 
-beforeEach(() => mockFrom.mockReset());
+beforeEach(() => {
+  mockFrom.mockReset();
+  mockRpc.mockReset();
+});
 
 describe('services/roadmap', () => {
   it('lista os itens da tabela roadmap_itens', async () => {
@@ -42,12 +49,49 @@ describe('services/roadmap', () => {
 
   it('atualizar sem nenhuma linha afetada vira AcessoNegadoError', async () => {
     mockFrom.mockReturnValue(cadeia({ data: [], error: null }));
+    mockRpc.mockResolvedValue({ data: false, error: null });
     await expect(atualizarItemRoadmap('a', { titulo: 'Novo' })).rejects.toMatchObject({ name: 'AcessoNegadoError' });
+  });
+
+  it('atualizar sem linhas e ainda admin vira ItemRemovidoError', async () => {
+    mockFrom.mockReturnValue(cadeia({ data: [], error: null }));
+    mockRpc.mockResolvedValue({ data: true, error: null });
+    await expect(atualizarItemRoadmap('a', { titulo: 'Novo' })).rejects.toMatchObject({ name: 'ItemRemovidoError' });
   });
 
   it('atualizar devolve a linha gravada', async () => {
     mockFrom.mockReturnValue(cadeia({ data: [{ ...itemA, titulo: 'Novo' }], error: null }));
     await expect(atualizarItemRoadmap('a', { titulo: 'Novo' })).resolves.toMatchObject({ titulo: 'Novo' });
+  });
+
+  it('excluir sem linhas e sem admin vira AcessoNegadoError', async () => {
+    mockFrom.mockReturnValue(cadeia({ data: [], error: null }));
+    mockRpc.mockResolvedValue({ data: false, error: null });
+    await expect(excluirItemRoadmap('a')).rejects.toMatchObject({ name: 'AcessoNegadoError' });
+  });
+
+  it('excluir sem linhas e ainda admin vira ItemRemovidoError', async () => {
+    mockFrom.mockReturnValue(cadeia({ data: [], error: null }));
+    mockRpc.mockResolvedValue({ data: true, error: null });
+    await expect(excluirItemRoadmap('a')).rejects.toMatchObject({ name: 'ItemRemovidoError' });
+  });
+
+  it('listar vazio e sem admin vira AcessoNegadoError', async () => {
+    mockFrom.mockReturnValue(cadeia({ data: [], error: null }));
+    mockRpc.mockResolvedValue({ data: false, error: null });
+    await expect(listarRoadmap()).rejects.toMatchObject({ name: 'AcessoNegadoError' });
+  });
+
+  it('listar vazio e ainda admin resolve lista vazia', async () => {
+    mockFrom.mockReturnValue(cadeia({ data: [], error: null }));
+    mockRpc.mockResolvedValue({ data: true, error: null });
+    await expect(listarRoadmap()).resolves.toEqual([]);
+  });
+
+  it('listar com itens não chama o rpc', async () => {
+    mockFrom.mockReturnValue(cadeia({ data: [itemA], error: null }));
+    await expect(listarRoadmap()).resolves.toEqual([itemA]);
+    expect(mockRpc).not.toHaveBeenCalled();
   });
 
   it('erro comum mantém a mensagem do Supabase', async () => {

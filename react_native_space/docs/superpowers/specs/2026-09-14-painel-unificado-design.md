@@ -201,7 +201,8 @@ Cliente:
 | Situação | Comportamento |
 |---|---|
 | Falha de rede / 5xx em qualquer aba | mensagem na aba + botão "Tentar de novo"; nada é perdido do formulário aberto |
-| `403` da `admin-acessos`, ou RLS negando no roadmap (erro `42501` em insert, ou update/delete que não afeta nenhuma linha) | "Seu acesso de admin foi removido." → `recarregarPerfil()` e volta ao Perfil. O `services/roadmap.ts` pede a linha de volta (`.select()`) para distinguir "nenhuma linha afetada" de sucesso |
+| `403` da `admin-acessos`, erro `42501` no roadmap, ou leitura/escrita do roadmap sem linhas quando `is_super_admin()` responde falso | "Seu acesso de admin foi removido." → `recarregarPerfil()` e volta ao Perfil |
+| Edição ou exclusão do roadmap sem linhas afetadas, mas `is_super_admin()` responde verdadeiro (outro admin apagou o item) | "Este item foi apagado por outro admin. A lista foi recarregada." → fecha o editor e recarrega a lista |
 | `409` (trava) | mostra a mensagem do servidor; lista não muda |
 | Salvar item com título ou fase vazios | validação no cliente antes de enviar (o `check` do banco é a última linha) |
 | Perfil com coluna não liberada (ex.: código futuro gravando `plano` do cliente) | erro `permission denied` — é o comportamento desejado; o plano de implementação confere que nenhum fluxo atual cai nisso |
