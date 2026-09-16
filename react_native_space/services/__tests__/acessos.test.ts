@@ -37,6 +37,11 @@ describe('services/acessos', () => {
     await expect(listarUsuarios()).rejects.toMatchObject({ name: 'AcessoNegadoError' });
   });
 
+  it('401 vira SessaoExpiradaError', async () => {
+    mockInvoke.mockResolvedValue({ data: null, error: erroHttp(401, { erro: 'Sessão expirada' }) });
+    await expect(listarUsuarios()).rejects.toMatchObject({ name: 'SessaoExpiradaError' });
+  });
+
   it('409 traz a mensagem da trava', async () => {
     mockInvoke.mockResolvedValue({
       data: null,

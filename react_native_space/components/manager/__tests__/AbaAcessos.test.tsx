@@ -15,9 +15,14 @@ jest.mock('../../../utils/alerta', () => ({
   mostrarAlerta: (...a: unknown[]) => mockAlerta(...a),
   confirmarAcao: (_titulo: string, _mensagem: string, aoConfirmar: () => void) => aoConfirmar(),
 }));
+const mockReplace = jest.fn();
+jest.mock('expo-router', () => ({
+  router: { replace: (...a: unknown[]) => mockReplace(...a) },
+}));
 
 import { AbaAcessos } from '../AbaAcessos';
 import { AcessoNegadoError } from '../../../services/acessoNegado';
+import { SessaoExpiradaError, MENSAGEM_SESSAO_EXPIRADA } from '../../../services/sessaoExpirada';
 
 const fabiano = {
   id: 'eu', nome: 'Fabiano', email: 'fabiano@exemplo.com',
@@ -73,6 +78,15 @@ describe('AbaAcessos', () => {
     const aoPerderAcesso = jest.fn();
     render(<AbaAcessos aoPerderAcesso={aoPerderAcesso} />);
     await waitFor(() => expect(aoPerderAcesso).toHaveBeenCalled());
+  });
+
+  it('sessão expirada ao listar avisa e manda para o login', async () => {
+    mockListar.mockRejectedValue(new SessaoExpiradaError());
+    const aoPerderAcesso = jest.fn();
+    render(<AbaAcessos aoPerderAcesso={aoPerderAcesso} />);
+    await waitFor(() => expect(mockAlerta).toHaveBeenCalledWith('Sessão expirada', MENSAGEM_SESSAO_EXPIRADA));
+    expect(mockReplace).toHaveBeenCalledWith('/auth/login');
+    expect(aoPerderAcesso).not.toHaveBeenCalled();
   });
 
   it('falha de rede mostra "Tentar de novo" e recarrega', async () => {

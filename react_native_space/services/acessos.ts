@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { AcessoNegadoError } from './acessoNegado';
+import { SessaoExpiradaError } from './sessaoExpirada';
 import type { UsuarioAcesso } from '../utils/acessos';
 
 const FUNCAO = 'admin-acessos';
@@ -7,7 +8,8 @@ const FUNCAO = 'admin-acessos';
 /** supabase-js coloca o Response de respostas não-2xx em `error.context`. */
 async function erroDaFuncao(error: unknown): Promise<Error> {
   const contexto = (error as { context?: { status?: number; json?: () => Promise<unknown> } } | null)?.context;
-  if (contexto?.status === 401 || contexto?.status === 403) return new AcessoNegadoError();
+  if (contexto?.status === 401) return new SessaoExpiradaError();
+  if (contexto?.status === 403) return new AcessoNegadoError();
   let mensagem: string | undefined;
   try {
     const corpo = await contexto?.json?.();
