@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -17,7 +17,7 @@ import { mostrarAlerta } from '../utils/alerta';
 
 export default function Manager() {
   const isSuper = useIsSuperAdmin();
-  const { recarregarPerfil } = useAuth();
+  const { recarregarPerfil, carregando, sessao } = useAuth();
   const { aba: abaParam } = useLocalSearchParams<{ aba?: string | string[] }>();
   const aba = resolverAba(abaParam);
 
@@ -39,7 +39,20 @@ export default function Manager() {
           <Text style={estilos.titulo}>Painel</Text>
         </View>
 
-        {!isSuper ? (
+        {carregando ? (
+          <ActivityIndicator style={estilos.carregando} color={Cores.acento} />
+        ) : !sessao ? (
+          <View style={estilos.semSessao}>
+            <Text style={estilos.semSessaoTexto}>Entre na sua conta para abrir o Painel.</Text>
+            <Pressable
+              onPress={() => router.push('/auth/login')}
+              style={estilos.botaoEntrar}
+              accessibilityRole="button"
+            >
+              <Text style={estilos.botaoEntrarTexto}>Entrar</Text>
+            </Pressable>
+          </View>
+        ) : !isSuper ? (
           <Text style={estilos.restrito}>Acesso restrito.</Text>
         ) : (
           <>
@@ -101,6 +114,16 @@ const estilos = StyleSheet.create({
     marginTop: 48,
     textAlign: 'center',
   },
+  carregando: { marginTop: 48 },
+  semSessao: { marginTop: 48, paddingHorizontal: Espacamento.lg, gap: Espacamento.md, alignItems: 'center' },
+  semSessaoTexto: { fontFamily: Fontes.corpo, fontSize: 13, color: Cores.textoSecundario, textAlign: 'center' },
+  botaoEntrar: {
+    backgroundColor: Cores.acento,
+    borderRadius: RaioBorda.full,
+    paddingVertical: 10,
+    paddingHorizontal: Espacamento.xl,
+  },
+  botaoEntrarTexto: { fontFamily: Fontes.corpoNegrito, fontSize: 15, color: '#fff' },
   abas: {
     flexDirection: 'row',
     marginHorizontal: Espacamento.lg,

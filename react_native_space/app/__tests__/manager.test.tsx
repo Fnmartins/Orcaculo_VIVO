@@ -5,15 +5,19 @@ import {
 
 const mockSetParams = jest.fn();
 const mockReplace = jest.fn();
+const mockPush = jest.fn();
 const mockRecarregarPerfil = jest.fn().mockResolvedValue(undefined);
 const mockMostrarAlerta = jest.fn();
 let mockParams: { aba?: string } = {};
 let mockIsSuper = true;
+let mockCarregando = false;
+let mockSessao: { user: { id: string } } | null = { user: { id: 'eu' } };
 
 jest.mock('expo-router', () => ({
   router: {
     back: jest.fn(),
     replace: (...args: unknown[]) => mockReplace(...args),
+    push: (...args: unknown[]) => mockPush(...args),
     canGoBack: () => false,
     setParams: (...args: unknown[]) => mockSetParams(...args),
   },
@@ -30,7 +34,11 @@ jest.mock('../../components/GradientBackground', () => {
 });
 jest.mock('../../hooks/useAdmin', () => ({ useIsSuperAdmin: () => mockIsSuper }));
 jest.mock('../../contexts/AuthContext', () => ({
-  useAuth: () => ({ recarregarPerfil: mockRecarregarPerfil }),
+  useAuth: () => ({
+    recarregarPerfil: mockRecarregarPerfil,
+    carregando: mockCarregando,
+    sessao: mockSessao,
+  }),
 }));
 jest.mock('../../utils/alerta', () => ({ mostrarAlerta: (...args: unknown[]) => mockMostrarAlerta(...args) }));
 jest.mock('../../components/manager/AbaPlanos', () => {
@@ -64,8 +72,11 @@ import Manager from '../manager';
 beforeEach(() => {
   mockParams = {};
   mockIsSuper = true;
+  mockCarregando = false;
+  mockSessao = { user: { id: 'eu' } };
   mockSetParams.mockClear();
   mockReplace.mockClear();
+  mockPush.mockClear();
   mockRecarregarPerfil.mockClear();
   mockMostrarAlerta.mockClear();
 });
@@ -76,6 +87,22 @@ describe('Painel (/manager)', () => {
     render(<Manager />);
     expect(screen.getByText('Acesso restrito.')).toBeTruthy();
     expect(screen.queryByText('conteudo-planos')).toBeNull();
+  });
+
+  it('carregando não mostra acesso restrito nem conteúdo de aba', () => {
+    mockCarregando = true;
+    render(<Manager />);
+    expect(screen.queryByText('Acesso restrito.')).toBeNull();
+    expect(screen.queryByText('conteudo-planos')).toBeNull();
+  });
+
+  it('sem sessão mostra convite para entrar, e "Entrar" leva ao login', () => {
+    mockSessao = null;
+    render(<Manager />);
+    expect(screen.getByText('Entre na sua conta para abrir o Painel.')).toBeTruthy();
+    expect(screen.queryByText('Acesso restrito.')).toBeNull();
+    fireEvent.press(screen.getByText('Entrar'));
+    expect(mockPush).toHaveBeenCalledWith('/auth/login');
   });
 
   it('abre em Planos sem ?aba=', () => {
