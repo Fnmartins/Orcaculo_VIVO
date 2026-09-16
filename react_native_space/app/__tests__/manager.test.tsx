@@ -1,14 +1,19 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  fireEvent, render, screen, waitFor,
+} from '@testing-library/react-native';
 
 const mockSetParams = jest.fn();
+const mockReplace = jest.fn();
+const mockRecarregarPerfil = jest.fn().mockResolvedValue(undefined);
+const mockMostrarAlerta = jest.fn();
 let mockParams: { aba?: string } = {};
 let mockIsSuper = true;
 
 jest.mock('expo-router', () => ({
   router: {
     back: jest.fn(),
-    replace: jest.fn(),
+    replace: (...args: unknown[]) => mockReplace(...args),
     canGoBack: () => false,
     setParams: (...args: unknown[]) => mockSetParams(...args),
   },
@@ -25,16 +30,29 @@ jest.mock('../../components/GradientBackground', () => {
 });
 jest.mock('../../hooks/useAdmin', () => ({ useIsSuperAdmin: () => mockIsSuper }));
 jest.mock('../../contexts/AuthContext', () => ({
-  useAuth: () => ({ recarregarPerfil: jest.fn().mockResolvedValue(undefined) }),
+  useAuth: () => ({ recarregarPerfil: mockRecarregarPerfil }),
 }));
-jest.mock('../../utils/alerta', () => ({ mostrarAlerta: jest.fn() }));
+jest.mock('../../utils/alerta', () => ({ mostrarAlerta: (...args: unknown[]) => mockMostrarAlerta(...args) }));
 jest.mock('../../components/manager/AbaPlanos', () => {
   const { Text } = require('react-native');
   return { AbaPlanos: () => <Text>conteudo-planos</Text> };
 });
 jest.mock('../../components/manager/AbaRoadmap', () => {
-  const { Text } = require('react-native');
-  return { AbaRoadmap: () => <Text>conteudo-roadmap</Text> };
+  const { Text, Pressable } = require('react-native');
+  return {
+    AbaRoadmap: (props: { aoPerderAcesso: () => void }) => (
+      <>
+        <Text>conteudo-roadmap</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="perder-acesso"
+          onPress={() => props.aoPerderAcesso()}
+        >
+          <Text>perder-acesso</Text>
+        </Pressable>
+      </>
+    ),
+  };
 });
 jest.mock('../../components/manager/AbaAcessos', () => {
   const { Text } = require('react-native');
@@ -47,6 +65,9 @@ beforeEach(() => {
   mockParams = {};
   mockIsSuper = true;
   mockSetParams.mockClear();
+  mockReplace.mockClear();
+  mockRecarregarPerfil.mockClear();
+  mockMostrarAlerta.mockClear();
 });
 
 describe('Painel (/manager)', () => {
@@ -72,5 +93,19 @@ describe('Painel (/manager)', () => {
     render(<Manager />);
     fireEvent.press(screen.getByRole('tab', { name: 'Roadmap' }));
     expect(mockSetParams).toHaveBeenCalledWith({ aba: 'roadmap' });
+  });
+
+  it('ao perder acesso, avisa, recarrega o perfil e volta para o Perfil', async () => {
+    mockParams = { aba: 'roadmap' };
+    render(<Manager />);
+
+    fireEvent.press(screen.getByRole('button', { name: 'perder-acesso' }));
+
+    expect(mockMostrarAlerta).toHaveBeenCalledWith(
+      'Acesso removido',
+      'Seu acesso de admin foi removido.',
+    );
+    expect(mockRecarregarPerfil).toHaveBeenCalled();
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/perfil'));
   });
 });
