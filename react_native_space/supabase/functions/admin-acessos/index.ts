@@ -36,8 +36,12 @@ Deno.serve(async (request) => {
   const { data: auth, error: erroAuth } = await supabaseAdmin.auth.getUser(jwt);
   if (erroAuth || !auth?.user) return resposta({ erro: 'Sem sessão' }, 401);
   const solicitanteId = auth.user.id;
-  const { data: solicitante } = await supabaseAdmin
+  const { data: solicitante, error: erroSolicitante } = await supabaseAdmin
     .from('perfis').select('is_super_admin').eq('id', solicitanteId).maybeSingle();
+  if (erroSolicitante) {
+    console.error('falha ao ler perfil do solicitante', erroSolicitante.message);
+    return resposta({ erro: 'Falha ao conferir o acesso' }, 502);
+  }
   if (!solicitante?.is_super_admin) return resposta({ erro: 'Acesso negado' }, 403);
 
   // 2) Corpo.
