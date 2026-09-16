@@ -2785,9 +2785,9 @@ Expected: `ok 10`, `run 3`, `todo 7` (20 no total).
 
 ```sql
 select policyname, cmd from pg_policies where schemaname = 'public' and tablename = 'roadmap_itens' order by cmd;
-select has_table_privilege('anon', 'public.roadmap_itens', 'SELECT') as anon_le;
+select has_table_privilege('anon', 'public.roadmap_itens', 'SELECT') as anon_le, has_table_privilege('authenticated', 'public.roadmap_itens', 'TRUNCATE') as auth_truncate;
 ```
-Expected: 4 policies (DELETE, INSERT, SELECT, UPDATE); `anon_le = false`.
+Expected: 4 policies (DELETE, INSERT, SELECT, UPDATE); `anon_le = false`; `auth_truncate = false`.
 
 - [ ] **Step 3: Banco — trava de `perfis` continua fechada**
 

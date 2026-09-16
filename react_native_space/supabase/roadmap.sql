@@ -19,8 +19,10 @@ create table if not exists public.roadmap_itens (
 
 alter table public.roadmap_itens enable row level security;
 
--- O Supabase dá privilégios a anon em tabelas novas do schema public: tirar.
-revoke all on public.roadmap_itens from anon;
+-- O Supabase dá todos os privilégios (inclusive TRUNCATE, que ignora a RLS) a anon e
+-- authenticated em tabelas novas do schema public. Padrão fechado: tira tudo e devolve
+-- só o que o app usa.
+revoke all on public.roadmap_itens from anon, authenticated;
 grant select, insert, update, delete on public.roadmap_itens to authenticated;
 
 drop policy if exists "roadmap super admin le" on public.roadmap_itens;
