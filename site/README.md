@@ -26,9 +26,10 @@ Os CTAs de entrada da landing ("Fazer minha primeira leitura", "Assinar", etc.) 
 > `APP_BASE_URL` apontando pro `app`.
 >
 > **Diferenças em relação ao roteiro abaixo:**
-> - O projeto `arcanus-site` foi criado pela CLI (`vercel deploy --prod` a partir de `site/`) e **ainda não está
->   ligado ao GitHub**: mudança no site só vai ao ar rodando `vercel deploy --prod --scope fnmartins-projects`
->   dentro de `site/`, até alguém conectar o repo em Settings → Git (Root Directory = `site`).
+> - O projeto `arcanus-site` foi criado pela CLI e, em 17/09, **ligado ao GitHub** (`Fnmartins/Orcaculo_VIVO`,
+>   branch `main`, Root Directory `site`): `git push` publica o site. Para não gastar build à toa, o projeto usa
+>   o Ignored Build Step `git diff --quiet HEAD^ HEAD ./` — push que não mexe em `site/` não gera deploy do site.
+>   (Deploy manual continua possível com `vercel deploy --prod --scope fnmartins-projects` dentro de `site/`.)
 > - O 308 de `arcanus.com.br` → `www` que existia no projeto do app sumiu na troca e foi recriado em 17/09 no
 >   `arcanus-site`. O botão Save do painel não habilitou; foi aplicado pela API (o mesmo endpoint do painel):
 >   `MSYS_NO_PATHCONV=1 vercel api /v9/projects/arcanus-site/domains/arcanus.com.br -X PATCH -f redirect=www.arcanus.com.br -F redirectStatusCode=308 --scope fnmartins-projects`
