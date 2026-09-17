@@ -102,6 +102,17 @@ Design completo do painel: `docs/superpowers/specs/2026-09-14-painel-unificado-d
 uma linha cinza no painel não garante publicação — conferir o serial do SOA (`nslookup -type=SOA
 arcanus.com.br a.sec.dns.br`), que muda a cada publicação.
 
+**Painel unificado em produção (16/09).** `/manager` com abas Planos, Roadmap e Acessos
+(spec `docs/superpowers/specs/2026-09-14-painel-unificado-design.md`, plano
+`docs/superpowers/plans/2026-09-15-painel-unificado.md`). Produção feita na ordem do plano:
+`supabase/roadmap.sql` rodado (20 itens, 4 policies, sem acesso de `anon` nem TRUNCATE de `authenticated`),
+trava de `perfis` conferida `FECHADA`, função `admin-acessos` publicada (401 sem login), push
+`62d05f09..5fa45121` e deploy Vercel com o bundle novo conferido. Roteiro manual do Fabiano: **tudo ok**
+(Perfil sem login, modal de nome, conta comum barrada, `/manager` sem login com botão Entrar, Planos com
+**Explorador e Mestre salvos — B2 concluído**, Roadmap, Acessos e link `?aba=`). O `roadmap.html` com senha
+saiu do site; o roadmap agora é editado no Painel. Abrir `app.arcanus.com.br` sem login cai na Início de
+propósito (modo livre): login só é pedido pra Perfil, planos e Painel.
+
 **Lista de espera:** fora por enquanto (ver `site/README.md`).
 
 **Ordem daqui pra frente:** (1) SQL do Marcio · (2) salvar Explorador e Mestre no `/manager` + E2E 7.1–7.6 ·

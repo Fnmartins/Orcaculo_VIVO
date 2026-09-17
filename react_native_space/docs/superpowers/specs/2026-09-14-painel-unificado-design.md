@@ -2,7 +2,7 @@
 
 - **Data:** 2026-09-14
 - **Branch:** `feat/painel-unificado` (de `main`)
-- **Status:** implementado na branch `feat/painel-unificado`; produção pendente (Task 10 do plano `docs/superpowers/plans/2026-09-15-painel-unificado.md`)
+- **Status:** em produção desde 16/09/2026 (roteiro manual aprovado; ver `docs/2026-09-11-estado-arcanus.md`, seção 4.1)
 
 ## Contexto e objetivo
 
