@@ -29,9 +29,10 @@ Os CTAs de entrada da landing ("Fazer minha primeira leitura", "Assinar", etc.) 
 > - O projeto `arcanus-site` foi criado pela CLI (`vercel deploy --prod` a partir de `site/`) e **ainda não está
 >   ligado ao GitHub**: mudança no site só vai ao ar rodando `vercel deploy --prod --scope fnmartins-projects`
 >   dentro de `site/`, até alguém conectar o repo em Settings → Git (Root Directory = `site`).
-> - `arcanus.com.br` e `www` hoje servem a landing **os dois**, sem redirecionamento entre eles. O 308 de
->   `arcanus.com.br` → `www` que existia no projeto do app sumiu na troca; recriar em `arcanus-site` →
->   Settings → Domains → `arcanus.com.br` → Edit → Redirect to `www.arcanus.com.br` (308).
+> - O 308 de `arcanus.com.br` → `www` que existia no projeto do app sumiu na troca e foi recriado em 17/09 no
+>   `arcanus-site`. O botão Save do painel não habilitou; foi aplicado pela API (o mesmo endpoint do painel):
+>   `MSYS_NO_PATHCONV=1 vercel api /v9/projects/arcanus-site/domains/arcanus.com.br -X PATCH -f redirect=www.arcanus.com.br -F redirectStatusCode=308 --scope fnmartins-projects`
+>   (no Git Bash, sem `MSYS_NO_PATHCONV=1` o caminho `/v9/...` é convertido pra caminho do Windows e a CLI recusa).
 > - A Vercel não deixa tirar o `www` de um projeto enquanto outro domínio desse projeto redireciona pra ele:
 >   mova primeiro o domínio que redireciona (o raiz) e depois o `www`.
 
