@@ -20,6 +20,21 @@ Os CTAs de entrada da landing ("Fazer minha primeira leitura", "Assinar", etc.) 
 
 ## Migração do domínio (decidida em 14/09) — nesta ordem, sem derrubar o app
 
+> **✅ Concluída em 17/09/2026.** `arcanus.com.br` e `www.arcanus.com.br` estão no projeto Vercel
+> `arcanus-site` (landing); `app.arcanus.com.br` no `oraculo_vivo` (app). Conferido: landing nos dois
+> endereços, botões levando ao app, `/roadmap` → Painel, `/planos` → app; Site URL do Supabase e
+> `APP_BASE_URL` apontando pro `app`.
+>
+> **Diferenças em relação ao roteiro abaixo:**
+> - O projeto `arcanus-site` foi criado pela CLI (`vercel deploy --prod` a partir de `site/`) e **ainda não está
+>   ligado ao GitHub**: mudança no site só vai ao ar rodando `vercel deploy --prod --scope fnmartins-projects`
+>   dentro de `site/`, até alguém conectar o repo em Settings → Git (Root Directory = `site`).
+> - `arcanus.com.br` e `www` hoje servem a landing **os dois**, sem redirecionamento entre eles. O 308 de
+>   `arcanus.com.br` → `www` que existia no projeto do app sumiu na troca; recriar em `arcanus-site` →
+>   Settings → Domains → `arcanus.com.br` → Edit → Redirect to `www.arcanus.com.br` (308).
+> - A Vercel não deixa tirar o `www` de um projeto enquanto outro domínio desse projeto redireciona pra ele:
+>   mova primeiro o domínio que redireciona (o raiz) e depois o `www`.
+
 O DNS de `arcanus.com.br` fica no **registro.br** (não na Vercel), e os dois domínios já apontam pra
 Vercel. Por isso mover `arcanus.com.br`/`www` de projeto não exige mexer no DNS; só o `app` é novo.
 A regra que evita repetir o bug do link de senha: **o app precisa responder em `app.arcanus.com.br` e o

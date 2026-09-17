@@ -113,6 +113,12 @@ trava de `perfis` conferida `FECHADA`, função `admin-acessos` publicada (401 s
 saiu do site; o roadmap agora é editado no Painel. Abrir `app.arcanus.com.br` sem login cai na Início de
 propósito (modo livre): login só é pedido pra Perfil, planos e Painel.
 
+**Site institucional no domínio (17/09).** `arcanus.com.br` e `www.arcanus.com.br` servem a landing
+(projeto Vercel `arcanus-site`); o app ficou só em `app.arcanus.com.br` (projeto `oraculo_vivo`). Antes
+da troca: Site URL do Supabase trocada pra `https://app.arcanus.com.br` e `APP_BASE_URL` já no `app`.
+Pendências pequenas registradas em `site/README.md`: ligar o `arcanus-site` ao GitHub (hoje deploy do site
+é manual pela CLI) e recriar o redirecionamento 308 `arcanus.com.br` → `www`.
+
 **Lista de espera:** fora por enquanto (ver `site/README.md`).
 
 **Ordem daqui pra frente:** (1) SQL do Marcio · (2) salvar Explorador e Mestre no `/manager` + E2E 7.1–7.6 ·
