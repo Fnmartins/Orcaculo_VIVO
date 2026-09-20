@@ -116,14 +116,19 @@ propósito (modo livre): login só é pedido pra Perfil, planos e Painel.
 **Site institucional no domínio (17/09).** `arcanus.com.br` e `www.arcanus.com.br` servem a landing
 (projeto Vercel `arcanus-site`); o app ficou só em `app.arcanus.com.br` (projeto `oraculo_vivo`). Antes
 da troca: Site URL do Supabase trocada pra `https://app.arcanus.com.br` e `APP_BASE_URL` já no `app`.
-Pendências pequenas registradas em `site/README.md`: ligar o `arcanus-site` ao GitHub (hoje deploy do site
-é manual pela CLI) e recriar o redirecionamento 308 `arcanus.com.br` → `www`.
+As duas pendências pequenas foram fechadas no mesmo dia: o `arcanus-site` foi ligado ao GitHub
+(`Fnmartins/Orcaculo_VIVO`, branch `main`, Root Directory `site`, Ignored Build Step
+`git diff --quiet HEAD^ HEAD ./`), então um `git push` que toca `site/` publica a landing; e o 308
+`arcanus.com.br` → `www` foi recriado no `arcanus-site` pela API, porque o Save do painel não habilitava.
+Detalhes, o comando exato e a ordem correta de mover o `www` estão em `site/README.md`.
 
 **Lista de espera:** fora por enquanto (ver `site/README.md`).
 
-**Ordem daqui pra frente:** (1) SQL do Marcio · (2) salvar Explorador e Mestre no `/manager` + E2E 7.1–7.6 ·
-(3) migração do domínio conforme `site/README.md` · (4) go-live com `APP_BASE_URL=https://app.arcanus.com.br` ·
-(5) boas-vindas, `contato@`, perfil rico, Mapa de Vocação.
+**Ordem daqui pra frente (revisada em 20/09):** (1) SQL do Marcio · (2) E2E 7.0–7.6 em test mode ·
+(3) go-live (secrets live, novo `whsec_`, recadastrar os 3 planos em live, 1 compra + 1 renovação reais) ·
+(4) boas-vindas, `contato@`, perfil rico, Mapa de Vocação.
+Já saíram da fila desde 14/09: painel unificado em produção (16/09), Explorador e Mestre salvos (B2) e a
+migração do domínio (17/09).
 
 ## 5. O que falta, em ordem
 
@@ -142,11 +147,13 @@ Pendências pequenas registradas em `site/README.md`: ligar o `arcanus-site` ao 
 ### Bloco B — Stripe Task 10 (test mode). Runbook: `docs/superpowers/task-10-stripe-execution.md`
 Já feito: migrações (`config-planos.sql`, `stripe-migration.sql`), 4 functions, secrets
 `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`, webhook endpoint na sandbox.
-- **B1:** confirmar que o Customer Portal ficou ativado na sandbox.
-- **B2:** `/manager` logado como `fmcabr@gmail.com` → cadastrar os 3 planos (cria Products/Prices).
-  Preços não-BRL ainda são provisórios.
-- **B3:** E2E 7.0–7.6 (compra 4242, renovação, cancelamento, recusado 4000…0002, idempotência, troca de preço).
-- **B4:** go-live: secrets live, novo `whsec_` live, recadastrar planos em live, 1 compra + 1 renovação reais.
+- **B1 ✅ (11/09):** Customer Portal ativado na sandbox, com cancelamento permitido.
+- **B2 ✅ (16/09):** os 3 planos salvos pelo `/manager` — Iniciante em 11/09, Explorador e Mestre no roteiro
+  do painel unificado. Preços não-BRL ainda são provisórios.
+- **B3 ← é aqui que estamos:** E2E 7.0–7.6 (compra 4242, renovação, cancelamento, recusado 4000…0002,
+  idempotência, troca de preço). Roteiro e queries em `docs/superpowers/task-10-stripe-execution.md` §7.
+- **B4:** go-live: secrets live, novo `whsec_` live, `APP_BASE_URL=https://app.arcanus.com.br`,
+  recadastrar os planos em live, 1 compra + 1 renovação reais.
 
 ### Bloco C — domínio e e-mail
 - **C1 (Fase D):** e-mail de boas-vindas — secrets `RESEND_API_KEY`/`WELCOME_HOOK_SECRET`/`REMETENTE_EMAIL`,
@@ -164,16 +171,12 @@ Já feito: migrações (`config-planos.sql`, `stripe-migration.sql`), 4 function
 ### Bloco E — backlog técnico
 
 **Anotados em 15/09 (pedido do Fabiano: ajustar depois da etapa do painel/domínio):**
-- **Modal "Editar Nome" ilegível.** `app/(tabs)/perfil.tsx`, estilo `modalCard`, fixa `backgroundColor:
-  '#1E1B2E'` (roxo escuro do tema antigo), mas `Cores.textoClaro` virou `#24312D` (escuro) no tema creme
-  do rebrand. Resultado: título, texto digitado e subtítulo escuros sobre fundo escuro — só dá pra ler
-  selecionando. É a única ocorrência de `#1E1B2E` em `app/` e `components/`. Ajuste: fundo do card pelo
-  token de superfície do tema (`Cores.superficie`) em vez da cor fixa, e conferir contraste de título,
-  subtítulo, campo e botões.
-- **Editar nome sem login é ignorado em silêncio.** Sem sessão, o Perfil mostra "Buscador de Luz" e deixa
-  abrir o modal; `AuthContext.atualizarPerfil` retorna sem fazer nada (`if (!sessao?.user?.id) return;`)
-  e o modal fecha como se tivesse salvo. Ajuste: esconder o lápis sem login ou trocar por "Entre para
-  editar", e fazer `atualizarPerfil` falhar de forma visível em vez de retornar calado.
+- **Modal "Editar Nome" ilegível ✅ resolvido em 16/09** (junto com o painel unificado). O card do modal
+  passou a usar os tokens do tema creme (`Cores.superficie`, `Cores.inputFundo`, `Cores.textoPrimario`);
+  o `#1E1B2E` fixo não existe mais em `app/` nem em `components/`.
+- **Editar nome sem login ✅ resolvido em 16/09.** Sem sessão o lápis nem aparece, e
+  `AuthContext.atualizarPerfil` lança `ERRO_SEM_SESSAO` (`contexts/AuthContext.tsx:62`) em vez de retornar
+  calado com o modal fechando como se tivesse salvo.
 - **Revisar (pedido do Fabiano 11/09):** depois de salvar a nova senha, o usuário entra direto, sem
   pedir login de novo. Hoje é proposital (`app/auth/nova-senha.tsx` usa a sessão de recuperação e vai
   pra `/(tabs)`). Alternativa: `signOut()` após o `updateUser` e mandar pro `/auth/login` com aviso
