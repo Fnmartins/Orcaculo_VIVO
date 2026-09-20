@@ -194,4 +194,6 @@ Já feito: migrações (`config-planos.sql`, `stripe-migration.sql`), 4 function
 
 ## 7. Como retomar
 
-> **"continua Arcanus: ler `react_native_space/docs/2026-09-11-estado-arcanus.md` e seguir do Bloco A"**
+> **"continua Arcanus: ler `react_native_space/docs/2026-09-11-estado-arcanus.md` e seguir do Bloco B3"**
+
+(Blocos A, B1, B2 e D1 estão fechados; B3 = E2E 7.0–7.6 em test mode, com o 7.0 já conferido em 20/09.)
