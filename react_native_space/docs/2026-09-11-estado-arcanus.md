@@ -80,6 +80,13 @@ update public.perfis
  where id = (select id from auth.users where email = 'marciogayerdacosta@gmail.com');
 ```
 
+**✅ Aplicado em 20/09.** Na mesma passada, o `role` do `fmcabr@gmail.com` foi normalizado para
+`super_admin` (estava `usuario` com `is_super_admin = true`, porque a linha foi feita na mão antes do
+painel existir; o painel grava os dois campos). Hoje quem decide acesso é **só** a coluna
+`is_super_admin` — `public.is_super_admin()`, `admin-acessos`, `admin-configurar-plano` e o
+`useIsSuperAdmin` do `app/manager.tsx` leem só ela; `useRole`/`useIsAdmin` não têm consumidor. A
+normalização é defesa contra alguém passar a checar `role` um dia.
+
 **Falha de UPDATE em `perfis` — corrigida em produção em 15/09.** Qualquer usuário logado podia gravar
 `is_super_admin`, `plano` e `stripe_customer_id` na própria linha (policy sem limite de coluna + grant de
 UPDATE na tabela inteira). Aplicado no SQL Editor:
@@ -124,11 +131,11 @@ Detalhes, o comando exato e a ordem correta de mover o `www` estão em `site/REA
 
 **Lista de espera:** fora por enquanto (ver `site/README.md`).
 
-**Ordem daqui pra frente (revisada em 20/09):** (1) SQL do Marcio · (2) E2E 7.0–7.6 em test mode ·
-(3) go-live (secrets live, novo `whsec_`, recadastrar os 3 planos em live, 1 compra + 1 renovação reais) ·
-(4) boas-vindas, `contato@`, perfil rico, Mapa de Vocação.
-Já saíram da fila desde 14/09: painel unificado em produção (16/09), Explorador e Mestre salvos (B2) e a
-migração do domínio (17/09).
+**Ordem daqui pra frente (revisada em 20/09):** (1) E2E 7.0–7.6 em test mode, com o 7.0 já conferido ·
+(2) go-live (secrets live, novo `whsec_`, preços EUR/USD revisados, recadastrar os 3 planos em live,
+1 compra + 1 renovação reais) · (3) boas-vindas, `contato@`, perfil rico, Mapa de Vocação.
+Já saíram da fila desde 14/09: painel unificado em produção (16/09), Explorador e Mestre salvos (B2), a
+migração do domínio (17/09) e o acesso do Marcio (20/09).
 
 ## 5. O que falta, em ordem
 
