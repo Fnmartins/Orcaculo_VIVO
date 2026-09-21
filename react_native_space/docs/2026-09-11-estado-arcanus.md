@@ -131,6 +131,28 @@ Detalhes, o comando exato e a ordem correta de mover o `www` estão em `site/REA
 
 **Lista de espera:** fora por enquanto (ver `site/README.md`).
 
+**Benefícios dos planos — entregue × a construir (21/09).** Regra decidida pelo Fabiano: o cartão do
+`/planos` mostra só o que o app entrega hoje; o resto fica aqui até existir. Quando houver o interruptor
+por benefício no `/manager`, cada linha abaixo vira um benefício cadastrado **desligado**, e ligar não
+exige refazer nada.
+
+| Recurso | Plano(s) | Estado |
+|---|---|---|
+| Leitura em áudio | Iniciante, Explorador | a construir (voz sintetizada a partir do texto) |
+| Vídeo personalizado | a definir | revisar o que seria antes de construir |
+| Envio automático configurável — WhatsApp, texto ou áudio, 1 ou 2 vezes por dia, leitura diária e resumos diário/semanal/mensal, manual ou automático | Explorador em diante | a construir; depende da API oficial do WhatsApp (cobrança por mensagem, desde 01/07/2025; em reais no Brasil desde 01/07/2026) e da auditoria de custo |
+| Prioridade no suporte | Mestre | depende do `contato@arcanus.com.br` receber e-mail |
+| Conteúdo exclusivo mensal | Mestre | a construir |
+| Relatórios personalizados | Mestre | a construir |
+| Desconto em consultas extras | Mestre | depende de existir consulta avulsa para vender |
+| Interruptor por plano ("visível na vitrine") e por benefício | todos | próximo pacote do `/manager`, junto com o semáforo de uso |
+| Auditoria de custo por plano (taxa Stripe, IA por leitura, WhatsApp) | todos | antes de ligar o envio automático |
+
+No ar hoje: Iniciante (1 leitura por semana, leituras em texto, histórico); Explorador (leituras
+ilimitadas, texto, análise de imagem, rituais guiados, jornada, compartilhar leituras); Mestre (tudo do
+Explorador, 1 consulta ao vivo de 30 min por mês com oraculista, acesso antecipado a novidades). A
+consulta ao vivo depende de pessoas escaladas para atender — confirmado pelo Fabiano em 21/09.
+
 **Ordem daqui pra frente (revisada em 21/09, depois do go-live):** (1) tirar dos cartões de plano as
 promessas que o app ainda não entrega — Explorador lista "Consulta ao vivo", "Envio por WhatsApp" e
 "texto, áudio, vídeo"; Mestre, "consulta com oraculista" — antes de divulgar · (2) fazer
