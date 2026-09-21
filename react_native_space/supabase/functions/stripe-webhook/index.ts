@@ -3,6 +3,7 @@ import Stripe from 'npm:stripe@^17';
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import { ehPlanoValido, type PlanoId } from '../_shared/planos.ts';
 import { lerConfigPlano } from '../_shared/config-planos.ts';
+import { exigirEscrita, exigirLinhaAtualizada } from '../_shared/escritas.ts';
 
 function resposta(status = 200) {
   return new Response(JSON.stringify({ recebido: true }), {
@@ -46,17 +47,29 @@ async function ativarPlano(
   atualizacao = checkoutSessionId
     ? atualizacao.eq('stripe_checkout_session_id', checkoutSessionId)
     : atualizacao.eq('stripe_subscription_id', sub.id);
-  await atualizacao;
+  const ledger = await atualizacao.select('id');
+  exigirEscrita('assinaturas.update (ativar plano)', ledger);
+  if ((ledger.data?.length ?? 0) === 0) {
+    // Ledger sem linha correspondente não impede o acesso (quem libera é perfis)
+    // e o retry não criaria a linha: registra alto e segue para o perfil.
+    console.error('Assinatura sem linha para atualizar',
+      { usuarioId, subscription: sub.id, checkoutSessionId });
+  }
 
   const cfg = await lerConfigPlano(supabaseAdmin, planoId);
-  const cota = cfg?.cota_consultas ?? 0; // fallback seguro: não libera consultas indevidas
-  await supabaseAdmin.from('perfis')
+  if (!cfg) {
+    // Antes isto virava cota = 0 em silêncio: o cliente pagava e ficava sem
+    // nenhuma consulta. Sem a config não há cota confiável — melhor o retry.
+    throw new Error(`config_planos sem linha para o plano ${planoId}`);
+  }
+  exigirLinhaAtualizada('perfis.update (ativar plano)', await supabaseAdmin.from('perfis')
     .update({
       plano: planoId,
       plano_valido_ate: fimPeriodo,
-      consultas_restantes: cota,
+      consultas_restantes: cfg.cota_consultas,
     })
-    .eq('id', usuarioId);
+    .eq('id', usuarioId)
+    .select('id'));
 }
 
 Deno.serve(async (request) => {
@@ -125,11 +138,12 @@ Deno.serve(async (request) => {
         if (!usuarioId) break;
         // plano_valido_ate volta a null junto: sem plano, não há "dias até renovar".
         // Deixá-la no futuro fazia o Perfil mostrar "30 dias" numa conta gratuita.
-        await supabaseAdmin.from('perfis')
+        exigirLinhaAtualizada('perfis.update (cancelamento)', await supabaseAdmin.from('perfis')
           .update({ plano: 'gratuito', consultas_restantes: 0, plano_valido_ate: null })
-          .eq('id', usuarioId);
-        await supabaseAdmin.from('assinaturas')
-          .update({ status: 'cancelado' }).eq('stripe_subscription_id', sub.id);
+          .eq('id', usuarioId)
+          .select('id'));
+        exigirEscrita('assinaturas.update (cancelamento)', await supabaseAdmin.from('assinaturas')
+          .update({ status: 'cancelado' }).eq('stripe_subscription_id', sub.id));
         break;
       }
       default:
@@ -140,7 +154,13 @@ Deno.serve(async (request) => {
     console.error('Erro ao processar webhook', evento.type,
       erro instanceof Error ? erro.message : erro);
     // libera o dedupe pra a Stripe reprocessar no retry.
-    await supabaseAdmin.from('webhook_eventos').delete().eq('id', evento.id);
+    const limpeza = await supabaseAdmin.from('webhook_eventos').delete().eq('id', evento.id);
+    if (limpeza.error) {
+      // Sem a limpeza o retry da Stripe cai no dedupe e não reprocessa nada:
+      // o evento precisa ser reenviado à mão depois de resolver a causa.
+      console.error('Falha ao liberar o dedupe; o retry da Stripe será ignorado',
+        evento.id, limpeza.error.message ?? limpeza.error);
+    }
     return resposta(500);
   }
 });
