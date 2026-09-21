@@ -165,6 +165,12 @@ decidido em 21/09, falta desenho) · (4) boas-vindas, perfil rico, Mapa de Voca�
 cortado e curto, mesa pequena e colorida demais, vídeo repetido no lançamento e só 12 búzios (a tradição
 usa 16); introdução do tarô com bola de cristal, e as introduções de todos os oráculos a trocar; tela das
 três cartas do tarô sem botão de voltar; numerologia sem introdução explicando o que ela é.
+
+**Mapa Astral — apontado em 21/09**, conselho em `docs/2026-09-21-conselho-mapa-astral.md` (4 decisões
+pendentes): só o signo solar é calculado; Lua, ascendente, planetas, casas e graus saem de contas
+aritméticas e aparecem na tela como se fossem reais. Proposta: tirar da tela o que é inventado já (M0) e
+construir o motor real com Astronomy Engine + GeoNames, a roda profissional com AstroChart e textos em
+português revisados por astróloga — o mesmo motor destrava o Mapa de Vocação.
 Já saíram da fila desde 14/09: painel unificado em produção (16/09), Explorador e Mestre salvos (B2), a
 migração do domínio (17/09) e o acesso do Marcio (20/09).
 
