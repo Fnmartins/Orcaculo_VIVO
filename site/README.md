@@ -36,6 +36,13 @@ Os CTAs de entrada da landing ("Fazer minha primeira leitura", "Assinar", etc.) 
 >   (no Git Bash, sem `MSYS_NO_PATHCONV=1` o caminho `/v9/...` é convertido pra caminho do Windows e a CLI recusa).
 > - A Vercel não deixa tirar o `www` de um projeto enquanto outro domínio desse projeto redireciona pra ele:
 >   mova primeiro o domínio que redireciona (o raiz) e depois o `www`.
+> - **Armadilha do Ignored Build Step (21/09):** `git diff --quiet HEAD^ HEAD ./` olha só o **último** commit
+>   do push. Num push de vários commits em que a mudança de `site/` não é a última, o site **não publica**
+>   — aconteceu com a correção dos links de Termos/Privacidade. Conferir sempre no ar depois do push
+>   (`curl -s https://www.arcanus.com.br/ | grep Termos`). Correção definitiva sugerida: trocar a regra por
+>   `git diff --quiet "$VERCEL_GIT_PREVIOUS_SHA" HEAD -- ./`, que compara com o último deploy publicado.
+>   Deploy pela CLI a partir de `site/` não funciona com o Root Directory `site` (procura `site/site`), e a
+>   partir da raiz subiria o repositório inteiro.
 
 O DNS de `arcanus.com.br` fica no **registro.br** (não na Vercel), e os dois domínios já apontam pra
 Vercel. Por isso mover `arcanus.com.br`/`www` de projeto não exige mexer no DNS; só o `app` é novo.
