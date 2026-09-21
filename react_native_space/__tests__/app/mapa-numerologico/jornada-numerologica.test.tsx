@@ -1,7 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import TelaFormularioMapa from '../formulario';
-import TelaResultadoMapa from '../resultado';
+import TelaFormularioMapa from '../../../app/mapa-numerologico/formulario';
+import TelaResultadoMapa from '../../../app/mapa-numerologico/resultado';
 
 const mockPush = jest.fn();
 const mockReplace = jest.fn();

@@ -67,7 +67,7 @@ jest.mock('../../components/manager/AbaAcessos', () => {
   return { AbaAcessos: () => <Text>conteudo-acessos</Text> };
 });
 
-import Manager from '../manager';
+import Manager from '../../app/manager';
 
 beforeEach(() => {
   mockParams = {};
