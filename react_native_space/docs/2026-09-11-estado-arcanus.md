@@ -159,6 +159,12 @@ promessas que o app ainda não entrega — Explorador lista "Consulta ao vivo", 
 `contato@arcanus.com.br` receber e-mail: está nos Termos e no suporte da Stripe · (3) limite de uso com
 semáforo no `/manager` (teto diário, leituras para outras pessoas por plano, detecção de revenda —
 decidido em 21/09, falta desenho) · (4) boas-vindas, perfil rico, Mapa de Vocação.
+
+**Experiência dos oráculos — apontada pelo Fabiano em 21/09**, com recomendações do conselho em
+`docs/2026-09-21-conselho-buzios-e-introducoes.md` (5 decisões pendentes): Búzios com vídeo de preparação
+cortado e curto, mesa pequena e colorida demais, vídeo repetido no lançamento e só 12 búzios (a tradição
+usa 16); introdução do tarô com bola de cristal, e as introduções de todos os oráculos a trocar; tela das
+três cartas do tarô sem botão de voltar; numerologia sem introdução explicando o que ela é.
 Já saíram da fila desde 14/09: painel unificado em produção (16/09), Explorador e Mestre salvos (B2), a
 migração do domínio (17/09) e o acesso do Marcio (20/09).
 
