@@ -134,7 +134,34 @@ sem efeito em acesso, não corrigido.
 Logs úteis: Supabase → Edge Functions → `stripe-webhook` / `admin-configurar-plano` → Logs
 (ou `npx supabase functions logs <fn>`). Traga o log aqui — **"continua Arcanus: Task 10"**.
 
-## 8. Go-live (só com 7.0–7.6 tudo verde)
+## 8. Go-live (só com 7.0–7.6 tudo verde) — roteiro revisado em 20/09
+
+**Ordem obrigatória: Stripe → secrets → /manager → conferir.** O `/manager` cria os Prices com a
+`STRIPE_SECRET_KEY` que estiver valendo no momento do Salvar; se ele vier antes da troca dos secrets,
+cria Price de teste de novo.
+
+**Dois avisos antes de marcar a data:**
+- **Janela de checkout quebrado** entre as etapas 3 e 4: os secrets já são live, mas `config_planos`
+  ainda aponta para os Price IDs da sandbox, e chave live com Price de teste falha. Dura o tempo de
+  cadastrar os três planos — escolher horário de movimento baixo.
+- **A validação custa dinheiro real:** uma compra (R$ 29,90) e uma renovação forçada por "Reset billing
+  cycle anchor to now" (outra cobrança). Reembolsáveis pelo dashboard; a taxa da Stripe não volta.
+
+Preços a usar no cadastro em live (decididos em 20/09): BRL `29,90 / 79,90 / 199,90`,
+USD e EUR `9,90 / 19,90 / 49,90`, CAD `13,90 / 26,90 / 66,90`.
+
+1. **[Stripe live]** Customer portal ativado, permitindo cancelamento (Settings → Billing → Customer portal).
+2. **[Stripe live]** Webhook endpoint para `https://rfdjukdbrtvvulaxbzwb.supabase.co/functions/v1/stripe-webhook`
+   com `checkout.session.completed`, `invoice.paid` e `customer.subscription.deleted`; anotar o `whsec_`.
+3. **[PowerShell]** `npx supabase secrets set STRIPE_SECRET_KEY=sk_live_… STRIPE_WEBHOOK_SECRET=whsec_…
+   --project-ref rfdjukdbrtvvulaxbzwb` (rodar em `react_native_space`). Início da janela.
+4. **[App]** `/manager?aba=planos` → salvar os três planos com os preços acima. Fim da janela.
+5. **[App]** uma compra real + **[SQL]** a query de verificação da §7.
+6. **[Stripe live]** forçar a renovação (Update subscription → Reset billing cycle anchor to now →
+   Immediately) + **[SQL]** conferir cota e `plano_valido_ate`.
+7. **[Stripe live]** reembolsar as duas cobranças, se quiser.
+
+### Checklist original
 
 - [ ] Se ainda não fez: mergear `feat/painel-planos` → `main` e `git push` (deploy Vercel).
 - [ ] Trocar os secrets para **live** (`sk_live_...`, novo `whsec_` do endpoint live).

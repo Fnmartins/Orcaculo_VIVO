@@ -163,8 +163,14 @@ Já feito: migrações (`config-planos.sql`, `stripe-migration.sql`), 4 function
   to now", não por passagem de tempo: o clock foi abandonado porque no dashboard novo "Test clocks" virou
   **Simulations** e criar customer por dentro dela gera conta conectada (`acct_`), não cliente (`cus_`).
   Tabela de evidências em `docs/superpowers/task-10-stripe-execution.md` §7.
-- **B4:** go-live: secrets live, novo `whsec_` live, `APP_BASE_URL=https://app.arcanus.com.br`,
-  recadastrar os planos em live, 1 compra + 1 renovação reais.
+- **B4 ← retomar aqui (20/09):** go-live. Roteiro de 7 etapas em
+  `docs/superpowers/task-10-stripe-execution.md` §8, na ordem **Stripe → secrets → /manager → conferir**.
+  Parado na **Etapa 1** (ativar o Customer Portal em live). Duas coisas decididas em 20/09:
+  - **Preços não-BRL definidos:** USD e EUR `9,90 / 19,90 / 49,90`, CAD `13,90 / 26,90 / 66,90`
+    (BRL segue `29,90 / 79,90 / 199,90`). Substituem os provisórios, que eram conversão quase direta
+    do real (US$ 6,90) e ficavam abaixo da faixa de entrada do mercado nos EUA/Europa.
+  - **Não atualizar esses preços na sandbox:** os Prices de teste são descartados no go-live; os valores
+    novos são digitados uma única vez, no cadastro em live (Etapa 4).
 
 ### Bloco C — domínio e e-mail
 - **C1 (Fase D):** e-mail de boas-vindas — secrets `RESEND_API_KEY`/`WELCOME_HOOK_SECRET`/`REMETENTE_EMAIL`,
