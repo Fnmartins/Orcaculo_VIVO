@@ -80,7 +80,7 @@ const PLANOS: Plano[] = [
       { texto: 'Análise de imagem ilimitada', disponivel: true },
       { texto: 'Rituais guiados completos', disponivel: true },
       { texto: 'Jornada espiritual personalizada', disponivel: true },
-      { texto: 'Envio por WhatsApp', disponivel: true },
+      { texto: 'Compartilhar leituras (WhatsApp e outros)', disponivel: true },
       { texto: 'Consulta ao vivo', disponivel: false },
     ],
   },
@@ -97,11 +97,7 @@ const PLANOS: Plano[] = [
     beneficios: [
       { texto: 'Tudo do plano Explorador', disponivel: true },
       { texto: '1 consulta ao vivo/mês (30min)', disponivel: true },
-      { texto: 'Prioridade no suporte', disponivel: true },
-      { texto: 'Conteúdo exclusivo mensal', disponivel: true },
-      { texto: 'Relatórios personalizados', disponivel: true },
       { texto: 'Acesso antecipado a novidades', disponivel: true },
-      { texto: 'Desconto em consultas extras', disponivel: true },
     ],
   },
 ];
