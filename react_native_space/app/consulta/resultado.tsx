@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
+import { voltarOuIr } from '../../utils/navegacao';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GradientBackground } from '../../components/GradientBackground';
@@ -88,7 +89,7 @@ export default function TelaResultado() {
             titulo="As cartas não carregaram"
             descricao="A leitura não foi perdida. Volte ao jogo para abrir as cartas novamente."
             acaoLabel="Voltar ao jogo"
-            onAcao={() => router.back()}
+            onAcao={() => voltarOuIr()}
           />
         </SafeAreaView>
       </GradientBackground>

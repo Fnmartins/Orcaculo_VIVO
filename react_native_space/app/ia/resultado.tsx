@@ -12,6 +12,7 @@ import {
 import { mostrarAlerta } from '../../utils/alerta';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
+import { voltarOuIr } from '../../utils/navegacao';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GradientBackground } from '../../components/GradientBackground';
@@ -90,7 +91,7 @@ export default function TelaIAResultado() {
             titulo="A análise não carregou"
             descricao="Volte à etapa anterior e solicite a análise novamente."
             acaoLabel="Voltar"
-            onAcao={() => router.back()}
+            onAcao={() => voltarOuIr()}
           />
         </SafeAreaView>
       </GradientBackground>

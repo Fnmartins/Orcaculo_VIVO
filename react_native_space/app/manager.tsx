@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
+import { voltarOuIr } from '../utils/navegacao';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { GradientBackground } from '../components/GradientBackground';
 import { AbaPlanos } from '../components/manager/AbaPlanos';
@@ -21,8 +22,8 @@ export default function Manager() {
   const { aba: abaParam } = useLocalSearchParams<{ aba?: string | string[] }>();
   const aba = resolverAba(abaParam);
 
-  // Aberto direto pela URL (sem histórico), router.back() é no-op: cai no perfil.
-  const voltar = () => (router.canGoBack() ? router.back() : router.replace('/perfil'));
+  // Aberto direto pela URL (sem histórico), cai no perfil em vez da Início.
+  const voltar = () => voltarOuIr('/perfil');
 
   const aoPerderAcesso = useCallback(() => {
     mostrarAlerta('Acesso removido', 'Seu acesso de admin foi removido.');

@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
+import { voltarOuIr } from '../../utils/navegacao';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -34,7 +35,7 @@ export default function TelaLeiAtracao() {
     <GradientBackground>
       <SafeAreaView style={estilos.safeArea} edges={['top']}>
         <View style={estilos.header}>
-          <Pressable onPress={() => { Hapticos.impactoLeve(); router.back(); }} style={estilos.voltar}>
+          <Pressable onPress={() => { Hapticos.impactoLeve(); voltarOuIr(); }} style={estilos.voltar}>
             <Ionicons name="arrow-back" size={24} color={Cores.textoClaro} />
           </Pressable>
           <Text style={estilos.headerTitulo}>Lei da Atração</Text>

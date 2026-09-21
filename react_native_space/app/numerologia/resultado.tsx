@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
+import { voltarOuIr } from '../../utils/navegacao';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -135,7 +136,7 @@ export default function TelaNumerologiaResultado() {
             titulo="Faltam dados para a numerologia"
             descricao="Informe seu nome e uma data de nascimento válida para gerar uma leitura pessoal."
             acaoLabel="Preencher novamente"
-            onAcao={() => router.back()}
+            onAcao={() => voltarOuIr()}
           />
         </SafeAreaView>
       </GradientBackground>
@@ -160,7 +161,7 @@ export default function TelaNumerologiaResultado() {
           {/* Header */}
           <Animated.View style={[estilos.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
             <Pressable
-              onPress={() => router.back()}
+              onPress={() => voltarOuIr()}
               style={estilos.voltarBotao}
               accessibilityRole="button"
               accessibilityLabel="Voltar"

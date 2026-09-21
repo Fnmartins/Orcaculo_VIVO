@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
+import { voltarOuIr } from '../../utils/navegacao';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Defs, RadialGradient as SvgRadial, Stop, Path, G, Line } from 'react-native-svg';
@@ -215,7 +216,7 @@ export default function TelaIASelecao() {
         <View style={estilos.container}>
           {/* Header */}
           <Animated.View style={[estilos.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-            <Pressable onPress={() => router.back()} style={estilos.voltarBotao}>
+            <Pressable onPress={() => voltarOuIr()} style={estilos.voltarBotao}>
               <Ionicons name="arrow-back" size={22} color={Cores.textoClaro} />
             </Pressable>
             <View style={estilos.headerCenter}>

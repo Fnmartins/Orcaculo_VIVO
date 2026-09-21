@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { voltarOuIr } from '../../utils/navegacao';
 import { GradientBackground } from '../../components/GradientBackground';
 import { Button } from '../../components/Button';
 import { SelectionCard } from '../../components/SelectionCard';
@@ -144,7 +145,7 @@ export default function TelaIntencao() {
                 label="Voltar"
                 icone="arrow-back"
                 posicaoIcone="left"
-                onPress={() => router.back()}
+                onPress={() => voltarOuIr()}
               />
               <View style={{ flex: 1, marginLeft: Espacamento.sm }}>
                 <Button

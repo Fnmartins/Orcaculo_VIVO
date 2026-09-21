@@ -14,6 +14,7 @@ import {
 import { mostrarAlerta, confirmarAcao } from '../utils/alerta';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { voltarOuIr } from '../utils/navegacao';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -111,9 +112,7 @@ export default function TelaPlanos() {
   const fadeAnim = useRef(new Animated.Value(Platform.OS === 'web' ? 1 : 0)).current;
   const slideAnim = useRef(new Animated.Value(Platform.OS === 'web' ? 0 : 30)).current;
   const { sessao, perfil } = useAuth();
-  // Sem histórico (URL digitada, aba nova, vindo do site ou do portal da Stripe),
-  // router.back() não faz nada: cai na Início, como em PaginaLegal e no manager.
-  const voltar = () => (router.canGoBack() ? router.back() : router.replace('/'));
+  const voltar = () => voltarOuIr();
 
   useEffect(() => {
     Animated.parallel([

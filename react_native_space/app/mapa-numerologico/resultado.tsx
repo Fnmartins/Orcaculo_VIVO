@@ -2,6 +2,7 @@ import React, { useMemo, useRef, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Animated, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
+import { voltarOuIr } from '../../utils/navegacao';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -95,7 +96,7 @@ export default function TelaResultadoMapa() {
             titulo="Não foi possível montar seu mapa"
             descricao="Informe seu nome e uma data de nascimento válida para continuar."
             acaoLabel="Revisar dados"
-            onAcao={() => router.back()}
+            onAcao={() => voltarOuIr()}
           />
         </SafeAreaView>
       </GradientBackground>

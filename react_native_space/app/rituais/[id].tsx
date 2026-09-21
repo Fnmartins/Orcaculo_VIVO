@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
+import { voltarOuIr } from '../../utils/navegacao';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GradientBackground } from '../../components/GradientBackground';
@@ -164,7 +165,7 @@ export default function TelaRitual() {
         >
           {/* Header */}
           <Animated.View style={[estilos.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-            <Pressable onPress={() => router.back()} style={estilos.voltarBotao}>
+            <Pressable onPress={() => voltarOuIr()} style={estilos.voltarBotao}>
               <Ionicons name="arrow-back" size={22} color={Cores.textoClaro} />
             </Pressable>
             <Text style={estilos.headerTitulo}>Ritual</Text>
@@ -308,7 +309,7 @@ export default function TelaRitual() {
                 variante="outline"
                 label="Voltar"
                 larguraTotal
-                onPress={() => router.back()}
+                onPress={() => voltarOuIr()}
               />
             </View>
           )}

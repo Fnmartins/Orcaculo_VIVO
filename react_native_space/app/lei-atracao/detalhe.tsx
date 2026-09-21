@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { voltarOuIr } from '../../utils/navegacao';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -54,14 +55,14 @@ export default function TelaDetalheDesejo() {
   const confirmarManifestacao = async () => {
     Hapticos.impactoPesado();
     await atualizarDesejo(desejo.id, { manifestado: true, manifestadoEm: new Date().toISOString() });
-    router.back();
+    voltarOuIr();
   };
 
   const deletar = () => {
     const confirmar = async () => {
       Hapticos.impactoMedio();
       await deletarDesejo(desejo.id);
-      router.back();
+      voltarOuIr();
     };
     if (typeof window !== 'undefined' && window.confirm) {
       if (window.confirm('Excluir este desejo?')) confirmar();
@@ -77,7 +78,7 @@ export default function TelaDetalheDesejo() {
     <GradientBackground>
       <SafeAreaView style={estilos.safeArea} edges={['top']}>
         <View style={estilos.header}>
-          <Pressable onPress={() => { Hapticos.impactoLeve(); router.back(); }} style={estilos.voltar}>
+          <Pressable onPress={() => { Hapticos.impactoLeve(); voltarOuIr(); }} style={estilos.voltar}>
             <Ionicons name="arrow-back" size={24} color={Cores.textoClaro} />
           </Pressable>
           <Pressable onPress={deletar} style={estilos.voltar}>

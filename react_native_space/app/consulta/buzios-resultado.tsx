@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
+import { voltarOuIr } from '../../utils/navegacao';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -86,7 +87,7 @@ export default function TelaBuziosResultado() {
             titulo="A leitura não carregou"
             descricao="Volte ao jogo para lançar os búzios novamente."
             acaoLabel="Voltar ao jogo"
-            onAcao={() => router.back()}
+            onAcao={() => voltarOuIr()}
           />
         </SafeAreaView>
       </GradientBackground>

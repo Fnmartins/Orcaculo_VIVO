@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { voltarOuIr } from '../../utils/navegacao';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { GradientBackground } from '../../components/GradientBackground';
 import { Button } from '../../components/Button';
@@ -131,7 +132,7 @@ export default function TelaFormato() {
                 label="Voltar"
                 icone="arrow-back"
                 posicaoIcone="left"
-                onPress={() => router.back()}
+                onPress={() => voltarOuIr()}
               />
               <View style={{ flex: 1, marginLeft: Espacamento.sm }}>
                 <Button

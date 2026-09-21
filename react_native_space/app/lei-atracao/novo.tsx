@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { voltarOuIr } from '../../utils/navegacao';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GradientBackground } from '../../components/GradientBackground';
@@ -38,7 +39,7 @@ export default function TelaNovoDesejo() {
       <SafeAreaView style={estilos.safeArea} edges={['top']}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={estilos.header}>
-            <Pressable onPress={() => { Hapticos.impactoLeve(); router.back(); }} style={estilos.voltar}>
+            <Pressable onPress={() => { Hapticos.impactoLeve(); voltarOuIr(); }} style={estilos.voltar}>
               <Ionicons name="arrow-back" size={24} color={Cores.textoClaro} />
             </Pressable>
           </View>

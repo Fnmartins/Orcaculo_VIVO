@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Animated, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { voltarOuIr } from '../../utils/navegacao';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -36,7 +37,7 @@ export default function TelaIntroMapaNumerologico() {
       <SafeAreaView style={estilos.safeArea} edges={['top']}>
         <View style={estilos.header}>
           <Pressable
-            onPress={() => { Hapticos.impactoLeve(); router.back(); }}
+            onPress={() => { Hapticos.impactoLeve(); voltarOuIr(); }}
             style={estilos.voltar}
             accessibilityRole="button"
             accessibilityLabel="Voltar"

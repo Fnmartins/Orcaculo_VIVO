@@ -10,6 +10,7 @@ import {
 import { mostrarAlerta } from '../../utils/alerta';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
+import { voltarOuIr } from '../../utils/navegacao';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
@@ -105,7 +106,7 @@ export default function TelaCaptura() {
         <View style={estilos.container}>
           {/* Header */}
           <View style={estilos.header}>
-            <Pressable onPress={() => router.back()} style={estilos.voltarBotao}>
+            <Pressable onPress={() => voltarOuIr()} style={estilos.voltarBotao}>
               <Ionicons name="arrow-back" size={22} color={Cores.textoClaro} />
             </Pressable>
             <Text style={estilos.headerTitulo}>{TITULOS[tipo] ?? 'Análise'}</Text>

@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
+import { voltarOuIr } from '../../utils/navegacao';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -76,7 +77,7 @@ export default function TelaMatrizResultado() {
             titulo="Não foi possível calcular sua matriz"
             descricao="Informe seu nome e uma data de nascimento válida para gerar a Matriz do Destino."
             acaoLabel="Revisar dados"
-            onAcao={() => router.back()}
+            onAcao={() => voltarOuIr()}
           />
         </SafeAreaView>
       </GradientBackground>
@@ -95,7 +96,7 @@ export default function TelaMatrizResultado() {
           {/* Header */}
           <Animated.View style={[estilos.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
             <Pressable
-              onPress={() => router.back()}
+              onPress={() => voltarOuIr()}
               style={estilos.iconeBotao}
               accessibilityRole="button"
               accessibilityLabel="Voltar"

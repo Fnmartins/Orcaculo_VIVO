@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, Stack } from 'expo-router';
+import { Stack } from 'expo-router';
+import { voltarOuIr } from '../utils/navegacao';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { GradientBackground } from '../components/GradientBackground';
 import { Cores } from '../constants/colors';
@@ -45,7 +46,7 @@ export default function CompararLogos() {
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={s.safe} edges={['top']}>
         <View style={s.header}>
-          <Pressable onPress={() => router.back()} style={s.back} hitSlop={12}>
+          <Pressable onPress={() => voltarOuIr()} style={s.back} hitSlop={12}>
             <Ionicons name="chevron-back" size={24} color={Cores.textoClaro} />
           </Pressable>
           <Text style={s.titulo}>Comparar Logos</Text>

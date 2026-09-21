@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { voltarOuIr } from '../../utils/navegacao';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GradientBackground } from '../../components/GradientBackground';
@@ -70,7 +71,7 @@ export default function TelaFormularioMapa() {
         >
           <View style={estilos.header}>
             <Pressable
-              onPress={() => { Hapticos.impactoLeve(); router.back(); }}
+              onPress={() => { Hapticos.impactoLeve(); voltarOuIr(); }}
               style={estilos.voltar}
               accessibilityRole="button"
               accessibilityLabel="Voltar"

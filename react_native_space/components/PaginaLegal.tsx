@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { voltarOuIr } from '../utils/navegacao';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { GradientBackground } from './GradientBackground';
 import { Cores } from '../constants/colors';
@@ -25,7 +25,7 @@ interface Props {
  * Privacidade). Cabecalho com voltar + conteudo rolavel em secoes numeradas.
  */
 export function PaginaLegal({ titulo, atualizadoEm, intro, secoes }: Props) {
-  const voltar = () => (router.canGoBack() ? router.back() : router.replace('/'));
+  const voltar = () => voltarOuIr();
 
   return (
     <GradientBackground>
