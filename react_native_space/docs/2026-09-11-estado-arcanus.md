@@ -131,9 +131,12 @@ Detalhes, o comando exato e a ordem correta de mover o `www` estão em `site/REA
 
 **Lista de espera:** fora por enquanto (ver `site/README.md`).
 
-**Ordem daqui pra frente (revisada em 20/09):** (1) E2E 7.0–7.6 em test mode, com o 7.0 já conferido ·
-(2) go-live (secrets live, novo `whsec_`, preços EUR/USD revisados, recadastrar os 3 planos em live,
-1 compra + 1 renovação reais) · (3) boas-vindas, `contato@`, perfil rico, Mapa de Vocação.
+**Ordem daqui pra frente (revisada em 21/09, depois do go-live):** (1) tirar dos cartões de plano as
+promessas que o app ainda não entrega — Explorador lista "Consulta ao vivo", "Envio por WhatsApp" e
+"texto, áudio, vídeo"; Mestre, "consulta com oraculista" — antes de divulgar · (2) fazer
+`contato@arcanus.com.br` receber e-mail: está nos Termos e no suporte da Stripe · (3) limite de uso com
+semáforo no `/manager` (teto diário, leituras para outras pessoas por plano, detecção de revenda —
+decidido em 21/09, falta desenho) · (4) boas-vindas, perfil rico, Mapa de Vocação.
 Já saíram da fila desde 14/09: painel unificado em produção (16/09), Explorador e Mestre salvos (B2), a
 migração do domínio (17/09) e o acesso do Marcio (20/09).
 
@@ -163,9 +166,10 @@ Já feito: migrações (`config-planos.sql`, `stripe-migration.sql`), 4 function
   to now", não por passagem de tempo: o clock foi abandonado porque no dashboard novo "Test clocks" virou
   **Simulations** e criar customer por dentro dela gera conta conectada (`acct_`), não cliente (`cus_`).
   Tabela de evidências em `docs/superpowers/task-10-stripe-execution.md` §7.
-- **B4 ← retomar aqui (20/09):** go-live. Roteiro de 7 etapas em
-  `docs/superpowers/task-10-stripe-execution.md` §8, na ordem **Stripe → secrets → /manager → conferir**.
-  Parado na **Etapa 1** (ativar o Customer Portal em live). Duas coisas decididas em 20/09:
+- **B4 ✅ (21/09): o Arcanus cobra em live.** Conta ativada (Pessoa Física), portal cancelando ao fim do
+  período, webhook live, planos com os preços novos, compra real processada, reembolsada e cancelada.
+  Resultado e as duas armadilhas encontradas (IDs de produto e de cliente da sandbox reaproveitados) em
+  `docs/superpowers/task-10-stripe-execution.md` §8. Decidido em 20/09:
   - **Preços não-BRL definidos:** USD e EUR `9,90 / 19,90 / 49,90`, CAD `13,90 / 26,90 / 66,90`
     (BRL segue `29,90 / 79,90 / 199,90`). Substituem os provisórios, que eram conversão quase direta
     do real (US$ 6,90) e ficavam abaixo da faixa de entrada do mercado nos EUA/Europa.
@@ -220,6 +224,7 @@ Já feito: migrações (`config-planos.sql`, `stripe-migration.sql`), 4 function
 
 ## 7. Como retomar
 
-> **"continua Arcanus: ler `react_native_space/docs/2026-09-11-estado-arcanus.md` e seguir do Bloco B3"**
+> **"continua Arcanus: ler `react_native_space/docs/2026-09-11-estado-arcanus.md` e seguir a ordem da seção 4.1"**
 
-(Blocos A, B1, B2 e D1 estão fechados; B3 = E2E 7.0–7.6 em test mode, com o 7.0 já conferido em 20/09.)
+(O Bloco B inteiro está fechado desde 21/09: o app cobra em live. A fila começa pelas promessas dos cartões
+de plano e pelo `contato@`.)

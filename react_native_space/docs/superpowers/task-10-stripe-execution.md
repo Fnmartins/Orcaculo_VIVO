@@ -134,7 +134,29 @@ sem efeito em acesso, não corrigido.
 Logs úteis: Supabase → Edge Functions → `stripe-webhook` / `admin-configurar-plano` → Logs
 (ou `npx supabase functions logs <fn>`). Traga o log aqui — **"continua Arcanus: Task 10"**.
 
-## 8. Go-live (só com 7.0–7.6 tudo verde) — roteiro revisado em 20/09
+## 8. Go-live — ✅ concluído em 21/09/2026
+
+**Resultado:** conta Stripe ativada como Pessoa Física (CPF), identidade verificada, categoria
+*Digital products → Apps*, descritor `ARCANUS.COM.BR`. Portal em live cancelando **ao fim do período**
+(conferido: "ends October 21, 2026 · You still have access until then"), troca de plano desligada.
+Webhook live com os 3 eventos. Planos recadastrados com os preços novos (Price IDs com o sufixo da
+conta live, `…Car8hjncHM…`). Compra real de R$ 29,90 processada — `checkout.session.completed` e
+`invoice.paid` gravados em `webhook_eventos` —, depois reembolsada e cancelada, com o perfil voltando a
+`gratuito`, cota 0 e `plano_valido_ate = null`. A renovação forçada (etapa 6) foi dispensada: o
+`invoice.paid` da primeira fatura já exercita o mesmo código.
+
+**Duas armadilhas que não estavam no roteiro — ao repetir, fazê-las entre as etapas 3 e 4:**
+- `config_planos` guarda `stripe_product_id` da sandbox, e o `admin-configurar-plano` reaproveita esse
+  produto: em live o Salvar falharia com "No such product". Limpar antes:
+  `update public.config_planos set stripe_product_id = null, stripe_price_id = null;`
+- `perfis.stripe_customer_id` guarda clientes da sandbox, e o `criar-checkout-stripe` reaproveita esse
+  cliente: em live o checkout falhou com "Não foi possível iniciar o pagamento". Limpar antes:
+  `update public.perfis set stripe_customer_id = null where stripe_customer_id is not null;`
+
+Cuidado no SQL Editor: rodar a conferência numa aba que ainda tinha o `update` de limpeza apagou de novo
+o cliente recém-criado. Conferências sempre em aba nova.
+
+### Roteiro usado
 
 **Ordem obrigatória: Stripe → secrets → /manager → conferir.** O `/manager` cria os Prices com a
 `STRIPE_SECRET_KEY` que estiver valendo no momento do Salvar; se ele vier antes da troca dos secrets,
