@@ -111,6 +111,9 @@ export default function TelaPlanos() {
   const fadeAnim = useRef(new Animated.Value(Platform.OS === 'web' ? 1 : 0)).current;
   const slideAnim = useRef(new Animated.Value(Platform.OS === 'web' ? 0 : 30)).current;
   const { sessao, perfil } = useAuth();
+  // Sem histórico (URL digitada, aba nova, vindo do site ou do portal da Stripe),
+  // router.back() não faz nada: cai na Início, como em PaginaLegal e no manager.
+  const voltar = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
   useEffect(() => {
     Animated.parallel([
@@ -174,7 +177,7 @@ export default function TelaPlanos() {
         {/* Header */}
         <Animated.View style={[estilos.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
           <Pressable
-            onPress={() => router.back()}
+            onPress={voltar}
             style={estilos.voltarBotao}
             accessibilityLabel="Voltar"
           >
@@ -338,7 +341,7 @@ export default function TelaPlanos() {
             />
           )}
           <Pressable
-            onPress={() => router.back()}
+            onPress={voltar}
             style={estilos.pularBotao}
           >
             <Text style={estilos.pularTexto}>Continuar gratuitamente</Text>
