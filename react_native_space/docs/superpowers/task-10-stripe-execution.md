@@ -73,7 +73,7 @@ os planos e o checkout fica ativo.
 - ⚠️ Ajuste os preços **não-BRL** (você mencionou "Europa, valor melhor") — o painel
   grava o mesmo número na Stripe e no app, então exibição e cobrança não divergem.
 
-## 7. E2E em test mode
+## 7. E2E em test mode — ✅ executado em 20/09/2026 (resultado no fim da seção)
 
 Use uma conta de teste no app (`/planos`). Depois de cada passo, rode a query trocando
 `<EMAIL>` pelo e-mail da conta.
@@ -104,6 +104,30 @@ order by a.criado_em desc;
       efeito duplicado (dedupe via `webhook_eventos`).
 - [ ] **7.6 Troca de preço**: salvar um preço novo no `/manager` → Price antigo arquivado,
       novo ativo; um novo checkout usa o valor novo (assinantes atuais seguem no antigo).
+
+### Resultado da execução (20/09/2026, conta `efem.adm+teste1@gmail.com`, sandbox `acct_1UC7psE6utR6zjc4`)
+
+| Teste | Status | Evidência |
+|---|---|---|
+| 7.0 | ✅ | 3 planos com `stripe_price_id`; `/planos` exibindo os três |
+| 7.1 | ✅ | `ativo`, `plano=iniciante`, cota 4, `plano_valido_ate` +1 mês, `moeda=brl`, `cus_VITxXIVkJfuZ67` / `sub_1UHt01E6utR6zjc4lirqmsyM` |
+| 7.2 | ✅ | 2ª fatura paga (`SGZLTWYF-0002`); cota 1→4, data 22:14→22:48, mesma subscription |
+| 7.3 | ✅ | `gratuito`, cota 0, `cancelado` |
+| 7.4 | ✅ | `4000 0000 0000 0002` recusado; só linha `pendente` sem subscription |
+| 7.5 | ◐ | dedupe ativo (3 linhas em `webhook_eventos`) e comprovado com os dois eventos da compra, que não dobraram cota nem data; **faltou o Resend manual** |
+| 7.6 | ✅ | `price_1UEV5P…` → `price_1UHvJ8…`, R$ 34,90 no ar; preço devolvido a 29,90 depois |
+
+Duas ressalvas de método, para quem repetir: a **renovação foi forçada por "Reset billing cycle anchor to now"**
+(Update subscription → Immediately), não por passagem natural de tempo — mesmo handler, gatilho diferente;
+e o **7.5 não teve reenvio manual** porque o botão *Resend* saiu da página do evento no dashboard novo
+(fica no Workbench → Webhooks → entrega). No dashboard novo, "Test clocks" chama-se **Simulations**, e criar
+customer por dentro de uma simulação abre um modal "Create an account" que gera conta conectada (`acct_`),
+não cliente (`cus_`) — por isso o clock foi abandonado.
+
+Bugs achados durante o E2E: (1) `customer.subscription.deleted` não limpava `plano_valido_ate`, então o
+Perfil de uma conta já gratuita exibia "30 dias · Até renovar" — corrigido em 20/09 no `stripe-webhook`;
+(2) linhas `pendente` de checkout abandonado/recusado ficam órfãs para sempre — só higiene de tabela,
+sem efeito em acesso, não corrigido.
 
 Logs úteis: Supabase → Edge Functions → `stripe-webhook` / `admin-configurar-plano` → Logs
 (ou `npx supabase functions logs <fn>`). Traga o log aqui — **"continua Arcanus: Task 10"**.

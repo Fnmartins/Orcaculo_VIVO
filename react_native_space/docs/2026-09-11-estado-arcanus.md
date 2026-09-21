@@ -157,8 +157,12 @@ Já feito: migrações (`config-planos.sql`, `stripe-migration.sql`), 4 function
 - **B1 ✅ (11/09):** Customer Portal ativado na sandbox, com cancelamento permitido.
 - **B2 ✅ (16/09):** os 3 planos salvos pelo `/manager` — Iniciante em 11/09, Explorador e Mestre no roteiro
   do painel unificado. Preços não-BRL ainda são provisórios.
-- **B3 ← é aqui que estamos:** E2E 7.0–7.6 (compra 4242, renovação, cancelamento, recusado 4000…0002,
-  idempotência, troca de preço). Roteiro e queries em `docs/superpowers/task-10-stripe-execution.md` §7.
+- **B3 ✅ (20/09):** E2E 7.0–7.6 executado com a conta `efem.adm+teste1@gmail.com`. Todos verdes menos o
+  **7.5, que ficou parcial** (dedupe comprovado por eventos duplicados reais, mas sem o reenvio manual — o
+  botão *Resend* mudou de lugar no dashboard novo). A renovação foi forçada por "Reset billing cycle anchor
+  to now", não por passagem de tempo: o clock foi abandonado porque no dashboard novo "Test clocks" virou
+  **Simulations** e criar customer por dentro dela gera conta conectada (`acct_`), não cliente (`cus_`).
+  Tabela de evidências em `docs/superpowers/task-10-stripe-execution.md` §7.
 - **B4:** go-live: secrets live, novo `whsec_` live, `APP_BASE_URL=https://app.arcanus.com.br`,
   recadastrar os planos em live, 1 compra + 1 renovação reais.
 
@@ -189,6 +193,15 @@ Já feito: migrações (`config-planos.sql`, `stripe-migration.sql`), 4 function
   pra `/(tabs)`). Alternativa: `signOut()` após o `updateUser` e mandar pro `/auth/login` com aviso
   "senha alterada, entre com a nova senha". Decidir e ajustar.
 - Redefinição de senha no **app nativo**: o deep link `arcanus://auth/nova-senha` ainda não consome o token (web resolvida; só importa quando for pras lojas).
+**Anotados no E2E de 20/09 (não corrigidos):**
+- **Linhas `pendente` órfãs em `assinaturas`.** `criar-checkout-stripe` grava a intenção ao abrir o
+  checkout; se o pagamento é recusado ou abandonado, a linha fica lá para sempre. Sem efeito em acesso
+  (quem manda é `perfis.plano`), mas suja a tabela e distorce qualquer contagem de assinaturas.
+- **`stripe-webhook` não checa o erro dos `update`.** Nos três handlers, o retorno do Supabase é ignorado:
+  se a escrita falhar, a função devolve 200, o `event.id` continua em `webhook_eventos` e a Stripe nunca
+  reenvia — o pagamento entra e o plano não é liberado, em silêncio. O `catch` externo já apaga a linha de
+  dedupe para permitir retry; faltou fazer o mesmo quando o `update` falha sem lançar.
+
 - SEO/Open Graph (`app/+html.tsx`), exclusão de conta real (botão sem ação), teste responsivo do `/planos` (375/768px).
 - Bundle IDs `com.abacusai.oraculovivo` (só pra lojas); projeto antigo `oraculo-vivo.vercel.app`.
 
