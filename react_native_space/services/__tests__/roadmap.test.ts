@@ -47,6 +47,17 @@ describe('services/roadmap', () => {
     await expect(criarItemRoadmap(dados)).rejects.toMatchObject({ name: 'AcessoNegadoError' });
   });
 
+  it('JWT vencido (PGRST301) vira SessaoExpiradaError, não acesso negado', async () => {
+    mockFrom.mockReturnValue(cadeia({ data: null, error: { code: 'PGRST301', message: 'JWT expired' } }));
+    await expect(listarRoadmap()).rejects.toMatchObject({ name: 'SessaoExpiradaError' });
+  });
+
+  it('reconhece o JWT vencido só pela mensagem, sem code', async () => {
+    mockFrom.mockReturnValue(cadeia({ data: null, error: { message: 'JWT expired' } }));
+    await expect(atualizarItemRoadmap('a', { titulo: 'Novo' }))
+      .rejects.toMatchObject({ name: 'SessaoExpiradaError' });
+  });
+
   it('atualizar sem nenhuma linha afetada vira AcessoNegadoError', async () => {
     mockFrom.mockReturnValue(cadeia({ data: [], error: null }));
     mockRpc.mockResolvedValue({ data: false, error: null });

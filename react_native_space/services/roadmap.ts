@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import { AcessoNegadoError } from './acessoNegado';
 import { ItemRemovidoError } from './itemRemovido';
+import { SessaoExpiradaError } from './sessaoExpirada';
 import type { ItemRoadmap, StatusRoadmap } from '../utils/roadmap';
 
 export interface DadosItemRoadmap {
@@ -14,8 +15,17 @@ export interface DadosItemRoadmap {
 const TABELA = 'roadmap_itens';
 const COLUNAS = 'id, fase, titulo, descricao, status, ordem, criado_em, atualizado_em';
 const PERMISSAO_NEGADA = '42501';
+// O PostgREST devolve PGRST301 quando o JWT venceu; o supabase-js às vezes só
+// repassa a mensagem. Sem isto, token vencido virava "Falha ao acessar o
+// roadmap", como se fosse erro de rede — a aba Acessos já distinguia os dois.
+const JWT_VENCIDO = 'PGRST301';
+
+function ehJwtVencido(error: { code?: string; message?: string }): boolean {
+  return error.code === JWT_VENCIDO || /jwt expired/i.test(error.message ?? '');
+}
 
 function traduzirErro(error: { code?: string; message?: string }): Error {
+  if (ehJwtVencido(error)) return new SessaoExpiradaError();
   if (error.code === PERMISSAO_NEGADA) return new AcessoNegadoError();
   return new Error(error.message || 'Falha ao acessar o roadmap.');
 }

@@ -1,26 +1,21 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { router } from 'expo-router';
 import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
 import { useAuth } from '../../contexts/AuthContext';
 import { definirAdmin, listarUsuarios } from '../../services/acessos';
 import { ehAcessoNegado } from '../../services/acessoNegado';
-import { ehSessaoExpirada, MENSAGEM_SESSAO_EXPIRADA } from '../../services/sessaoExpirada';
+import { ehSessaoExpirada } from '../../services/sessaoExpirada';
 import { filtrarUsuarios, ROTULO_PLANO, type UsuarioAcesso } from '../../utils/acessos';
 import { confirmarAcao, mostrarAlerta } from '../../utils/alerta';
 import { EstadoCarregamento } from './EstadoCarregamento';
+import { irParaLoginPorSessaoExpirada } from './sessao';
 import { estilosPainel } from './estilos';
 import type { PropsAbaManager } from './tipos';
 
 function formatarData(iso: string): string {
   return new Date(iso).toLocaleDateString('pt-BR');
-}
-
-function irParaLoginPorSessaoExpirada() {
-  mostrarAlerta('Sessão expirada', MENSAGEM_SESSAO_EXPIRADA);
-  router.replace('/auth/login');
 }
 
 export function AbaAcessos({ aoPerderAcesso }: PropsAbaManager) {

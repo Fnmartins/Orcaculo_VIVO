@@ -8,11 +8,13 @@ import {
 } from '../../services/roadmap';
 import { ehAcessoNegado } from '../../services/acessoNegado';
 import { ehItemRemovido } from '../../services/itemRemovido';
+import { ehSessaoExpirada } from '../../services/sessaoExpirada';
 import {
   agruparPorFase, calcularProgresso, proximaOrdem, ROTULO_STATUS, type ItemRoadmap,
 } from '../../utils/roadmap';
 import { confirmarAcao, mostrarAlerta } from '../../utils/alerta';
 import { EstadoCarregamento } from './EstadoCarregamento';
+import { irParaLoginPorSessaoExpirada } from './sessao';
 import { EditorItemRoadmap, type ValoresEditorRoadmap } from './EditorItemRoadmap';
 import { CORES_STATUS, estilosPainel } from './estilos';
 import type { PropsAbaManager } from './tipos';
@@ -30,6 +32,10 @@ export function AbaRoadmap({ aoPerderAcesso }: PropsAbaManager) {
     listarRoadmap()
       .then(setItens)
       .catch((e) => {
+        if (ehSessaoExpirada(e)) {
+          irParaLoginPorSessaoExpirada();
+          return;
+        }
         if (ehAcessoNegado(e)) {
           aoPerderAcesso();
           return;
@@ -47,6 +53,10 @@ export function AbaRoadmap({ aoPerderAcesso }: PropsAbaManager) {
   const fases = useMemo(() => grupos.map((g) => g.fase), [grupos]);
 
   function tratarFalha(e: unknown, titulo: string) {
+    if (ehSessaoExpirada(e)) {
+      irParaLoginPorSessaoExpirada();
+      return;
+    }
     if (ehAcessoNegado(e)) {
       aoPerderAcesso();
       return;

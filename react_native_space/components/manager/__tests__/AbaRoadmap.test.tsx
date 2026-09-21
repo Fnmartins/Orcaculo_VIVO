@@ -16,10 +16,15 @@ jest.mock('../../../utils/alerta', () => ({
   mostrarAlerta: (...a: unknown[]) => mockAlerta(...a),
   confirmarAcao: (_titulo: string, _mensagem: string, aoConfirmar: () => void) => aoConfirmar(),
 }));
+const mockReplace = jest.fn();
+jest.mock('expo-router', () => ({
+  router: { replace: (...a: unknown[]) => mockReplace(...a) },
+}));
 
 import { AbaRoadmap } from '../AbaRoadmap';
 import { AcessoNegadoError } from '../../../services/acessoNegado';
 import { ItemRemovidoError, MENSAGEM_ITEM_REMOVIDO } from '../../../services/itemRemovido';
+import { SessaoExpiradaError, MENSAGEM_SESSAO_EXPIRADA } from '../../../services/sessaoExpirada';
 
 const datas = { criado_em: '2026-09-15T00:00:00Z', atualizado_em: '2026-09-15T00:00:00Z' };
 const itens = [
@@ -79,6 +84,28 @@ describe('AbaRoadmap', () => {
     const aoPerderAcesso = jest.fn();
     render(<AbaRoadmap aoPerderAcesso={aoPerderAcesso} />);
     await waitFor(() => expect(aoPerderAcesso).toHaveBeenCalled());
+  });
+
+  it('sessão expirada ao carregar manda para o login, sem falar em acesso', async () => {
+    mockListar.mockRejectedValue(new SessaoExpiradaError());
+    const aoPerderAcesso = jest.fn();
+    render(<AbaRoadmap aoPerderAcesso={aoPerderAcesso} />);
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/auth/login'));
+    expect(mockAlerta).toHaveBeenCalledWith('Sessão expirada', MENSAGEM_SESSAO_EXPIRADA);
+    expect(aoPerderAcesso).not.toHaveBeenCalled();
+  });
+
+  it('sessão expirada ao salvar manda para o login', async () => {
+    mockListar.mockResolvedValue(itens);
+    mockCriar.mockRejectedValue(new SessaoExpiradaError());
+    const aoPerderAcesso = jest.fn();
+    render(<AbaRoadmap aoPerderAcesso={aoPerderAcesso} />);
+    fireEvent.press(await screen.findByText('+ Novo item'));
+    fireEvent.changeText(screen.getByLabelText('Título'), 'Item C');
+    fireEvent.changeText(screen.getByLabelText('Fase'), 'Fase 1');
+    fireEvent.press(screen.getByText('Salvar'));
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/auth/login'));
+    expect(aoPerderAcesso).not.toHaveBeenCalled();
   });
 
   it('falha comum mostra "Tentar de novo" e recarrega', async () => {
