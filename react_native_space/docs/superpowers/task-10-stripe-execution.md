@@ -125,7 +125,9 @@ customer por dentro de uma simulação abre um modal "Create an account" que ger
 não cliente (`cus_`) — por isso o clock foi abandonado.
 
 Bugs achados durante o E2E: (1) `customer.subscription.deleted` não limpava `plano_valido_ate`, então o
-Perfil de uma conta já gratuita exibia "30 dias · Até renovar" — corrigido em 20/09 no `stripe-webhook`;
+Perfil de uma conta já gratuita exibia "30 dias · Até renovar" — corrigido, publicado e **verificado em
+produção em 20/09**: nova compra (`ativo`, válido até 21/10 01:00, cota 4) seguida de cancelamento imediato
+devolveu `gratuito`, cota 0, `cancelado` e `plano_valido_ate = null`;
 (2) linhas `pendente` de checkout abandonado/recusado ficam órfãs para sempre — só higiene de tabela,
 sem efeito em acesso, não corrigido.
 
