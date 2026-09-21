@@ -311,11 +311,10 @@ export default function TelaWelcome() {
           {/* Seção Inferior - CTA */}
           <View style={estilos.secaoInferior}>
             <Animated.View
-              style={{
-                opacity: ctaOpacidade,
-                transform: [{ translateY: ctaY }],
-                width: '100%',
-              }}
+              style={[
+                estilos.cta,
+                { opacity: ctaOpacidade, transform: [{ translateY: ctaY }] },
+              ]}
             >
               {/* Brilho ao redor do botão */}
               <Animated.View
@@ -429,6 +428,12 @@ const estilos = StyleSheet.create({
     justifyContent: 'flex-end',
     alignItems: 'center',
     paddingBottom: 40,
+  },
+  // No celular ocupa a largura toda; em tela larga (web) para em 420 px e fica
+  // centralizado — sem o teto, os botões esticavam de ponta a ponta do monitor.
+  cta: {
+    width: '100%',
+    maxWidth: 420,
   },
   brilhoBotao: {
     position: 'absolute',
