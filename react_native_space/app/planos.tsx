@@ -57,10 +57,9 @@ const PLANOS: Plano[] = [
     gradiente: ['rgba(124, 154, 130, 0.15)', 'rgba(124, 154, 130, 0.05)'] as const,
     beneficios: [
       { texto: '1 leitura por semana', disponivel: true },
-      { texto: 'Entrega em texto + áudio', disponivel: true },
+      { texto: 'Leituras em texto', disponivel: true },
       { texto: 'Acesso ao histórico', disponivel: true },
       { texto: 'Análise de imagem por IA', disponivel: false },
-      { texto: 'Vídeo personalizado', disponivel: false },
       { texto: 'Rituais guiados', disponivel: false },
       { texto: 'Consulta ao vivo', disponivel: false },
     ],
@@ -77,7 +76,7 @@ const PLANOS: Plano[] = [
     gradiente: ['rgba(212, 175, 55, 0.2)', 'rgba(75, 0, 130, 0.15)'] as const,
     beneficios: [
       { texto: 'Leituras ilimitadas por IA', disponivel: true },
-      { texto: 'Todos os formatos (texto, áudio, vídeo)', disponivel: true },
+      { texto: 'Leituras em texto', disponivel: true },
       { texto: 'Análise de imagem ilimitada', disponivel: true },
       { texto: 'Rituais guiados completos', disponivel: true },
       { texto: 'Jornada espiritual personalizada', disponivel: true },
