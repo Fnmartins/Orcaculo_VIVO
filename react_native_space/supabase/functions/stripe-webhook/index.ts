@@ -123,8 +123,11 @@ Deno.serve(async (request) => {
         const sub = evento.data.object as Stripe.Subscription;
         const usuarioId = sub.metadata?.usuario_id;
         if (!usuarioId) break;
+        // plano_valido_ate volta a null junto: sem plano, não há "dias até renovar".
+        // Deixá-la no futuro fazia o Perfil mostrar "30 dias" numa conta gratuita.
         await supabaseAdmin.from('perfis')
-          .update({ plano: 'gratuito', consultas_restantes: 0 }).eq('id', usuarioId);
+          .update({ plano: 'gratuito', consultas_restantes: 0, plano_valido_ate: null })
+          .eq('id', usuarioId);
         await supabaseAdmin.from('assinaturas')
           .update({ status: 'cancelado' }).eq('stripe_subscription_id', sub.id);
         break;
