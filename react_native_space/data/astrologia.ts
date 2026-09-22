@@ -29,13 +29,13 @@ export interface CasaAstrologica {
   descricao: string;
 }
 
-export interface MapaAstralResultado {
-  sol: { signo: Signo; grau: number; casa: number; interpretacao: string };
-  lua: { signo: Signo; grau: number; casa: number; interpretacao: string };
-  ascendente: { signo: Signo; grau: number; interpretacao: string };
-  planetas: Array<{ planeta: Planeta; signo: Signo; casa: number; grau: number; interpretacao: string }>;
-  casas: Array<{ casa: CasaAstrologica; signo: Signo }>;
-  resumo: string;
+/** O que a data de nascimento permite afirmar sem cálculo astronômico: o signo solar. */
+export interface LeituraSignoSolar {
+  signo: Signo;
+  /** Leitura do Sol: o que ele representa e como se expressa neste signo. */
+  texto: string;
+  /** Elemento, modalidade e regente, em linguagem corrida. */
+  sintese: string;
 }
 
 export const SIGNOS: Signo[] = [
@@ -167,73 +167,37 @@ export function signoSolar(dia: number, mes: number): Signo {
   return SIGNOS[9]; // Capricórnio fallback
 }
 
-// Simula a geração de um mapa astral completo
-export function gerarMapaAstral(dia: number, mes: number, ano: number, hora: number, minuto: number): MapaAstralResultado {
-  const sol = signoSolar(dia, mes);
-  
-  // Simulação: lua baseada no horário
-  const luaIndex = (hora + dia + mes) % 12;
-  const lua = SIGNOS[luaIndex];
-  
-  // Simulação: ascendente baseado na hora
-  const ascIndex = Math.floor(hora / 2) % 12;
-  const asc = SIGNOS[ascIndex];
-  
-  // Simulação: posições planetárias
-  const seed = dia + mes * 31 + ano + hora * 60 + minuto;
-  const planetas = PLANETAS.map((planeta, i) => {
-    const signoIndex = (seed + i * 3 + dia) % 12;
-    const casa = ((seed + i * 5) % 12) + 1;
-    const grau = (seed * (i + 1)) % 30;
-    const signo = SIGNOS[signoIndex];
-    
-    const interpretacoes = [
-      `${planeta.nome} em ${signo.nome} traz ${signo.palavrasChave[0].toLowerCase()} para a área de ${planeta.significado.split(',')[0].toLowerCase()}.`,
-      `Com ${planeta.nome} na Casa ${casa}, você expressa ${signo.palavrasChave[1].toLowerCase()} de forma ${signo.qualidade === 'Cardinal' ? 'ativa' : signo.qualidade === 'Fixo' ? 'constante' : 'adaptável'}.`,
-      `A energia ${signo.elemento === 'Fogo' ? 'ardente' : signo.elemento === 'Terra' ? 'estável' : signo.elemento === 'Ar' ? 'mental' : 'emocional'} de ${signo.nome} influencia seu(sua) ${planeta.significado.split(',')[0].toLowerCase()}.`,
-    ];
-    
-    return {
-      planeta,
-      signo,
-      casa,
-      grau,
-      interpretacao: interpretacoes[i % 3],
-    };
-  });
-  
-  // Casas com signos
-  const casas = CASAS.map((casa, i) => ({
-    casa,
-    signo: SIGNOS[(ascIndex + i) % 12],
-  }));
-  
-  const solGrau = (dia + hora) % 30;
-  const solCasa = ((seed + 7) % 12) + 1;
-  const luaGrau = (minuto + mes) % 30;
-  const luaCasa = ((seed + 3) % 12) + 1;
-  const ascGrau = (hora * 2 + minuto) % 30;
-  
+const ELEMENTO_TEXTO: Record<Signo['elemento'], string> = {
+  Fogo: 'Fogo, o elemento da ação, do entusiasmo e da iniciativa',
+  Terra: 'Terra, o elemento da estabilidade e do que se constrói com o tempo',
+  Ar: 'Ar, o elemento das ideias, da comunicação e das trocas',
+  Água: 'Água, o elemento das emoções, da intuição e dos vínculos',
+};
+
+const MODALIDADE_TEXTO: Record<Signo['qualidade'], string> = {
+  Cardinal: 'cardinal: a energia que inicia e abre caminhos',
+  Fixo: 'fixa: a energia que sustenta e aprofunda',
+  Mutável: 'mutável: a energia que se adapta e transforma',
+};
+
+function regidoPor(regente: string): string {
+  if (regente === 'Lua') return 'regido pela Lua';
+  if (regente === 'Sol') return 'regido pelo Sol';
+  return `regido por ${regente}`;
+}
+
+/**
+ * Leitura honesta enquanto não existe cálculo astronômico: só o signo solar, que sai
+ * da data. Lua, ascendente, planetas e casas dependem de efemérides, hora e local de
+ * nascimento — até 21/09/2026 eram inventados por aritmética e mostrados como reais.
+ * O motor de verdade está proposto em docs/2026-09-21-conselho-mapa-astral.md.
+ */
+export function lerSignoSolar(dia: number, mes: number): LeituraSignoSolar {
+  const signo = signoSolar(dia, mes);
+  const [p1, p2, p3, p4] = signo.palavrasChave.map((p) => p.toLowerCase());
   return {
-    sol: {
-      signo: sol,
-      grau: solGrau,
-      casa: solCasa,
-      interpretacao: `Com o Sol em ${sol.nome}, sua essência é ${sol.palavrasChave[0].toLowerCase()} e ${sol.palavrasChave[1].toLowerCase()}. ${sol.descricao} Na Casa ${solCasa}, essa energia se manifesta na área de ${CASAS[solCasa - 1].area.toLowerCase()}.`,
-    },
-    lua: {
-      signo: lua,
-      grau: luaGrau,
-      casa: luaCasa,
-      interpretacao: `A Lua em ${lua.nome} revela suas emoções mais profundas: ${lua.palavrasChave[2].toLowerCase()} e ${lua.palavrasChave[3].toLowerCase()}. Na Casa ${luaCasa}, suas necessidades emocionais se conectam com ${CASAS[luaCasa - 1].descricao.toLowerCase()}.`,
-    },
-    ascendente: {
-      signo: asc,
-      grau: ascGrau,
-      interpretacao: `${asc.nome} ascendente mostra que você se apresenta ao mundo com ${asc.palavrasChave[0].toLowerCase()} e ${asc.palavrasChave[2].toLowerCase()}. As pessoas te percebem como alguém ${asc.elemento === 'Fogo' ? 'energético e inspirador' : asc.elemento === 'Terra' ? 'estável e confiável' : asc.elemento === 'Ar' ? 'comunicativo e sociável' : 'sensível e intuitivo'}.`,
-    },
-    planetas,
-    casas,
-    resumo: `Seu mapa revela uma personalidade ${sol.palavrasChave[0].toLowerCase()} (Sol em ${sol.nome}) com mundo emocional ${lua.palavrasChave[0].toLowerCase()} (Lua em ${lua.nome}) e imagem social ${asc.palavrasChave[0].toLowerCase()} (Ascendente ${asc.nome}). O elemento ${sol.elemento} predomina, trazendo energia ${sol.elemento === 'Fogo' ? 'de ação e paixão' : sol.elemento === 'Terra' ? 'de estabilidade e praticidade' : sol.elemento === 'Ar' ? 'de comunicação e raciocínio' : 'de emoção e intuição'} para sua jornada.`,
+    signo,
+    texto: `${signo.descricao} No mapa, o Sol representa a essência: aquilo que você veio expressar e desenvolver ao longo da vida. Em ${signo.nome}, esse caminho passa por ${p1}, ${p2} e ${p3}.`,
+    sintese: `${signo.nome} é um signo de ${ELEMENTO_TEXTO[signo.elemento]}. A modalidade é ${MODALIDADE_TEXTO[signo.qualidade]}. É ${regidoPor(signo.regente)}, o astro que dá o tom de como essa energia se move. Em equilíbrio, ela aparece como ${p4}.`,
   };
 }
