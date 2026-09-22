@@ -159,6 +159,69 @@ export const ODUS: OduBuzios[] = [
     energia: 'positiva',
     cor: '#D4AF37',
   },
+  // Odus 13 a 16 e o Opir\u00e1 entraram em 21/09/2026, quando o jogo passou de 12 para
+  // 16 b\u00fazios (merindilogun). Textos simb\u00f3licos, pendentes de valida\u00e7\u00e3o por quem
+  // conhece o jogo \u2014 ver docs/2026-09-21-conselho-buzios-e-introducoes.md.
+  {
+    id: 13,
+    nome: 'Ejiologbon',
+    nomeYoruba: 'Ej\u00ed Ologbon',
+    abertos: 13,
+    elemento: '\u00c1gua',
+    regente: 'Nan\u00e3',
+    significado: 'Sabedoria antiga e tempo de matura\u00e7\u00e3o. O que voc\u00ea busca pede paci\u00eancia e escuta de quem veio antes.',
+    conselho: 'N\u00e3o apresse a decis\u00e3o. Procure quem tem experi\u00eancia no assunto e ou\u00e7a com aten\u00e7\u00e3o.',
+    energia: 'neutra',
+    cor: '#5D6D7E',
+  },
+  {
+    id: 14,
+    nome: 'Ik\u00e1',
+    nomeYoruba: 'Ik\u00e1',
+    abertos: 14,
+    elemento: 'Ar',
+    regente: 'Oxumar\u00ea',
+    significado: 'Ciclos e renova\u00e7\u00e3o. O que parecia fim \u00e9 passagem: algo se transforma para continuar de outra forma.',
+    conselho: 'Aceite a mudan\u00e7a de ciclo em vez de resistir a ela. Observe o que j\u00e1 est\u00e1 nascendo.',
+    energia: 'neutra',
+    cor: '#16A085',
+  },
+  {
+    id: 15,
+    nome: 'Obeogund\u00e1',
+    nomeYoruba: 'Ob\u00e9 Ogund\u00e1',
+    abertos: 15,
+    elemento: 'Fogo',
+    regente: 'Ob\u00e1 / Ogum',
+    significado: 'Corte e decis\u00e3o. Algo precisa ser encerrado com clareza para que o novo tenha espa\u00e7o.',
+    conselho: 'Evite meias decis\u00f5es. Defina o que fica e o que termina, sem conflito desnecess\u00e1rio.',
+    energia: 'atencao',
+    cor: '#C0392B',
+  },
+  {
+    id: 16,
+    nome: 'Alafi\u00e1',
+    nomeYoruba: 'Alafi\u00e1',
+    abertos: 16,
+    elemento: 'Ar',
+    regente: 'Oxal\u00e1',
+    significado: 'Paz e confirma\u00e7\u00e3o. Todos os b\u00fazios se abriram: o caminho est\u00e1 aberto e em harmonia.',
+    conselho: 'Siga com serenidade e gratid\u00e3o. Mantenha a palavra e cuide do que j\u00e1 est\u00e1 bom.',
+    energia: 'positiva',
+    cor: '#ECF0F1',
+  },
+  {
+    id: 0,
+    nome: 'Opir\u00e1',
+    nomeYoruba: 'Opir\u00e1',
+    abertos: 0,
+    elemento: 'Terra',
+    regente: '\u2014',
+    significado: 'O jogo n\u00e3o se abriu. Nenhum b\u00fazio caiu com a boca para cima: neste momento n\u00e3o h\u00e1 resposta a ser dada.',
+    conselho: 'Respire, reformule a sua pergunta com mais clareza e lance de novo, sem pressa.',
+    energia: 'atencao',
+    cor: '#34495E',
+  },
 ];
 
 export interface ResultadoBuzios {
@@ -166,16 +229,15 @@ export interface ResultadoBuzios {
   odu: OduBuzios;
 }
 
-// Jogar 12 b\u00fazios e determinar o odu
+/** Quantidade de b\u00fazios do merindilogun. At\u00e9 21/09/2026 o app jogava 12. */
+export const QUANTIDADE_BUZIOS = 16;
+
+// Lan\u00e7a os 16 b\u00fazios e encontra o odu pela quantidade que caiu aberta.
+// Nenhum aberto \u00e9 o Opir\u00e1 (jogo fechado), n\u00e3o o odu 16 \u2014 antes, zero virava 12.
 export function jogarBuzios(): ResultadoBuzios {
-  // Gerar 12 b\u00fazios aleat\u00f3rios (true = aberto)
-  const buzios = Array.from({ length: 12 }, () => Math.random() > 0.5);
+  const buzios = Array.from({ length: QUANTIDADE_BUZIOS }, () => Math.random() > 0.5);
   const abertos = buzios.filter(b => b).length;
-
-  // Se 0 abertos, considerar como 12 (todos fechados = odu especial)
-  const numAbertos = abertos === 0 ? 12 : abertos;
-
-  const odu = ODUS.find(o => o.abertos === numAbertos) ?? ODUS[0];
+  const odu = ODUS.find(o => o.abertos === abertos) ?? ODUS[0];
 
   return { buzios, odu };
 }

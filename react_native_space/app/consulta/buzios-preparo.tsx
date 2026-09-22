@@ -15,12 +15,14 @@ import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
 import { Espacamento } from '../../constants/spacing';
 
+// Frases sobre a intenção de quem consulta. O app não consagra búzios nem fala
+// pelos Orixás — ver docs/2026-09-21-conselho-buzios-e-introducoes.md, item B2.
 const FRASES = [
-  'Silencie sua mente...',
-  'Conecte-se com os Orixás...',
-  'Formule sua pergunta interiormente...',
-  'Os búzios estão sendo consagrados...',
-  'A sabedoria ancestral se manifesta...',
+  'Respire fundo...',
+  'Silencie a mente por um instante...',
+  'Pense no que você quer compreender...',
+  'Formule a sua pergunta com clareza...',
+  'Os búzios estão prontos...',
 ];
 
 const VIDEO_PREPARACAO = require('../../assets/buzios-preparacao.mp4');

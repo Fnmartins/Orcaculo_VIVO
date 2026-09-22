@@ -21,7 +21,7 @@ import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
 import { Hapticos } from '../../utils/haptics';
-import type { ResultadoBuzios } from '../../data/buzios';
+import { QUANTIDADE_BUZIOS, type ResultadoBuzios } from '../../data/buzios';
 import { gerarInterpretacaoBuzios, IA_REMOTA_DISPONIVEL, type InterpretacaoBuzios } from '../../services/ia';
 import { compartilharBuzios } from '../../services/compartilhar';
 import { RatingConsulta } from '../../components/RatingConsulta';
@@ -96,7 +96,7 @@ export default function TelaBuziosResultado() {
 
   const { odu, buzios } = resultado;
   const numAbertos = buzios.filter((b: boolean) => b).length;
-  const numFechados = 12 - numAbertos;
+  const numFechados = QUANTIDADE_BUZIOS - numAbertos;
 
   const corEnergia = odu.energia === 'positiva' ? '#4CAF50'
     : odu.energia === 'atencao' ? '#FF9800'

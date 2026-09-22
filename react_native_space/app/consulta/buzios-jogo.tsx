@@ -21,7 +21,7 @@ import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
 import { Hapticos } from '../../utils/haptics';
-import { jogarBuzios, type ResultadoBuzios } from '../../data/buzios';
+import { jogarBuzios, QUANTIDADE_BUZIOS, type ResultadoBuzios } from '../../data/buzios';
 import { SomMistico } from '../../services/somMistico';
 
 const { width: LARGURA_TELA } = Dimensions.get('window');
@@ -68,9 +68,9 @@ export default function TelaBuziosJogo() {
   const lancamentoConcluido = useRef(false);
   const videoSaidaIniciada = useRef(false);
 
-  // 12 búzios com animações
+  // Os 16 búzios do merindilogun, cada um com a sua animação
   const buziosAnims = useRef<BuzioAnimado[]>(
-    Array.from({ length: 12 }, () => ({
+    Array.from({ length: QUANTIDADE_BUZIOS }, () => ({
       x: new Animated.Value(AREA_JOGO / 2 - TAMANHO_BUZIO / 2),
       y: new Animated.Value(-50),
       rotacao: new Animated.Value(0),
@@ -145,7 +145,7 @@ export default function TelaBuziosJogo() {
     // Marcar animação como concluída
     setTimeout(() => {
       setAnimacaoConcluida(true);
-    }, 12 * 80 + 800);
+    }, QUANTIDADE_BUZIOS * 80 + 800);
   }, [buziosAnims, brilhoArea]);
 
   const realizarJogada = useCallback(() => {

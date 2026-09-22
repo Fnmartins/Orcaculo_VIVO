@@ -26,11 +26,13 @@ const FRASES_TAROT = [
   'As cartas estão se preparando...',
 ];
 
+// Como no buzios-preparo: a frase fala da intenção de quem consulta, não de um
+// ato espiritual que o app não realiza (conselho de 21/09, item B2).
 const FRASES_BUZIOS = [
-  'Sinta a energia dos búzios...',
+  'Respire fundo...',
+  'Pense no que você quer compreender...',
   'Formule sua intenção com clareza...',
-  'O axé está se manifestando...',
-  'Os Odus estão se alinhando...',
+  'Os búzios estão prontos para o lançamento...',
 ];
 
 // Bola de Cristal com gradiente radial SVG
