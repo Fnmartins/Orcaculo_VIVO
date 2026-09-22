@@ -350,10 +350,10 @@ const estilos = StyleSheet.create({
     justifyContent: 'center',
   },
   areaJogo: {
-    borderRadius: RaioBorda.xl,
-    backgroundColor: 'rgba(20, 12, 24, 0.6)',
-    borderWidth: 1,
-    borderColor: 'rgba(212, 175, 55, 0.25)',
+    // A peneira é redonda e desenhada: o contêiner fica transparente e redondo,
+    // senão sobra um retângulo escuro em volta dela.
+    borderRadius: AREA_JOGO / 2,
+    backgroundColor: 'transparent',
     position: 'relative',
     overflow: 'hidden',
     ...Platform.select({
@@ -372,7 +372,7 @@ const estilos = StyleSheet.create({
     top: 0,
     left: 0,
     backgroundColor: Cores.acento,
-    borderRadius: RaioBorda.xl,
+    borderRadius: AREA_JOGO / 2,
   },
   buzio: {
     position: 'absolute',
