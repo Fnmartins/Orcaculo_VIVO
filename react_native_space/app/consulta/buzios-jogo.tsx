@@ -12,9 +12,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Image } from 'expo-image';
-import { ResizeMode, Video } from 'expo-av';
 import { GradientBackground } from '../../components/GradientBackground';
+import { MesaBuzios } from '../../components/MesaBuzios';
 import { Button } from '../../components/Button';
 import { BuzioIcon } from '../../components/BuzioIcon';
 import { Cores } from '../../constants/colors';
@@ -25,8 +24,10 @@ import { jogarBuzios, QUANTIDADE_BUZIOS, type ResultadoBuzios } from '../../data
 import { SomMistico } from '../../services/somMistico';
 
 const { width: LARGURA_TELA } = Dimensions.get('window');
-const AREA_JOGO = Math.min(LARGURA_TELA - 16, 450);
-const TAMANHO_BUZIO = 48;
+// A peneira ocupa quase toda a largura no celular e cresce até 560 px na web.
+// Antes parava em 450 px, o que deixava a mesa pequena numa tela grande.
+const AREA_JOGO = Math.min(LARGURA_TELA * 0.92, 560);
+const TAMANHO_BUZIO = Math.round(AREA_JOGO * 0.105);
 
 interface BuzioAnimado {
   x: Animated.Value;
@@ -35,9 +36,6 @@ interface BuzioAnimado {
   escala: Animated.Value;
   opacidade: Animated.Value;
 }
-
-const MESA_IMG = require('../../assets/mesa-buzios.jpg');
-const VIDEO_LANCAMENTO = require('../../assets/buzios-lancamento.mp4');
 
 // Gera uma posição aleatória DENTRO do círculo da mesa (distribuição uniforme).
 // Como usa Math.random() a cada chamada, a disposição dos búzios muda a cada jogada.
@@ -58,15 +56,13 @@ export default function TelaBuziosJogo() {
   const [resultado, setResultado] = useState<ResultadoBuzios | null>(null);
   const [jogou, setJogou] = useState(false);
   const [animacaoConcluida, setAnimacaoConcluida] = useState(false);
-  const [maoVisivel, setMaoVisivel] = useState(false);
+  const [chacoalhando, setChacoalhando] = useState(false);
   const [buziosCaindo, setBuziosCaindo] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
   const brilhoArea = useRef(new Animated.Value(0)).current;
-  const videoOpacidade = useRef(new Animated.Value(0)).current;
-  const videoRef = useRef<Video>(null);
-  const lancamentoConcluido = useRef(false);
-  const videoSaidaIniciada = useRef(false);
+  // Tremor do botão enquanto a pessoa segura para chacoalhar os búzios.
+  const tremor = useRef(new Animated.Value(0)).current;
 
   // Os 16 búzios do merindilogun, cada um com a sua animação
   const buziosAnims = useRef<BuzioAnimado[]>(
@@ -148,36 +144,28 @@ export default function TelaBuziosJogo() {
     }, QUANTIDADE_BUZIOS * 80 + 800);
   }, [buziosAnims, brilhoArea]);
 
-  const realizarJogada = useCallback(() => {
+  // Segurar para chacoalhar, soltar para lançar: no lugar do vídeo que repetia
+  // o da preparação (conselho de 21/09, item B4).
+  const iniciarChacoalho = useCallback(() => {
     if (jogou) return;
+    setChacoalhando(true);
+    Hapticos.impactoLeve();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(tremor, { toValue: 1, duration: 90, useNativeDriver: true }),
+        Animated.timing(tremor, { toValue: -1, duration: 90, useNativeDriver: true }),
+      ]),
+    ).start();
+  }, [jogou, tremor]);
+
+  const soltarELancar = useCallback(() => {
+    if (jogou) return;
+    tremor.stopAnimation(() => tremor.setValue(0));
+    setChacoalhando(false);
     Hapticos.impactoMedio();
-    lancamentoConcluido.current = false;
-    videoSaidaIniciada.current = false;
-    videoOpacidade.setValue(0);
     setJogou(true);
-    setMaoVisivel(true);
-  }, [jogou, videoOpacidade]);
-
-  const concluirVideoLancamento = useCallback(() => {
-    if (lancamentoConcluido.current) return;
-    lancamentoConcluido.current = true;
-    setMaoVisivel(false);
     lancarBuzios();
-  }, [lancarBuzios]);
-
-  const iniciarVideoLancamento = useCallback(async () => {
-    try {
-      await videoRef.current?.setPositionAsync(2200);
-      Animated.timing(videoOpacidade, {
-        toValue: 1,
-        duration: 260,
-        useNativeDriver: true,
-      }).start();
-      await videoRef.current?.playAsync();
-    } catch {
-      concluirVideoLancamento();
-    }
-  }, [concluirVideoLancamento, videoOpacidade]);
+  }, [jogou, tremor, lancarBuzios]);
 
   const verResultado = useCallback(() => {
     if (!resultado) return;
@@ -197,28 +185,18 @@ export default function TelaBuziosJogo() {
             <Text style={estilos.titulo}>Jogo de Búzios</Text>
             <Text style={estilos.subtitulo}>
               {!jogou
-                ? 'Toque para invocar a mão e lançar os búzios'
-                : maoVisivel
-                  ? 'A mão está lançando...'
-                  : animacaoConcluida
-                    ? `${resultado?.buzios.filter(b => b).length ?? 0} búzios abertos • ${resultado?.odu.nome ?? ''}`
-                    : 'Os búzios estão caindo...'}
+                ? (chacoalhando ? 'Solte para lançar...' : 'Segure para chacoalhar os búzios')
+                : animacaoConcluida
+                  ? `${resultado?.buzios.filter(b => b).length ?? 0} búzios abertos • ${resultado?.odu.nome ?? ''}`
+                  : 'Os búzios estão caindo...'}
             </Text>
           </Animated.View>
 
           {/* Área de Jogo */}
           <View style={estilos.areaJogoWrapper}>
             <View style={[estilos.areaJogo, { width: AREA_JOGO, height: AREA_JOGO }]}>
-              {/* Tabuleiro real (foto da mesa de búzios) */}
-              <Image
-                source={MESA_IMG}
-                style={estilos.mesaImagem}
-                contentFit="cover"
-                contentPosition="center"
-                transition={300}
-              />
-              {/* Vinheta sutil para dar contraste aos búzios */}
-              <View style={estilos.vinheta} />
+              {/* Peneira desenhada, no mesmo traço das conchas */}
+              <MesaBuzios tamanho={AREA_JOGO} />
 
               {/* Brilho flash */}
               <Animated.View style={[
@@ -255,59 +233,43 @@ export default function TelaBuziosJogo() {
                 );
               })}
 
-              {/* Lançamento real — vídeo fornecido pelo projeto */}
-              {maoVisivel && (
-                <Animated.View style={[estilos.videoLancamento, { opacity: videoOpacidade }]} pointerEvents="none">
-                  <View style={estilos.videoMoldura}>
-                    <Video
-                      ref={videoRef}
-                      source={VIDEO_LANCAMENTO}
-                      style={estilos.video}
-                      resizeMode={ResizeMode.CONTAIN}
-                      isMuted
-                      isLooping={false}
-                      useNativeControls={false}
-                      progressUpdateIntervalMillis={100}
-                      onLoad={iniciarVideoLancamento}
-                      onPlaybackStatusUpdate={(status) => {
-                        if (status.isLoaded && status.durationMillis && !videoSaidaIniciada.current) {
-                          const restante = status.durationMillis - status.positionMillis;
-                          if (restante > 0 && restante <= 400) {
-                            videoSaidaIniciada.current = true;
-                            Animated.timing(videoOpacidade, {
-                              toValue: 0,
-                              duration: restante,
-                              useNativeDriver: true,
-                            }).start();
-                          }
-                        }
-                        if (status.isLoaded && status.didJustFinish) concluirVideoLancamento();
-                      }}
-                      onError={concluirVideoLancamento}
-                    />
-                    <LinearGradient
-                      colors={['rgba(8,4,12,0.12)', 'transparent', 'rgba(8,4,12,0.18)'] as const}
-                      style={StyleSheet.absoluteFillObject}
-                    />
-                  </View>
-                </Animated.View>
-              )}
-
-              {/* Botão de jogar (antes de jogar) */}
+              {/* Segurar para chacoalhar, soltar para lançar */}
               {!jogou && (
                 <Pressable
-                  onPress={realizarJogada}
+                  onPressIn={iniciarChacoalho}
+                  onPressOut={soltarELancar}
                   style={estilos.botaoJogarOverlay}
                   accessibilityRole="button"
-                  accessibilityLabel="Lançar búzios"
+                  accessibilityLabel="Segure para chacoalhar e solte para lançar os búzios"
                 >
-                  <LinearGradient
-                    colors={Cores.gradienteAcento}
-                    style={estilos.botaoJogar}
+                  <Animated.View
+                    style={{
+                      transform: [
+                        {
+                          translateX: tremor.interpolate({
+                            inputRange: [-1, 1],
+                            outputRange: [-6, 6],
+                          }),
+                        },
+                        {
+                          rotate: tremor.interpolate({
+                            inputRange: [-1, 1],
+                            outputRange: ['-4deg', '4deg'],
+                          }),
+                        },
+                      ],
+                    }}
                   >
-                    <MaterialCommunityIcons name="grain" size={40} color={Cores.fundoEscuro} />
-                    <Text style={estilos.botaoJogarTexto}>Lançar</Text>
-                  </LinearGradient>
+                    <LinearGradient
+                      colors={Cores.gradienteAcento}
+                      style={estilos.botaoJogar}
+                    >
+                      <MaterialCommunityIcons name="grain" size={40} color={Cores.fundoEscuro} />
+                      <Text style={estilos.botaoJogarTexto}>
+                        {chacoalhando ? 'Solte' : 'Segure'}
+                      </Text>
+                    </LinearGradient>
+                  </Animated.View>
                 </Pressable>
               )}
             </View>
@@ -344,7 +306,7 @@ export default function TelaBuziosJogo() {
               />
             ) : !jogou ? (
               <Text style={estilos.dicaTexto}>
-                🔮 Concentre-se na sua pergunta e toque para lançar
+                🔮 Concentre-se na sua pergunta, segure para chacoalhar e solte
               </Text>
             ) : null}
           </View>
@@ -405,38 +367,12 @@ const estilos = StyleSheet.create({
       default: {},
     }),
   },
-  mesaImagem: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  vinheta: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(10, 6, 14, 0.08)',
-  },
   areaFlash: {
     position: 'absolute',
     top: 0,
     left: 0,
     backgroundColor: Cores.acento,
     borderRadius: RaioBorda.xl,
-  },
-  videoLancamento: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(9,6,12,0.34)',
-  },
-  videoMoldura: {
-    width: '100%',
-    aspectRatio: 16 / 9,
-    overflow: 'hidden',
-    backgroundColor: '#09060C',
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: 'rgba(212,175,55,0.32)',
-  },
-  video: {
-    ...StyleSheet.absoluteFillObject,
   },
   buzio: {
     position: 'absolute',
