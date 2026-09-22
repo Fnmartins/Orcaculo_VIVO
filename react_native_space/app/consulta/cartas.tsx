@@ -18,6 +18,7 @@ import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
 import { Hapticos } from '../../utils/haptics';
+import { voltarOuIr } from '../../utils/navegacao';
 import { sortearCartas, type CartaTarot } from '../../data/tarot';
 
 const { width: LARGURA_TELA, height: ALTURA_TELA } = Dimensions.get('window');
@@ -209,9 +210,21 @@ export default function TelaCartas() {
 
         {/* Header */}
         <Animated.View style={[estilos.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+          {/* Saída da leitura: sem ela, quem desistia no meio ficava preso na tela. */}
+          <Pressable
+            onPress={() => voltarOuIr()}
+            style={estilos.voltarBotao}
+            accessibilityRole="button"
+            accessibilityLabel="Voltar"
+            hitSlop={8}
+          >
+            <Ionicons name="arrow-back" size={22} color={Cores.textoClaro} />
+          </Pressable>
           <View style={estilos.headerDivisor} />
           <Text style={estilos.titulo}>Suas Cartas</Text>
           <View style={estilos.headerDivisor} />
+          {/* Mesma largura do botão, para o título continuar centralizado. */}
+          <View style={estilos.espacoVoltar} />
         </Animated.View>
         <Animated.View style={[estilos.subtituloContainer, { opacity: fadeAnim }]}>
           <Text style={estilos.subtitulo}>
@@ -418,6 +431,19 @@ const estilos = StyleSheet.create({
     flex: 1,
     height: 1,
     backgroundColor: 'rgba(212,175,55,0.25)',
+  },
+  voltarBotao: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Cores.cardFundo,
+    borderWidth: 1,
+    borderColor: Cores.cardBorda,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  espacoVoltar: {
+    width: 40,
   },
   titulo: {
     fontFamily: Fontes.titulo,
