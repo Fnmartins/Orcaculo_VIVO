@@ -7,6 +7,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { GradientBackground } from '../components/GradientBackground';
 import { AbaPlanos } from '../components/manager/AbaPlanos';
 import { AbaRoadmap } from '../components/manager/AbaRoadmap';
+import { AbaDecisoes } from '../components/manager/AbaDecisoes';
 import { AbaAcessos } from '../components/manager/AbaAcessos';
 import { Cores } from '../constants/colors';
 import { Fontes } from '../constants/typography';
@@ -77,6 +78,7 @@ export default function Manager() {
             <View style={estilos.conteudo}>
               {aba === 'planos' && <AbaPlanos aoPerderAcesso={aoPerderAcesso} />}
               {aba === 'roadmap' && <AbaRoadmap aoPerderAcesso={aoPerderAcesso} />}
+              {aba === 'decisoes' && <AbaDecisoes aoPerderAcesso={aoPerderAcesso} />}
               {aba === 'acessos' && <AbaAcessos aoPerderAcesso={aoPerderAcesso} />}
             </View>
           </>
