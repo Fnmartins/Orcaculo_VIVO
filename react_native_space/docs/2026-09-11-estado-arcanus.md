@@ -175,6 +175,14 @@ Painel: **aba Decisões** (`supabase/decisoes.sql` rodado em 22/09, 6 policies c
 fio de manifestações (Aprovo, Não aprovo, Comentário) e "Copiar tudo", para decidir com o Marcio dentro da
 plataforma. Suíte em 142 testes.
 
+**Entregue em 23/09.** As aberturas dos oráculos num componente só (`components/AberturaOraculo.tsx`): o
+objeto da própria prática no centro, uma frase, um botão ("Estou pronto"), sem barra de progresso e sem
+espera imposta. Tarô: quem pergunta embaralha e corta — a bola de cristal saiu; o sorteio continua
+acontecendo depois, quando a tela das cartas abre, senão o gesto vira teatro. Búzios: a peneira pousa e o
+jogo começa no toque, sem mão humana preparando as conchas. Os dois vídeos saíram do app (4,4 MB a menos
+no pacote). "Reduzir movimento" do sistema entrega a tela parada e todo gesto tem botão com rótulo.
+Aprovado pelo conselho em 23/09, com os três ajustes que ele pediu. Suíte em 151 testes.
+
 **Mapa Astral — apontado em 21/09**, conselho em `docs/2026-09-21-conselho-mapa-astral.md` (4 decisões
 pendentes): só o signo solar é calculado; Lua, ascendente, planetas, casas e graus saem de contas
 aritméticas e aparecem na tela como se fossem reais. Proposta: tirar da tela o que é inventado já (M0) e

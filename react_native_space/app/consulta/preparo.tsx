@@ -1,338 +1,181 @@
-import React, { useEffect, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Animated,
-  Easing,
-  Dimensions,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, useLocalSearchParams } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Circle, Defs, RadialGradient as SvgRadialGradient, Stop, Ellipse } from 'react-native-svg';
-import { GradientBackground } from '../../components/GradientBackground';
+import { useCallback, useRef, useState } from 'react';
+import { Animated, Easing, Pressable, StyleSheet, View } from 'react-native';
+import { router } from 'expo-router';
+import { AberturaOraculo, useReduzirMovimento } from '../../components/AberturaOraculo';
 import { Cores } from '../../constants/colors';
-import { Fontes } from '../../constants/typography';
-import { Espacamento } from '../../constants/spacing';
+import { Hapticos } from '../../utils/haptics';
 
-const { width: W } = Dimensions.get('window');
-const BOLA_SIZE = Math.min(W * 0.6, 220);
+const CARTAS = 5;
+const LARGURA = 74;
+const ALTURA = 112;
 
-const FRASES_TAROT = [
-  'Respire fundo...',
-  'Concentre-se na sua pergunta...',
-  'Deixe a intuição fluir...',
-  'As cartas estão se preparando...',
-];
+type Etapa = 'embaralhar' | 'cortar' | 'indo';
 
-// Como no buzios-preparo: a frase fala da intenção de quem consulta, não de um
-// ato espiritual que o app não realiza (conselho de 21/09, item B2).
-const FRASES_BUZIOS = [
-  'Respire fundo...',
-  'Pense no que você quer compreender...',
-  'Formule sua intenção com clareza...',
-  'Os búzios estão prontos para o lançamento...',
-];
+const FRASE: Record<Etapa, string> = {
+  embaralhar: 'Pense na sua pergunta e embaralhe as cartas.',
+  cortar: 'Agora corte o baralho, quando sentir que é hora.',
+  indo: 'As cartas estão prontas.',
+};
 
-// Bola de Cristal com gradiente radial SVG
-function BolaCristal({ pulseAnim }: { pulseAnim: Animated.Value }) {
-  const r = BOLA_SIZE / 2;
-  return (
-    <Animated.View style={[estilos.bolaContainer, { transform: [{ scale: pulseAnim }] }]}>
-      <Svg width={BOLA_SIZE} height={BOLA_SIZE}>
-        <Defs>
-          <SvgRadialGradient id="bolaGrad" cx="38%" cy="30%" r="65%" fx="38%" fy="30%">
-            <Stop offset="0%" stopColor="#DCE9E5" stopOpacity="0.98" />
-            <Stop offset="35%" stopColor="#8EA9A3" stopOpacity="0.92" />
-            <Stop offset="70%" stopColor="#587565" stopOpacity="0.96" />
-            <Stop offset="100%" stopColor="#365247" stopOpacity="1" />
-          </SvgRadialGradient>
-          <SvgRadialGradient id="reflexo" cx="32%" cy="25%" r="30%">
-            <Stop offset="0%" stopColor="rgba(255,255,255,0.35)" stopOpacity="0.35" />
-            <Stop offset="100%" stopColor="rgba(255,255,255,0)" stopOpacity="0" />
-          </SvgRadialGradient>
-          <SvgRadialGradient id="glowExt" cx="50%" cy="50%" r="50%">
-            <Stop offset="60%" stopColor="rgba(88,117,101,0)" stopOpacity="0" />
-            <Stop offset="100%" stopColor="rgba(88,117,101,0.35)" stopOpacity="0.35" />
-          </SvgRadialGradient>
-        </Defs>
-        {/* Glow externo */}
-        <Circle cx={r} cy={r} r={r} fill="url(#glowExt)" />
-        {/* Corpo da bola */}
-        <Circle cx={r} cy={r} r={r - 2} fill="url(#bolaGrad)" />
-        {/* Reflexo de luz */}
-        <Ellipse cx={r * 0.72} cy={r * 0.58} rx={r * 0.28} ry={r * 0.18}
-          fill="url(#reflexo)" />
-        {/* Reflexo menor */}
-        <Ellipse cx={r * 0.58} cy={r * 0.44} rx={r * 0.1} ry={r * 0.06}
-          fill="rgba(255,255,255,0.2)" />
-      </Svg>
-    </Animated.View>
-  );
+const ACAO: Record<Etapa, string> = {
+  embaralhar: 'Embaralhar',
+  cortar: 'Cortar',
+  indo: 'Abrindo…',
+};
+
+function criarValores(): Animated.Value[] {
+  return Array.from({ length: CARTAS }, () => new Animated.Value(0));
 }
 
-// Anel orbitante
-function AnelOrbitante({ rotAnim, raio, espessura, cor, velocidade, sentido = 1 }:
-  { rotAnim: Animated.Value; raio: number; espessura: number; cor: string; velocidade: number; sentido?: number }) {
-  const rot = rotAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: sentido === 1 ? ['0deg', '360deg'] : ['360deg', '0deg'],
-  });
-  return (
-    <Animated.View style={[
-      estilos.anel,
-      {
-        width: raio * 2,
-        height: raio * 2,
-        borderRadius: raio,
-        borderWidth: espessura,
-        borderColor: cor,
-        transform: [{ rotate: rot }],
-      },
-    ]}>
-      {/* Ponto brilhante no anel */}
-      <View style={[
-        estilos.anelPonto,
-        { width: espessura * 3.5, height: espessura * 3.5, borderRadius: espessura * 2, backgroundColor: cor },
-      ]} />
-    </Animated.View>
-  );
-}
+/**
+ * Abertura do tarô: quem pergunta embaralha e corta, como numa leitura de verdade.
+ * Antes eram oito segundos de bola de cristal girando — objeto de outra prática, e
+ * espera sem participação (conselho de 21/09, itens I1 e I2).
+ *
+ * O gesto vem antes do sorteio de propósito: as cartas só são sorteadas quando a
+ * tela seguinte abre (app/consulta/cartas.tsx). Se um dia o sorteio subir para cá,
+ * o gesto perde sentido e deve sair.
+ */
+export default function TelaPreparoTarot() {
+  const [etapa, setEtapa] = useState<Etapa>('embaralhar');
+  const reduzirMovimento = useReduzirMovimento();
+  const espalhar = useRef(criarValores()).current;
+  const corte = useRef(new Animated.Value(0)).current;
+  const parado = useRef(new Animated.Value(0)).current;
 
-// Estrela estática de fundo
-function Estrela({ x, y, tamanho, opacidade }: { x: number; y: number; tamanho: number; opacidade: number }) {
-  const brilhaAnim = useRef(new Animated.Value(opacidade)).current;
-  useEffect(() => {
-    const loop = Animated.loop(
+  const irParaCartas = useCallback(() => {
+    setEtapa('indo');
+    router.replace('/consulta/cartas');
+  }, []);
+
+  const embaralhar = useCallback(() => {
+    Hapticos.impactoLeve();
+    if (reduzirMovimento) {
+      setEtapa('cortar');
+      return;
+    }
+    const idaEVolta = espalhar.map((valor, i) =>
       Animated.sequence([
-        Animated.timing(brilhaAnim, { toValue: opacidade * 0.3, duration: 1200 + Math.random() * 1000, useNativeDriver: true }),
-        Animated.timing(brilhaAnim, { toValue: opacidade, duration: 1200 + Math.random() * 1000, useNativeDriver: true }),
-      ])
+        Animated.timing(valor, {
+          toValue: (i % 2 === 0 ? 1 : -1) * (0.6 + Math.random() * 0.4),
+          duration: 260,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(valor, {
+          toValue: 0,
+          duration: 320,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
     );
-    loop.start();
-    return () => loop.stop();
-  }, []);
-  return (
-    <Animated.View style={{
-      position: 'absolute',
-      left: x, top: y,
-      width: tamanho, height: tamanho,
-      borderRadius: tamanho / 2,
-      backgroundColor: '#B58B46',
-      opacity: brilhaAnim,
-    }} />
-  );
-}
+    Animated.stagger(40, idaEVolta).start(() => setEtapa('cortar'));
+  }, [espalhar, reduzirMovimento]);
 
-const ESTRELAS = Array.from({ length: 28 }, (_, i) => ({
-  x: (i * 137.5 % 1) * W,
-  y: (i * 97.3 % 1) * 200,
-  tamanho: i % 3 === 0 ? 2 : 1,
-  opacidade: 0.3 + (i % 5) * 0.1,
-}));
+  const cortar = useCallback(() => {
+    Hapticos.impactoMedio();
+    if (reduzirMovimento) {
+      irParaCartas();
+      return;
+    }
+    Animated.sequence([
+      Animated.timing(corte, {
+        toValue: 1,
+        duration: 260,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.timing(corte, {
+        toValue: 0,
+        duration: 260,
+        easing: Easing.in(Easing.quad),
+        useNativeDriver: true,
+      }),
+    ]).start(irParaCartas);
+  }, [corte, irParaCartas, reduzirMovimento]);
 
-export default function TelaPreparo() {
-  const { tipo = 'tarot' } = useLocalSearchParams<{ tipo?: string }>();
-  const frases = tipo === 'buzios' ? FRASES_BUZIOS : FRASES_TAROT;
-
-  const [fraseIndex, setFraseIndex] = useState(0);
-  const fadeTexto = useRef(new Animated.Value(0)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const rotacao1 = useRef(new Animated.Value(0)).current;
-  const rotacao2 = useRef(new Animated.Value(0)).current;
-  const rotacao3 = useRef(new Animated.Value(0)).current;
-  const progressoAnim = useRef(new Animated.Value(0)).current;
-  const glowAnim = useRef(new Animated.Value(0.5)).current;
-
-  useEffect(() => {
-    // Pulso suave da bola
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.06, duration: 2200, easing: Easing.inOut(Easing.cubic), useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 0.97, duration: 2200, easing: Easing.inOut(Easing.cubic), useNativeDriver: true }),
-      ])
-    ).start();
-
-    // Anéis em velocidades diferentes
-    Animated.loop(
-      Animated.timing(rotacao1, { toValue: 1, duration: 6000, easing: Easing.linear, useNativeDriver: true })
-    ).start();
-    Animated.loop(
-      Animated.timing(rotacao2, { toValue: 1, duration: 9000, easing: Easing.linear, useNativeDriver: true })
-    ).start();
-    Animated.loop(
-      Animated.timing(rotacao3, { toValue: 1, duration: 13000, easing: Easing.linear, useNativeDriver: true })
-    ).start();
-
-    // Glow pulsante
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(glowAnim, { toValue: 1, duration: 2000, useNativeDriver: true }),
-        Animated.timing(glowAnim, { toValue: 0.3, duration: 2000, useNativeDriver: true }),
-      ])
-    ).start();
-
-    // Progresso
-    Animated.timing(progressoAnim, {
-      toValue: 1,
-      duration: 8000,
-      easing: Easing.linear,
-      useNativeDriver: false,
-    }).start();
-  }, []);
-
-  // Ciclo de frases
-  useEffect(() => {
-    const mostrarFrase = (index: number) => {
-      fadeTexto.setValue(0);
-      setFraseIndex(index);
-      Animated.sequence([
-        Animated.timing(fadeTexto, { toValue: 1, duration: 600, useNativeDriver: true }),
-        Animated.delay(1300),
-        Animated.timing(fadeTexto, { toValue: 0, duration: 500, useNativeDriver: true }),
-      ]).start(() => {
-        if (index < frases.length - 1) {
-          mostrarFrase(index + 1);
-        } else {
-          router.replace('/consulta/cartas');
-        }
-      });
-    };
-    mostrarFrase(0);
-  }, [fadeTexto]);
-
-  const larguraProgresso = progressoAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0%', '100%'],
-  });
+  const aoAvancar = etapa === 'embaralhar' ? embaralhar : etapa === 'cortar' ? cortar : () => {};
 
   return (
-    <LinearGradient colors={['#F7F3EA', '#EDF1EA', '#F7F3EA']} style={{ flex: 1 }}>
-      {/* Campo de estrelas */}
-      <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-        {ESTRELAS.map((e, i) => (
-          <Estrela key={i} {...e} />
-        ))}
-      </View>
-
-      <SafeAreaView style={estilos.safeArea}>
-        <View style={estilos.container}>
-          {/* Glow de fundo da bola */}
-          <Animated.View style={[estilos.bolaGlowFundo, { opacity: glowAnim }]} />
-
-          {/* Anéis orbitantes */}
-          <View style={estilos.anelWrapper} pointerEvents="none">
-            <AnelOrbitante rotAnim={rotacao1} raio={BOLA_SIZE / 2 + 28} espessura={1.2}
-              cor="rgba(181,139,70,0.55)" velocidade={6000} />
-            <AnelOrbitante rotAnim={rotacao2} raio={BOLA_SIZE / 2 + 52} espessura={0.8}
-              cor="rgba(110,131,144,0.40)" velocidade={9000} sentido={-1} />
-            <AnelOrbitante rotAnim={rotacao3} raio={BOLA_SIZE / 2 + 76} espessura={0.6}
-              cor="rgba(88,117,101,0.25)" velocidade={13000} />
-          </View>
-
-          {/* Bola de Cristal */}
-          <BolaCristal pulseAnim={pulseAnim} />
-
-          {/* Frase animada */}
-          <Animated.View style={[estilos.fraseContainer, { opacity: fadeTexto }]}>
-            <Text style={estilos.frase}>{frases[fraseIndex]}</Text>
-          </Animated.View>
-
-          {/* Barra de progresso */}
-          <View style={estilos.progressoContainer}>
-            <View style={estilos.progressoTrack}>
-              <Animated.View style={[estilos.progressoBarra, { width: larguraProgresso as any }]} />
-            </View>
-          </View>
-
-          <Text style={estilos.preparandoTexto}>
-            {tipo === 'buzios' ? 'Preparando o jogo...' : 'Preparando sua leitura...'}
-          </Text>
-        </View>
-      </SafeAreaView>
-    </LinearGradient>
+    <AberturaOraculo
+      titulo="Tarô"
+      frase={FRASE[etapa]}
+      acaoLabel={ACAO[etapa]}
+      aoAvancar={aoAvancar}
+      desabilitado={etapa === 'indo'}
+    >
+      {/* O baralho também responde ao toque; o botão da abertura faz a mesma coisa,
+          com rótulo, para quem usa leitor de tela. */}
+      <Pressable
+        onPress={aoAvancar}
+        accessibilityRole="button"
+        accessibilityLabel={ACAO[etapa]}
+        style={estilos.baralho}
+      >
+        {espalhar.map((valor, i) => {
+          const noCorte = i >= CARTAS - 2 ? corte : parado;
+          return (
+            <Animated.View
+              key={i}
+              style={[
+                estilos.carta,
+                {
+                  transform: [
+                    {
+                      translateX: Animated.add(
+                        valor.interpolate({ inputRange: [-1, 1], outputRange: [-46, 46] }),
+                        noCorte.interpolate({ inputRange: [0, 1], outputRange: [0, 34] }),
+                      ),
+                    },
+                    {
+                      translateY: Animated.add(
+                        noCorte.interpolate({ inputRange: [0, 1], outputRange: [0, 18] }),
+                        new Animated.Value(i * -4),
+                      ),
+                    },
+                    {
+                      rotate: valor.interpolate({
+                        inputRange: [-1, 1],
+                        outputRange: ['-9deg', '9deg'],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            >
+              <View style={estilos.cartaMiolo} />
+            </Animated.View>
+          );
+        })}
+      </Pressable>
+    </AberturaOraculo>
   );
 }
 
 const estilos = StyleSheet.create({
-  // Os anéis são decoração e podem ultrapassar a largura em telas estreitas;
-  // recortá-los evita criar rolagem horizontal sem reduzir a bola central.
-  safeArea: { flex: 1, overflow: 'hidden' },
-  container: {
-    flex: 1,
+  baralho: {
+    width: LARGURA + 92,
+    height: ALTURA + 40,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: Espacamento.xl,
   },
-
-  bolaGlowFundo: {
+  carta: {
     position: 'absolute',
-    width: BOLA_SIZE * 1.8,
-    height: BOLA_SIZE * 1.8,
-    borderRadius: BOLA_SIZE * 0.9,
-    backgroundColor: 'rgba(88,117,101,0.16)',
-  },
-
-  anelWrapper: {
-    position: 'absolute',
+    width: LARGURA,
+    height: ALTURA,
+    borderRadius: 10,
+    backgroundColor: Cores.cardFundo,
+    borderWidth: 1,
+    borderColor: 'rgba(212,175,55,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
-    width: BOLA_SIZE + 200,
-    height: BOLA_SIZE + 200,
   },
-  anel: {
-    position: 'absolute',
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-  },
-  anelPonto: {
-    marginLeft: -4,
-  },
-
-  bolaContainer: {
-    marginBottom: Espacamento.xxl + Espacamento.md,
-  },
-
-  fraseContainer: {
-    alignItems: 'center',
-    minHeight: 64,
-    justifyContent: 'center',
-    marginBottom: Espacamento.xxl,
-  },
-  frase: {
-    fontFamily: Fontes.titulo,
-    fontSize: 22,
-    fontWeight: '700',
-    color: Cores.textoClaro,
-    textAlign: 'center',
-    lineHeight: 30,
-    letterSpacing: 0.5,
-  },
-
-  progressoContainer: {
-    width: '70%',
-    alignItems: 'center',
-  },
-  progressoTrack: {
-    width: '100%',
-    height: 2,
-    backgroundColor: 'rgba(88,117,101,0.14)',
-    borderRadius: 1,
-    overflow: 'hidden',
-  },
-  progressoBarra: {
-    height: '100%',
-    backgroundColor: Cores.acento,
-    borderRadius: 1,
-  },
-
-  preparandoTexto: {
-    fontFamily: Fontes.corpo,
-    fontSize: 12,
-    color: 'rgba(54,82,71,0.68)',
-    marginTop: Espacamento.md,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
+  cartaMiolo: {
+    width: LARGURA - 18,
+    height: ALTURA - 22,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(212,175,55,0.3)',
   },
 });

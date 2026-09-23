@@ -17,7 +17,7 @@ export function MesaBuzios({ tamanho }: { tamanho: number }) {
   const rPalha = tamanho * 0.44;
 
   return (
-    <Svg width={tamanho} height={tamanho}>
+    <Svg width={tamanho} height={tamanho} testID="mesa-buzios">
       <Defs>
         <RadialGradient id="palha" cx="50%" cy="45%" r="62%">
           <Stop offset="0%" stopColor="#E7D3A6" />

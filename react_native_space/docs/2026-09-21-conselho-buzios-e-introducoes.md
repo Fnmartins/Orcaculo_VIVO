@@ -1,7 +1,8 @@
 # Conselho de Oraculistas — Búzios e introduções dos oráculos
 
 Data: 21/09/2026
-Status: **Proposta — aguardando as decisões do Fabiano (seção "Decisões pendentes")**
+Status: **Implementado, menos o I5.** B1 a B4 e I4 em 21 e 22/09; B5, I1, I2, I3 e B6 em 23/09, com os
+ajustes do parecer abaixo. Segue aberta só a decisão 5 — o vídeo explicativo da numerologia.
 
 ## O que o Fabiano apontou
 
@@ -107,6 +108,30 @@ leitura oferece e o que ela não promete. Fica disponível antes da primeira lei
 numerologia?", sem bloquear quem já conhece. Numerologia primeiro, porque é o oráculo mais conceitual; a
 mesma peça pode ser feita depois para tarô, búzios e mapa astral.
 
+## Parecer do conselho sobre a abertura proposta (23/09)
+
+Proposta levada: um componente único de abertura para todos os oráculos, com objeto animado, frase curta,
+"Pular" e "Estou pronto"; no tarô, tocar para embaralhar e tocar para cortar; no búzios, a peneira
+surgindo; sem vídeo; respeitando "reduzir movimento".
+
+**Aprovada, com três ajustes.**
+
+1. **Um botão, não dois.** *(experiência do usuário)* Numa tela de três a cinco segundos, "Pular" e
+   "Estou pronto" fazem a mesma coisa e obrigam a pessoa a escolher entre sinônimos. Fica só **Estou
+   pronto**; no tarô, os próprios gestos avançam.
+2. **O gesto precisa ter consequência.** *(taróloga)* Embaralhar só significa alguma coisa se as cartas
+   forem sorteadas depois. Hoje é assim — o sorteio acontece quando a tela das três cartas abre
+   (`app/consulta/cartas.tsx:131`) — e precisa continuar. Se algum dia o sorteio subir para antes da
+   abertura, o gesto vira teatro e deve ser removido. O texto também não afirma que o corte "define" a
+   leitura: convida, apenas.
+3. **Gesto sempre com alternativa nomeada.** *(acessibilidade)* Quem usa leitor de tela não descobre um
+   "toque na área". Cada gesto tem um botão equivalente, com rótulo — Embaralhar, Cortar —, e o "reduzir
+   movimento" do sistema entrega a tela parada, sem animação.
+
+Duas observações mantidas dos itens anteriores: na abertura do búzios **não aparece mão humana** reunindo
+ou preparando as conchas — a peneira pousa e pronto, porque preparar búzios é ato de quem é iniciado; e a
+animação termina em repouso, sem loop.
+
 ## Ordem sugerida
 
 1. **I4** — o botão de voltar do tarô (pequeno, destrava o usuário);
@@ -115,11 +140,12 @@ mesma peça pode ser feita depois para tarô, búzios e mapa astral.
 4. **B5 + I1 + I2 + I3 + B6** — as introduções, num componente único, com acessibilidade;
 5. **I5** — o vídeo da numerologia, depois dos demais oráculos.
 
-## Decisões pendentes (do Fabiano)
+## Decisões do Fabiano
 
-1. Passar a **16 búzios**? E quem valida o tratamento de "nenhum aberto" e os textos dos odus 13 a 16?
-2. **Mesa:** desenhada (recomendação) ou uma nova fotografia, mais limpa?
-3. **Preparação dos búzios:** vídeo novo, produzido para isso, ou abertura em animação?
-4. **Introduções:** interativas (embaralhar, cortar) ou animação curta com "Pular"?
-5. **Vídeo da numerologia:** produzido por nós (renderizado a partir de roteiro e animação) ou por alguém
-   de fora, com narração?
+1. **16 búzios** — sim (21/09). Falta quem valide os textos dos odus 13 a 16 e o Opirá com quem conhece
+   o jogo; hoje são textos nossos.
+2. **Mesa** — desenhada (21/09). É a `components/MesaBuzios.tsx`.
+3. **Preparação dos búzios** — abertura em animação, sem vídeo (23/09).
+4. **Introduções** — interativas, com um botão só (23/09).
+5. **Vídeo da numerologia** — *em aberto*: produzido por nós (renderizado a partir de roteiro e animação)
+   ou por alguém de fora, com narração?
