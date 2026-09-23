@@ -27,6 +27,7 @@ import { Espacamento, RaioBorda } from '../../constants/spacing';
 import { Hapticos } from '../../utils/haptics';
 import { useAuth } from '../../contexts/AuthContext';
 import { AuthServico } from '../../services/auth';
+import { excluirConta } from '../../services/conta';
 import { supabase } from '../../services/supabase';
 
 const NOMES_PLANO: Record<string, string> = {
@@ -63,6 +64,9 @@ export default function TelaPerfil() {
   const [somHapticos, setSomHapticos] = useState(true);
   const [modoEscuro, setModoEscuro] = useState(true);
   const [enviandoFoto, setEnviandoFoto] = useState(false);
+  // Trava contra o segundo toque: a primeira exclusão já derruba a conta, e a
+  // segunda só traria um "sessão inválida" sem sentido para quem tocou.
+  const excluindo = useRef(false);
   const [editandoNome, setEditandoNome] = useState(false);
   const [nomeInput, setNomeInput] = useState('');
   const [salvandoNome, setSalvandoNome] = useState(false);
@@ -152,6 +156,32 @@ export default function TelaPerfil() {
       setEnviandoFoto(false);
     }
   }, [sessao, recarregarPerfil]);
+
+  // Até 23/09 esta confirmação dizia que tudo seria removido e chamava um
+  // callback vazio: o app afirmava ter apagado dados que continuavam lá.
+  const excluir = useCallback(() => {
+    if (excluindo.current) return;
+    Hapticos.impactoPesado();
+    confirmarAcao(
+      'Excluir Conta',
+      'Isto é irreversível. Suas leituras, desejos, foto e perfil são apagados. '
+      + 'Uma assinatura ativa é cancelada na hora, sem devolução dos dias restantes. '
+      + 'As faturas já emitidas continuam na Stripe, por obrigação fiscal.',
+      async () => {
+        excluindo.current = true;
+        try {
+          await excluirConta();
+          await AuthServico.sair().catch(() => {});
+          router.replace('/welcome');
+        } catch (e) {
+          mostrarAlerta('Não foi possível excluir', e instanceof Error ? e.message : String(e));
+        } finally {
+          excluindo.current = false;
+        }
+      },
+      { confirmarLabel: 'Excluir', destrutivo: true },
+    );
+  }, []);
 
   const sair = useCallback(() => {
     Hapticos.impactoMedio();
@@ -479,15 +509,7 @@ export default function TelaPerfil() {
                   icone="trash-outline"
                   titulo="Excluir Conta"
                   perigo
-                  onPress={() => {
-                    Hapticos.impactoPesado();
-                    confirmarAcao(
-                      'Excluir Conta',
-                      'Esta ação é irreversível. Todos os seus dados serão removidos permanentemente.',
-                      () => {},
-                      { confirmarLabel: 'Excluir', destrutivo: true },
-                    );
-                  }}
+                  onPress={excluir}
                 />
               </View>
             </View>

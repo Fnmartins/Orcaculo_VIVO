@@ -62,7 +62,8 @@ export default function TelaPrivacidade() {
           titulo: 'Seus direitos (LGPD)',
           paragrafos: [
             'Você pode, a qualquer momento, solicitar: confirmação e acesso aos seus dados; correção de dados incompletos ou desatualizados; anonimização, bloqueio ou eliminação de dados desnecessários; portabilidade; e informações sobre compartilhamento.',
-            'Você pode também excluir sua conta. Para exercer esses direitos, entre em contato pelo e-mail informado ao final.',
+            'Você pode excluir sua conta você mesmo, no aplicativo: Perfil → Excluir Conta. A exclusão é imediata e irreversível — apagamos suas leituras, seus desejos, sua foto e seu perfil, e cancelamos na hora uma assinatura ativa, sem devolução dos dias restantes.',
+            'Uma coisa não é apagada: as faturas já emitidas permanecem com nosso processador de pagamentos (Stripe), porque registros fiscais e financeiros têm prazo de guarda previsto em lei. Para os demais direitos, entre em contato pelo e-mail informado ao final.',
           ],
         },
         {
