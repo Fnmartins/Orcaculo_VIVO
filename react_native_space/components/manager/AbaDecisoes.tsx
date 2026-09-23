@@ -15,6 +15,7 @@ import {
   type Decisao, type Manifestacao, type PosicaoManifestacao,
 } from '../../utils/decisoes';
 import { copiarTexto } from '../../utils/copiar';
+import { Previa } from '../previas';
 import { confirmarAcao, mostrarAlerta } from '../../utils/alerta';
 import { EstadoCarregamento } from './EstadoCarregamento';
 import { irParaLoginPorSessaoExpirada } from './sessao';
@@ -255,6 +256,7 @@ export function AbaDecisoes({ aoPerderAcesso }: PropsAbaManager) {
             {aberta && (
               <View style={estilos.detalhe}>
                 {d.contexto ? <Text style={estilos.contexto}>{d.contexto}</Text> : null}
+                <Previa id={d.previa} />
                 {d.link ? <Text style={estilos.link}>{d.link}</Text> : null}
 
                 {carregandoFio ? (

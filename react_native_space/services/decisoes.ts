@@ -6,7 +6,7 @@ import type { Decisao, Manifestacao, PosicaoManifestacao } from '../utils/deciso
 
 const TABELA = 'decisoes';
 const TABELA_MANIFESTACOES = 'decisao_manifestacoes';
-const COLUNAS = 'id, titulo, contexto, link, status, decidido_em, criado_em, atualizado_em';
+const COLUNAS = 'id, titulo, contexto, link, previa, status, decidido_em, criado_em, atualizado_em';
 const COLUNAS_MANIFESTACAO = 'id, decisao_id, autor_nome, posicao, texto, criado_em';
 const PERMISSAO_NEGADA = '42501';
 const JWT_VENCIDO = 'PGRST301';

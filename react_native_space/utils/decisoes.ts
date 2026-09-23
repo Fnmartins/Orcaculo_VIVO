@@ -6,6 +6,8 @@ export interface Decisao {
   titulo: string;
   contexto: string | null;
   link: string | null;
+  /** Identificador do desenho mostrado junto da decisão (ver components/previas). */
+  previa: string | null;
   status: StatusDecisao;
   decidido_em: string | null;
   criado_em: string;

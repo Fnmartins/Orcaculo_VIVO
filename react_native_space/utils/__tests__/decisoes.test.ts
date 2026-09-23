@@ -11,6 +11,7 @@ const decisao: Decisao = {
   titulo: 'Mesa de búzios',
   contexto: 'A peneira atual tem anéis concêntricos e nenhum pano.',
   link: 'https://claude.ai/artifact/exemplo',
+  previa: null,
   status: 'aberta',
   decidido_em: null,
   criado_em: '2026-09-22T12:00:00Z',

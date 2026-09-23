@@ -17,6 +17,11 @@ create table if not exists public.decisoes (
   criado_por    uuid references auth.users(id) on delete set null
 );
 
+-- Desenho mostrado junto da decisão, resolvido por components/previas/index.tsx.
+-- Guarda identificador ('mesa-buzios'), não conteúdo: o desenho vive no código,
+-- versionado junto com o app. Identificador desconhecido não mostra nada.
+alter table public.decisoes add column if not exists previa text;
+
 create table if not exists public.decisao_manifestacoes (
   id          uuid primary key default gen_random_uuid(),
   decisao_id  uuid not null references public.decisoes(id) on delete cascade,

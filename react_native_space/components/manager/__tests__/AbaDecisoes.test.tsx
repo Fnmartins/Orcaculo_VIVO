@@ -45,7 +45,7 @@ import { SessaoExpiradaError } from '../../../services/sessaoExpirada';
 
 const aberta = {
   id: 'd1', titulo: 'Mesa de búzios', contexto: 'Peneira com anéis, sem pano.',
-  link: 'https://exemplo/proposta', status: 'aberta', decidido_em: null,
+  link: 'https://exemplo/proposta', previa: null, status: 'aberta', decidido_em: null,
   criado_em: '2026-09-22T12:00:00Z', atualizado_em: '2026-09-22T12:00:00Z',
 };
 
@@ -82,6 +82,24 @@ describe('AbaDecisoes', () => {
     fireEvent.press(await screen.findByLabelText('Abrir Mesa de búzios'));
     expect(await screen.findByText('Gostei do fundo escuro.')).toBeTruthy();
     expect(screen.getByText('Peneira com anéis, sem pano.')).toBeTruthy();
+  });
+
+  // Antes a proposta de design vivia num link privado, que o sócio não abria.
+  it('mostra o desenho da proposta dentro da decisão', async () => {
+    mockListar.mockResolvedValue([{ ...aberta, previa: 'mesa-buzios' }]);
+    render(<AbaDecisoes aoPerderAcesso={jest.fn()} />);
+    fireEvent.press(await screen.findByLabelText('Abrir Mesa de búzios'));
+    expect(await screen.findByTestId('previa-mesa-buzios')).toBeTruthy();
+    expect(screen.getByTestId('peneira-proposta')).toBeTruthy();
+    expect(screen.getByTestId('mesa-buzios')).toBeTruthy();
+  });
+
+  it('decisão sem desenho continua sendo só texto', async () => {
+    mockListar.mockResolvedValue([aberta]);
+    render(<AbaDecisoes aoPerderAcesso={jest.fn()} />);
+    fireEvent.press(await screen.findByLabelText('Abrir Mesa de búzios'));
+    await screen.findByText('Peneira com anéis, sem pano.');
+    expect(screen.queryByTestId('previa-mesa-buzios')).toBeNull();
   });
 
   it('registra a manifestação com a posição escolhida', async () => {

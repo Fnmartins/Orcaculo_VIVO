@@ -183,6 +183,13 @@ jogo começa no toque, sem mão humana preparando as conchas. Os dois vídeos sa
 no pacote). "Reduzir movimento" do sistema entrega a tela parada e todo gesto tem botão com rótulo.
 Aprovado pelo conselho em 23/09, com os três ajustes que ele pediu. Suíte em 151 testes.
 
+**Prévias na aba Decisões (23/09).** A proposta de design agora é **desenhada dentro da aba**, e não
+mandada por link: a página onde a peneira ideal tinha sido desenhada é privada e não abre para o Márcio,
+então decidir por ali era decidir sem ver. A coluna `decisoes.previa` guarda um identificador
+(`'mesa-buzios'`) e `components/previas/` resolve esse identificador num desenho — hoje a peneira atual e
+a proposta do conselho, uma embaixo da outra, com o que muda de uma para a outra. Decisão sem prévia
+continua sendo só texto. Suíte em 153 testes.
+
 **Mapa Astral — apontado em 21/09**, conselho em `docs/2026-09-21-conselho-mapa-astral.md` (4 decisões
 pendentes): só o signo solar é calculado; Lua, ascendente, planetas, casas e graus saem de contas
 aritméticas e aparecem na tela como se fossem reais. Proposta: tirar da tela o que é inventado já (M0) e
