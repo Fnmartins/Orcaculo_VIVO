@@ -166,6 +166,15 @@ cortado e curto, mesa pequena e colorida demais, vídeo repetido no lançamento 
 usa 16); introdução do tarô com bola de cristal, e as introduções de todos os oráculos a trocar; tela das
 três cartas do tarô sem botão de voltar; numerologia sem introdução explicando o que ela é.
 
+**Entregue em 21 e 22/09, tudo em produção.** Búzios: 16 búzios com os odus 13 a 16 e o Opirá (nenhum
+aberto deixou de virar "odu 12"), frases de tela sem afirmar ato religioso, peneira desenhada em SVG
+(`components/MesaBuzios.tsx`) no lugar da foto, maior e sem o retângulo escuro em volta, e lançamento sem
+vídeo — segurar para chacoalhar, soltar para lançar. Mapa Astral: só o signo solar, com aviso do que falta
+(item M0 do conselho). Tarô: botão de voltar nas três cartas. App inteiro: `voltarOuIr` em 26 telas.
+Painel: **aba Decisões** (`supabase/decisoes.sql` rodado em 22/09, 6 policies conferidas) — decisões com
+fio de manifestações (Aprovo, Não aprovo, Comentário) e "Copiar tudo", para decidir com o Marcio dentro da
+plataforma. Suíte em 142 testes.
+
 **Mapa Astral — apontado em 21/09**, conselho em `docs/2026-09-21-conselho-mapa-astral.md` (4 decisões
 pendentes): só o signo solar é calculado; Lua, ascendente, planetas, casas e graus saem de contas
 aritméticas e aparecem na tela como se fossem reais. Proposta: tirar da tela o que é inventado já (M0) e
