@@ -14,6 +14,7 @@ import { voltarOuIr } from '../../utils/navegacao';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Defs, RadialGradient as SvgRadial, Stop, Path, G, Line } from 'react-native-svg';
+import { GradientBackground } from '../../components/GradientBackground';
 import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
@@ -54,33 +55,36 @@ function OlhoMistico({ pulseAnim, rotAnim }: { pulseAnim: Animated.Value; rotAni
   const cx = SIZE / 2, cy = SIZE / 2;
   return (
     <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+      {/* O dourado e o índigo vinham do tema escuro e sumiam no fundo creme.
+          Agora o traço é o acento do tema, com opacidade suficiente para ele
+          aparecer sobre claro. */}
       <Svg width={SIZE} height={SIZE}>
         <Defs>
           <SvgRadial id="olhoGrad" cx="50%" cy="50%" r="50%">
-            <Stop offset="0%" stopColor="#D4AF37" stopOpacity="0.3" />
-            <Stop offset="60%" stopColor="#4B0082" stopOpacity="0.15" />
-            <Stop offset="100%" stopColor="#4B0082" stopOpacity="0" />
+            <Stop offset="0%" stopColor={Cores.acento} stopOpacity="0.22" />
+            <Stop offset="60%" stopColor={Cores.primaria} stopOpacity="0.12" />
+            <Stop offset="100%" stopColor={Cores.primaria} stopOpacity="0" />
           </SvgRadial>
         </Defs>
         {/* Glow */}
         <Circle cx={cx} cy={cy} r={cx} fill="url(#olhoGrad)" />
         {/* Anel externo */}
-        <Circle cx={cx} cy={cy} r={cx - 3} fill="none" stroke="rgba(212,175,55,0.3)" strokeWidth={1} />
+        <Circle cx={cx} cy={cy} r={cx - 3} fill="none" stroke="rgba(181,139,70,0.45)" strokeWidth={1} />
         {/* Anel interno */}
-        <Circle cx={cx} cy={cy} r={cx - 10} fill="none" stroke="rgba(212,175,55,0.15)" strokeWidth={0.7} />
+        <Circle cx={cx} cy={cy} r={cx - 10} fill="none" stroke="rgba(181,139,70,0.28)" strokeWidth={0.7} />
         {/* Olho — formato amêndoa */}
         <Path
           d={`M ${cx - 24},${cy} Q ${cx},${cy - 14} ${cx + 24},${cy} Q ${cx},${cy + 14} ${cx - 24},${cy} Z`}
-          fill="none" stroke="#D4AF37" strokeWidth={1.5}
+          fill="none" stroke={Cores.acento} strokeWidth={1.5}
         />
         {/* Íris */}
-        <Circle cx={cx} cy={cy} r={9} fill="rgba(212,175,55,0.15)" stroke="#D4AF37" strokeWidth={1} />
+        <Circle cx={cx} cy={cy} r={9} fill="rgba(181,139,70,0.18)" stroke={Cores.acento} strokeWidth={1} />
         {/* Pupila */}
-        <Circle cx={cx} cy={cy} r={4} fill="#D4AF37" opacity={0.8} />
+        <Circle cx={cx} cy={cy} r={4} fill={Cores.acento} opacity={0.85} />
         {/* Pestanas superiores */}
         {[-14, -7, 0, 7, 14].map((dx, i) => (
           <Line key={i} x1={cx + dx} y1={cy - 14} x2={cx + dx * 0.7} y2={cy - 19}
-            stroke="rgba(212,175,55,0.4)" strokeWidth={0.8} />
+            stroke="rgba(181,139,70,0.5)" strokeWidth={0.8} />
         ))}
       </Svg>
     </Animated.View>
@@ -126,7 +130,7 @@ function CardTipo({ tipo, index, fadeAnim, slideAnim }: {
         style={({ pressed }) => [{ transform: [{ scale: pressed ? 0.97 : 1 }] }]}
       >
         <LinearGradient
-          colors={[tipo.corPrimaria + '22', 'rgba(15,10,28,0.7)'] as const}
+          colors={[tipo.corPrimaria + '14', Cores.cardFundo] as const}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={estilos.tipoCard}
@@ -210,8 +214,12 @@ export default function TelaIASelecao() {
     ).start();
   }, [tipo]);
 
+  // Esta tela ficou no fundo quase preto do tema antigo enquanto os textos já
+  // tinham migrado para os tokens do tema creme, que são escuros: escuro sobre
+  // escuro, ilegível. As outras três do fluxo — captura, processando e
+  // resultado — já usavam o GradientBackground.
   return (
-    <LinearGradient colors={['#0A0716', '#0F0A1E', '#0A0716']} style={{ flex: 1 }}>
+    <GradientBackground>
       <SafeAreaView style={estilos.safeArea}>
         <View style={estilos.container}>
           {/* Header */}
@@ -251,7 +259,7 @@ export default function TelaIASelecao() {
           </View>
         </View>
       </SafeAreaView>
-    </LinearGradient>
+    </GradientBackground>
   );
 }
 
@@ -280,11 +288,11 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     gap: Espacamento.lg,
     paddingVertical: Espacamento.md,
-    backgroundColor: 'rgba(212,175,55,0.04)',
+    backgroundColor: 'rgba(181,139,70,0.07)',
     borderRadius: RaioBorda.xl,
     paddingHorizontal: Espacamento.md,
     borderWidth: 1,
-    borderColor: 'rgba(212,175,55,0.1)',
+    borderColor: 'rgba(181,139,70,0.18)',
     marginBottom: Espacamento.md,
   },
   heroTextos: { flex: 1 },
@@ -301,7 +309,7 @@ const estilos = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     gap: Espacamento.sm, marginBottom: Espacamento.md,
   },
-  divisorLinha: { flex: 1, height: 1, backgroundColor: 'rgba(212,175,55,0.15)' },
+  divisorLinha: { flex: 1, height: 1, backgroundColor: 'rgba(181,139,70,0.28)' },
   divisorTexto: {
     fontFamily: Fontes.corpoSemibold, fontSize: 11,
     color: Cores.acento, letterSpacing: 1.5, textTransform: 'uppercase',
@@ -312,12 +320,13 @@ const estilos = StyleSheet.create({
   tipoCard: {
     borderRadius: RaioBorda.xl,
     borderWidth: 1,
-    borderColor: 'rgba(88,117,101,0.12)',
+    borderColor: Cores.cardBorda,
     overflow: 'hidden',
+    // Sombra de 0.3 era para o fundo preto; sobre creme ela suja o card.
     ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
-      android: { elevation: 6 },
-      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
+      ios: { shadowColor: '#24312D', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.1, shadowRadius: 8 },
+      android: { elevation: 3 },
+      default: { shadowColor: '#24312D', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.1, shadowRadius: 8 },
     }),
   },
   tipoCardBordaTopo: { height: 2, opacity: 0.7 },
@@ -370,7 +379,7 @@ const estilos = StyleSheet.create({
   instrucaoBox: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 5,
     marginTop: Espacamento.sm,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: 'rgba(88,117,101,0.07)',
     padding: 6, borderRadius: RaioBorda.sm,
   },
   instrucaoTexto: {

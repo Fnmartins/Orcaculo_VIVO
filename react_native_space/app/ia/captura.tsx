@@ -14,7 +14,9 @@ import { voltarOuIr } from '../../utils/navegacao';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
+import { useCameraPermissions } from 'expo-camera';
 import { GradientBackground } from '../../components/GradientBackground';
+import { CameraCaptura } from '../../components/CameraCaptura';
 import { Button } from '../../components/Button';
 import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
@@ -46,26 +48,31 @@ const INSTRUCOES: Record<string, string[]> = {
 export default function TelaCaptura() {
   const { tipo = 'cafe' } = useLocalSearchParams<{ tipo?: string }>();
   const [imagemUri, setImagemUri] = useState<string | null>(null);
+  const [cameraAberta, setCameraAberta] = useState(false);
+  const [, requestPermission] = useCameraPermissions();
 
+  // Abre o visor dentro do app em vez de delegar ao app de câmera do sistema:
+  // no navegador de computador esse repasse não existe e o expo caía no seletor
+  // de arquivos — quem clicava em "câmera" via a galeria.
   const tirarFoto = useCallback(async () => {
     Hapticos.impactoLeve();
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') {
-      mostrarAlerta('Permissão necessária', 'Precisamos de acesso à câmera para capturar a imagem.');
+    const permissao = await requestPermission();
+    if (!permissao?.granted) {
+      mostrarAlerta(
+        'Permissão necessária',
+        permissao?.canAskAgain === false
+          ? 'O acesso à câmera está bloqueado. Libere nas configurações do navegador ou do aparelho e tente de novo.'
+          : 'Precisamos de acesso à câmera para capturar a imagem.',
+      );
       return;
     }
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ['images'],
-      quality: 0.8,
-      allowsEditing: true,
-      aspect: [1, 1],
-      base64: true,
-    });
-    if (!result.canceled && result.assets[0]) {
-      const asset = result.assets[0];
-      if (asset.base64) salvarBase64ImagemCache(asset.uri, asset.base64);
-      setImagemUri(asset.uri);
-    }
+    setCameraAberta(true);
+  }, [requestPermission]);
+
+  const receberFoto = useCallback((foto: { uri: string; base64?: string }) => {
+    if (foto.base64) salvarBase64ImagemCache(foto.uri, foto.base64);
+    setImagemUri(foto.uri);
+    setCameraAberta(false);
   }, []);
 
   const escolherGaleria = useCallback(async () => {
@@ -102,6 +109,9 @@ export default function TelaCaptura() {
 
   return (
     <GradientBackground>
+      {cameraAberta && (
+        <CameraCaptura aoCapturar={receberFoto} aoFechar={() => setCameraAberta(false)} />
+      )}
       <SafeAreaView style={estilos.safeArea}>
         <View style={estilos.container}>
           {/* Header */}
