@@ -18,11 +18,16 @@ const intencoes = [
   ['trabalho', 'Trabalho', 'briefcase-outline'], ['eu', 'Eu mesmo', 'sparkles-outline'],
 ] as const;
 
+// Os seis oráculos do app. A leitura por imagem e a Lei da Atração ficaram de
+// fora desta lista até 24/09: existiam, funcionavam e eram vendidas nos planos,
+// mas não tinham porta de entrada — só se chegava nelas digitando a URL.
 const oraculos = [
   ['Búzios', 'Tradição e caminhos', 'grain', P.verde, 'material', '/consulta/buzios-preparo'],
   ['Tarot', 'Símbolos para refletir', 'cards-outline', P.terracota, 'material', '/consulta'],
   ['Numerologia', 'Ciclos e significados', 'calculator-outline', P.azul, 'ion', '/numerologia'],
   ['Mapa Astral', 'Leitura do seu céu', 'planet-outline', P.dourado, 'ion', '/mapa-astral'],
+  ['Leitura por imagem', 'Símbolos em uma foto', 'image-search-outline', P.verdeEscuro, 'material', '/ia'],
+  ['Lei da Atração', 'Desejos e rituais', 'magnet', P.terracota, 'material', '/lei-atracao'],
 ] as const;
 
 const decisoes = [
@@ -80,7 +85,10 @@ export function HomeAurora({ mostrarConselho = false }: { mostrarConselho?: bool
               </View>
             </View>
 
-            <View style={s.secaoHeader}><View><Text style={s.secaoTitulo}>Escolha seu oráculo</Text><Text style={s.secaoApoio}>Cada método tem linguagem e propósito próprios.</Text></View><Pressable onPress={() => router.push('/(tabs)/consultas')} accessibilityRole="button"><Text style={s.verTodos}>Ver todos</Text></Pressable></View>
+            {/* Havia aqui um "Ver todos" que abria o histórico de consultas, não uma lista
+    de oráculos — e a lista abaixo já é completa. Um botão que promete o que não
+    existe é pior que botão nenhum. */}
+<View style={s.secaoHeader}><View><Text style={s.secaoTitulo}>Escolha seu oráculo</Text><Text style={s.secaoApoio}>Cada método tem linguagem e propósito próprios.</Text></View></View>
             <View style={s.grid}>
               {oraculos.map(([titulo, apoio, icon, cor, lib, rota]) => {
                 const Icon = lib === 'material' ? MaterialCommunityIcons : Ionicons;
@@ -127,7 +135,7 @@ const s = StyleSheet.create({
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 20 }, chip: { minHeight: 42, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, borderRadius: 22, borderWidth: 1, borderColor: P.borda, backgroundColor: P.branco }, chipAtiva: { backgroundColor: P.verdeEscuro, borderColor: P.verdeEscuro }, chipTexto: { fontFamily: Fontes.corpoSemibold, fontSize: 12, color: P.verdeEscuro }, chipTextoAtivo: { color: P.branco }, pressed: { opacity: 0.78, transform: [{ scale: 0.99 }] },
   cta: { minHeight: 66, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 18, padding: 14, paddingLeft: 16, borderRadius: 18, backgroundColor: '#DDE9DC' }, ctaLabel: { fontFamily: Fontes.corpoNegrito, fontSize: 8, letterSpacing: 1.1, color: P.verde }, ctaTitulo: { fontFamily: Fontes.corpoNegrito, fontSize: 15, color: P.tinta, marginTop: 3 }, ctaSeta: { width: 38, height: 38, borderRadius: 19, backgroundColor: P.branco, alignItems: 'center', justifyContent: 'center' },
   imagem: { minHeight: 230, flex: 0.9, justifyContent: 'flex-end' }, filtro: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(26,43,37,0.20)' }, legenda: { margin: 16, padding: 14, borderRadius: 15, backgroundColor: 'rgba(255,252,246,0.92)' }, legendaTitulo: { fontFamily: Fontes.corpoNegrito, fontSize: 13, color: P.tinta }, legendaTexto: { fontFamily: Fontes.corpo, fontSize: 11, color: P.texto, marginTop: 2 },
-  secaoHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 16 }, secaoTitulo: { fontFamily: Fontes.titulo, fontSize: 22, color: P.tinta }, secaoApoio: { fontFamily: Fontes.corpo, fontSize: 12, color: P.texto, marginTop: 3 }, verTodos: { fontFamily: Fontes.corpoNegrito, fontSize: 11, color: P.verde },
+  secaoHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 16 }, secaoTitulo: { fontFamily: Fontes.titulo, fontSize: 22, color: P.tinta }, secaoApoio: { fontFamily: Fontes.corpo, fontSize: 12, color: P.texto, marginTop: 3 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 12 }, card: { minHeight: 166, padding: 16, borderRadius: 20, backgroundColor: P.superficie, borderWidth: 1, borderColor: P.borda }, cardIcone: { width: 46, height: 46, borderRadius: 15, alignItems: 'center', justifyContent: 'center', marginBottom: 16 }, cardTitulo: { fontFamily: Fontes.titulo, fontSize: 18, color: P.tinta }, cardApoio: { fontFamily: Fontes.corpo, fontSize: 11, color: P.texto, marginTop: 3 }, cardSeta: { position: 'absolute', right: 13, bottom: 13 },
   ritual: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 24, padding: 18, borderRadius: 22, backgroundColor: P.verdeSuave }, ritualIcone: { width: 50, height: 50, borderRadius: 25, backgroundColor: P.superficie, alignItems: 'center', justifyContent: 'center' }, ritualTexto: { flex: 1 }, ritualEyebrow: { fontFamily: Fontes.corpoNegrito, fontSize: 8, letterSpacing: 1.1, color: P.verde }, ritualTitulo: { fontFamily: Fontes.corpoNegrito, fontSize: 14, color: P.tinta, marginTop: 3 }, ritualApoio: { fontFamily: Fontes.corpo, fontSize: 11, color: P.texto, marginTop: 2 },
   conselho: { marginTop: 32, padding: 22, borderRadius: 26, backgroundColor: '#F1E7DB' }, conselhoTitulo: { fontFamily: Fontes.titulo, fontSize: 22, color: P.tinta, marginBottom: 18 }, decisoes: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 14 }, decisao: { width: '100%', flexDirection: 'row', gap: 11 }, decisaoLarga: { width: '48%' }, decisaoTexto: { flex: 1 }, decisaoTitulo: { fontFamily: Fontes.corpoNegrito, fontSize: 13, color: P.tinta }, decisaoApoio: { fontFamily: Fontes.corpo, fontSize: 11, lineHeight: 16, color: P.texto, marginTop: 2 },

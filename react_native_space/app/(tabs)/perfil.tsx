@@ -25,6 +25,7 @@ import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
 import { Hapticos } from '../../utils/haptics';
+import { destinoDoAvatar } from '../../utils/avatar';
 import { useAuth } from '../../contexts/AuthContext';
 import { AuthServico } from '../../services/auth';
 import { excluirConta } from '../../services/conta';
@@ -134,24 +135,30 @@ export default function TelaPerfil() {
     setEnviandoFoto(true);
     Hapticos.impactoLeve();
     try {
-      const uri = result.assets[0].uri;
-      const ext = uri.split('.').pop() ?? 'jpg';
-      const fileName = `avatar_${sessao.user.id}.${ext}`;
+      const asset = result.assets[0];
+      const { fileName, tipo } = destinoDoAvatar(sessao.user.id, asset.mimeType);
 
-      const formData = new FormData();
-      formData.append('file', { uri, name: fileName, type: `image/${ext}` } as any);
+      // Na web o seletor já entrega um File; no nativo, um `file://` que o fetch
+      // resolve. O `{ uri, name, type }` de antes só existe no React Native — no
+      // navegador o FormData o convertia em "[object Object]".
+      const corpo: Blob = asset.file ?? (await fetch(asset.uri).then((r) => r.blob()));
 
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(fileName, formData, { upsert: true, contentType: `image/${ext}` });
+        .upload(fileName, corpo, { upsert: true, contentType: tipo });
 
       if (uploadError) throw uploadError;
 
       const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
       await AuthServico.atualizarPerfil(sessao.user.id, { avatar_url: urlData.publicUrl });
       await recarregarPerfil();
-    } catch (e: any) {
-      mostrarAlerta('Erro', 'Não foi possível alterar a foto. Tente novamente.');
+    } catch (e) {
+      // Sem o motivo real, "tente novamente" manda a pessoa repetir o que não
+      // funciona — foi assim que este defeito passou despercebido.
+      mostrarAlerta(
+        'Não foi possível alterar a foto',
+        e instanceof Error && e.message ? e.message : 'Tente novamente.',
+      );
     } finally {
       setEnviandoFoto(false);
     }
