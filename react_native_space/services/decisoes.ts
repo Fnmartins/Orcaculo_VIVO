@@ -6,7 +6,9 @@ import type { Decisao, Manifestacao, PosicaoManifestacao } from '../utils/deciso
 
 const TABELA = 'decisoes';
 const TABELA_MANIFESTACOES = 'decisao_manifestacoes';
-const COLUNAS = 'id, titulo, contexto, link, previa, status, decidido_em, criado_em, atualizado_em';
+// Numa linha só de propósito: o supabase-js infere o tipo do retorno a partir
+// deste literal, e string concatenada faz a inferência desabar.
+const COLUNAS = 'id, titulo, contexto, link, previa, status, decisao_final, decidido_em, decidido_por_nome, criado_em, atualizado_em';
 const COLUNAS_MANIFESTACAO = 'id, decisao_id, autor_nome, posicao, texto, criado_em';
 const PERMISSAO_NEGADA = '42501';
 const JWT_VENCIDO = 'PGRST301';
@@ -69,10 +71,17 @@ export async function criarDecisao(dados: {
   return data as Decisao;
 }
 
-export async function fecharDecisao(id: string, decididoPor: string): Promise<Decisao> {
+/**
+ * Fecha a decisão registrando o que ficou combinado.
+ *
+ * Quem fechou e quando são carimbados pelo banco — não vão daqui. O texto é
+ * obrigatório também no banco: sem ele a decisão fechada não diria o que foi
+ * decidido, que é a única coisa que alguém vai querer saber depois.
+ */
+export async function fecharDecisao(id: string, decisaoFinal: string): Promise<Decisao> {
   const { data, error } = await supabase
     .from(TABELA)
-    .update({ status: 'decidida', decidido_em: new Date().toISOString(), decidido_por: decididoPor })
+    .update({ status: 'decidida', decisao_final: decisaoFinal })
     .eq('id', id)
     .select(COLUNAS);
   if (error) throw traduzirErro(error);
@@ -91,10 +100,13 @@ export async function listarManifestacoes(decisaoId: string): Promise<Manifestac
   return (data ?? []) as Manifestacao[];
 }
 
+/**
+ * Registra a manifestação. Autor e data são carimbados pelo banco: antes vinham
+ * daqui, e um super-admin podia gravar manifestação em nome do outro numa
+ * tabela que o projeto tornou imutável de propósito.
+ */
 export async function registrarManifestacao(dados: {
   decisaoId: string;
-  autorId: string;
-  autorNome: string;
   posicao: PosicaoManifestacao;
   texto: string;
 }): Promise<Manifestacao> {
@@ -102,8 +114,6 @@ export async function registrarManifestacao(dados: {
     .from(TABELA_MANIFESTACOES)
     .insert({
       decisao_id: dados.decisaoId,
-      autor_id: dados.autorId,
-      autor_nome: dados.autorNome,
       posicao: dados.posicao,
       texto: dados.texto,
     })

@@ -9,7 +9,11 @@ export interface Decisao {
   /** Identificador do desenho mostrado junto da decisão (ver components/previas). */
   previa: string | null;
   status: StatusDecisao;
+  /** O que ficou combinado. O banco recusa fechar sem isto. */
+  decisao_final: string | null;
   decidido_em: string | null;
+  /** Nome de quem fechou, resolvido pelo banco no perfil — não vem do cliente. */
+  decidido_por_nome: string | null;
   criado_em: string;
   atualizado_em: string;
 }
@@ -26,6 +30,14 @@ export interface Manifestacao {
 export const ROTULO_STATUS: Record<StatusDecisao, string> = {
   aberta: 'Aberta',
   decidida: 'Decidida',
+};
+
+/**
+ * Nome legível de cada prévia. Fica aqui, e não em components/previas, porque o
+ * texto do "Copiar tudo" precisa dele e utils não importa componente.
+ */
+export const ROTULO_PREVIA: Record<string, string> = {
+  'mesa-buzios': 'Mesa de búzios — a peneira de hoje e a proposta do conselho',
 };
 
 export const ROTULO_POSICAO: Record<PosicaoManifestacao, string> = {
@@ -66,11 +78,26 @@ export function montarTextoDecisao(decisao: Decisao, manifestacoes: Manifestacao
   ];
 
   if (decisao.status === 'decidida' && decisao.decidido_em) {
-    linhas.push(`Fechada em ${formatarData(decisao.decidido_em)}`);
+    const porQuem = decisao.decidido_por_nome?.trim();
+    linhas.push(
+      `Fechada em ${formatarData(decisao.decidido_em)}${porQuem ? ` por ${porQuem}` : ''}`,
+    );
   }
 
   if (decisao.contexto?.trim()) {
     linhas.push('', 'Contexto:', decisao.contexto.trim());
+  }
+
+  // Sem isto, quem recebe o texto vê "Decidida" e tem de adivinhar o quê.
+  // O rótulo não é "Decisão:" porque a primeira linha já usa isso para o título.
+  if (decisao.decisao_final?.trim()) {
+    linhas.push('', 'O que ficou combinado:', decisao.decisao_final.trim());
+  }
+
+  // A prévia é um desenho na tela e não sobrevive ao copiar e colar; ao menos o
+  // nome dela vai junto, para quem for executar saber do que se trata.
+  if (decisao.previa) {
+    linhas.push('', `Proposta na tela: ${ROTULO_PREVIA[decisao.previa] ?? decisao.previa}`);
   }
 
   if (decisao.link?.trim()) {

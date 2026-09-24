@@ -13,6 +13,8 @@ const decisao: Decisao = {
   link: 'https://claude.ai/artifact/exemplo',
   previa: null,
   status: 'aberta',
+  decisao_final: null,
+  decidido_por_nome: null,
   decidido_em: null,
   criado_em: '2026-09-22T12:00:00Z',
   atualizado_em: '2026-09-22T12:00:00Z',
@@ -91,5 +93,44 @@ describe('montarTextoDecisao', () => {
 
   it('data de cada manifestação em dia, mês, ano e hora', () => {
     expect(montarTextoDecisao(decisao, manifestacoes)).toMatch(/\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}/);
+  });
+});
+
+// O conselho de 23/09 chamou a saída do "Copiar tudo" de contrato: é o texto
+// que vira execução. Sem estes campos, quem recebe adivinha.
+describe('montarTextoDecisao — o que não pode faltar', () => {
+  const fechada: Decisao = {
+    ...decisao,
+    status: 'decidida',
+    decisao_final: 'Adotamos a peneira proposta, com o regente em destaque.',
+    decidido_em: '2026-09-24T15:30:00Z',
+    decidido_por_nome: 'Fabiano',
+    previa: 'mesa-buzios',
+  };
+
+  it('traz a decisão em si, e não só o status', () => {
+    const texto = montarTextoDecisao(fechada, manifestacoes);
+    expect(texto).toContain('O que ficou combinado:');
+    expect(texto).toContain('Adotamos a peneira proposta');
+  });
+
+  it('diz quem fechou e quando', () => {
+    expect(montarTextoDecisao(fechada, manifestacoes)).toContain('por Fabiano');
+  });
+
+  // O desenho não sobrevive ao copiar e colar; o nome dele tem de ir junto.
+  it('nomeia a proposta desenhada', () => {
+    expect(montarTextoDecisao(fechada, manifestacoes)).toContain('Proposta na tela:');
+    expect(montarTextoDecisao(fechada, manifestacoes)).toContain('Mesa de búzios');
+  });
+
+  it('decisão aberta não inventa uma decisão final', () => {
+    const texto = montarTextoDecisao(decisao, manifestacoes);
+    expect(texto).not.toContain('O que ficou combinado:');
+  });
+
+  it('identificador de prévia desconhecido não quebra o texto', () => {
+    const texto = montarTextoDecisao({ ...fechada, previa: 'inexistente' }, manifestacoes);
+    expect(texto).toContain('Proposta na tela: inexistente');
   });
 });

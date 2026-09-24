@@ -112,9 +112,12 @@ describe('AbaDecisoes', () => {
     fireEvent.press(await screen.findByText('Não aprovo'));
     fireEvent.changeText(screen.getByLabelText('Texto da manifestação'), 'O pano atrapalha.');
     fireEvent.press(screen.getByText('Registrar'));
-    await waitFor(() => expect(mockRegistrar).toHaveBeenCalledWith(expect.objectContaining({
-      decisaoId: 'd1', posicao: 'nao_aprovo', texto: 'O pano atrapalha.', autorNome: 'Fabiano',
-    })));
+    await waitFor(() => expect(mockRegistrar).toHaveBeenCalledWith({
+      decisaoId: 'd1', posicao: 'nao_aprovo', texto: 'O pano atrapalha.',
+    }));
+    // Autor e data passaram a ser carimbados pelo banco.
+    expect(mockRegistrar.mock.calls[0][0]).not.toHaveProperty('autorId');
+    expect(mockRegistrar.mock.calls[0][0]).not.toHaveProperty('autorNome');
     expect(await screen.findByText('O pano atrapalha.')).toBeTruthy();
   });
 
@@ -145,14 +148,28 @@ describe('AbaDecisoes', () => {
     expect(mockAlerta).toHaveBeenCalledWith('Copiado', expect.any(String));
   });
 
-  it('fechar a decisão atualiza o status na lista', async () => {
+  it('fechar a decisão grava o que ficou combinado', async () => {
     mockListar.mockResolvedValue([aberta]);
-    mockFechar.mockResolvedValue({ ...aberta, status: 'decidida', decidido_em: '2026-09-22T15:00:00Z' });
+    mockFechar.mockResolvedValue({
+      ...aberta, status: 'decidida', decisao_final: 'Fica a proposta.',
+      decidido_em: '2026-09-22T15:00:00Z', decidido_por_nome: 'Fabiano',
+    });
+    render(<AbaDecisoes aoPerderAcesso={jest.fn()} />);
+    fireEvent.press(await screen.findByLabelText('Abrir Mesa de búzios'));
+    fireEvent.changeText(screen.getByLabelText('Decisão final'), 'Fica a proposta.');
+    fireEvent.press(await screen.findByText('Fechar decisão'));
+    await waitFor(() => expect(mockFechar).toHaveBeenCalledWith('d1', 'Fica a proposta.'));
+    expect(await screen.findByText('Decidida')).toBeTruthy();
+  });
+
+  // Fechar sem dizer o que foi decidido era o defeito principal da aba.
+  it('nao fecha sem o texto da decisao', async () => {
+    mockListar.mockResolvedValue([aberta]);
     render(<AbaDecisoes aoPerderAcesso={jest.fn()} />);
     fireEvent.press(await screen.findByLabelText('Abrir Mesa de búzios'));
     fireEvent.press(await screen.findByText('Fechar decisão'));
-    await waitFor(() => expect(mockFechar).toHaveBeenCalledWith('d1', 'u1'));
-    expect(await screen.findByText('Decidida')).toBeTruthy();
+    await waitFor(() => expect(mockAlerta).toHaveBeenCalledWith('Falta a decisão', expect.any(String)));
+    expect(mockFechar).not.toHaveBeenCalled();
   });
 
   it('cria uma decisão nova', async () => {

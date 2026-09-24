@@ -36,6 +36,7 @@ export function AbaDecisoes({ aoPerderAcesso }: PropsAbaManager) {
   const [contexto, setContexto] = useState('');
   const [link, setLink] = useState('');
   const [posicao, setPosicao] = useState<PosicaoManifestacao>('comentario');
+  const [decisaoFinal, setDecisaoFinal] = useState('');
   const [texto, setTexto] = useState('');
   const [salvando, setSalvando] = useState(false);
 
@@ -116,8 +117,6 @@ export function AbaDecisoes({ aoPerderAcesso }: PropsAbaManager) {
     try {
       const nova = await registrarManifestacao({
         decisaoId: decisao.id,
-        autorId: sessao?.user?.id ?? '',
-        autorNome: perfil?.nome?.trim() || sessao?.user?.email || 'Admin',
         posicao,
         texto: texto.trim(),
       });
@@ -135,8 +134,19 @@ export function AbaDecisoes({ aoPerderAcesso }: PropsAbaManager) {
     }
   }
 
+  // Copiava o que estava carregado quando o card abriu. Se o outro sócio se
+  // manifestasse depois, o texto colado omitia a manifestação dele — incluindo
+  // um "não aprovo" — e ninguém percebia. Agora relê antes de copiar.
   async function copiar(decisao: Decisao) {
-    const copiou = await copiarTexto(montarTextoDecisao(decisao, manifestacoes));
+    let fio = manifestacoes;
+    try {
+      fio = ordenarManifestacoes(await listarManifestacoes(decisao.id));
+      setManifestacoes(fio);
+    } catch (e) {
+      tratarFalha(e, 'Não foi possível atualizar o histórico');
+      return;
+    }
+    const copiou = await copiarTexto(montarTextoDecisao(decisao, fio));
     mostrarAlerta(
       copiou ? 'Copiado' : 'Não foi possível copiar',
       copiou
@@ -146,14 +156,19 @@ export function AbaDecisoes({ aoPerderAcesso }: PropsAbaManager) {
   }
 
   function fechar(decisao: Decisao) {
+    if (!decisaoFinal.trim()) {
+      mostrarAlerta('Falta a decisão', 'Escreva o que ficou combinado antes de fechar.');
+      return;
+    }
     confirmarAcao(
       'Fechar decisão',
-      'Depois de fechada, ninguém acrescenta manifestações. Confirma?',
+      'Depois de fechada, ninguém acrescenta manifestações e nada mais é editado. Confirma?',
       async () => {
         setSalvando(true);
         try {
-          const atualizada = await fecharDecisao(decisao.id, sessao?.user?.id ?? '');
+          const atualizada = await fecharDecisao(decisao.id, decisaoFinal.trim());
           setDecisoes((atual) => (atual ?? []).map((d) => (d.id === atualizada.id ? atualizada : d)));
+          setDecisaoFinal('');
         } catch (e) {
           tratarFalha(e, 'Não foi possível fechar');
           carregar();
@@ -256,6 +271,19 @@ export function AbaDecisoes({ aoPerderAcesso }: PropsAbaManager) {
             {aberta && (
               <View style={estilos.detalhe}>
                 {d.contexto ? <Text style={estilos.contexto}>{d.contexto}</Text> : null}
+
+                {/* O que ficou combinado vem antes do fio: é a resposta, e o
+                    resto é como se chegou nela. */}
+                {d.decisao_final ? (
+                  <View style={estilos.decisaoFinalCaixa}>
+                    <Text style={estilos.decisaoFinalRotulo}>Decisão</Text>
+                    <Text style={estilos.contexto}>{d.decisao_final}</Text>
+                    {d.decidido_por_nome ? (
+                      <Text style={estilosPainel.ajuda}>Fechada por {d.decidido_por_nome}</Text>
+                    ) : null}
+                  </View>
+                ) : null}
+
                 <Previa id={d.previa} />
                 {d.link ? <Text style={estilos.link}>{d.link}</Text> : null}
 
@@ -301,6 +329,15 @@ export function AbaDecisoes({ aoPerderAcesso }: PropsAbaManager) {
                       placeholderTextColor={Cores.textoSecundario}
                       multiline
                       accessibilityLabel="Texto da manifestação"
+                    />
+                    <TextInput
+                      style={[estilosPainel.input, estilos.campoLongo]}
+                      value={decisaoFinal}
+                      onChangeText={setDecisaoFinal}
+                      placeholder="Ao fechar: o que ficou combinado"
+                      placeholderTextColor={Cores.textoSecundario}
+                      multiline
+                      accessibilityLabel="Decisão final"
                     />
                   </>
                 )}
@@ -361,5 +398,20 @@ const estilos = StyleSheet.create({
   manifestacaoTexto: { fontFamily: Fontes.corpo, fontSize: 14, color: Cores.textoPrimario, lineHeight: 20 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Espacamento.xs },
   campoLongo: { minHeight: 80, textAlignVertical: 'top' },
+  decisaoFinalCaixa: {
+    gap: 4,
+    padding: Espacamento.md,
+    borderRadius: RaioBorda.md,
+    backgroundColor: 'rgba(88,117,101,0.10)',
+    borderLeftWidth: 3,
+    borderLeftColor: Cores.primaria,
+  },
+  decisaoFinalRotulo: {
+    fontFamily: Fontes.corpoSemibold,
+    fontSize: 11,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: Cores.primaria,
+  },
   linhaBotoes: { flexDirection: 'row', flexWrap: 'wrap', gap: Espacamento.sm, marginTop: Espacamento.xs },
 });
