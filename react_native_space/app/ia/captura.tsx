@@ -37,11 +37,14 @@ const INSTRUCOES: Record<string, string[]> = {
     'Fotografe de cima, com boa luz',
     'Evite sombras na imagem',
   ],
+  // Qual mão é a primeira instrução, não a última: a mão dominante mostra o que
+  // a pessoa fez da vida; a outra, o que veio de berço. Isto estava dito só no
+  // card da tela anterior, e sumia justamente na hora de fotografar.
   quiromancia: [
-    'Abra bem a palma da mão',
+    'Use a mão dominante — a que você escreve',
+    'Abra bem a palma',
     'Use iluminação natural',
-    'Fotografe de frente, sem ângulo',
-    'Inclua toda a palma na foto',
+    'Fotografe de frente, sem ângulo, com a palma inteira',
   ],
 };
 

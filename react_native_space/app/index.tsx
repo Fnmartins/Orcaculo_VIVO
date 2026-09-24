@@ -13,6 +13,8 @@ import { GradientBackground } from '../components/GradientBackground';
 import { Cores } from '../constants/colors';
 import { Fontes } from '../constants/typography';
 import { chegouPorRecuperacaoDeSenha } from '../services/supabase';
+import { useAuth } from '../contexts/AuthContext';
+import { destinoDaSplash } from '../utils/portaDeEntrada';
 
 const { width: LARGURA_TELA } = Dimensions.get('window');
 
@@ -29,6 +31,16 @@ function gerarParticulas(quantidade: number) {
 
 export default function TelaSplash() {
   const [movimentoReduzido, setMovimentoReduzido] = useState(false);
+  // A animação termina no seu tempo; a sessão carrega no dela. Só se navega
+  // quando as duas acabaram — antes disso `sessao` é nula mesmo para quem está
+  // logado, e a splash mandaria um assinante para a tela de boas-vindas.
+  const [animacaoTerminou, setAnimacaoTerminou] = useState(false);
+  const { sessao, carregando } = useAuth();
+
+  useEffect(() => {
+    if (!animacaoTerminou || carregando) return;
+    router.replace(destinoDaSplash(Boolean(sessao), chegouPorRecuperacaoDeSenha));
+  }, [animacaoTerminou, carregando, sessao]);
 
   // Valores animados
   const simboloEscala = useRef(new Animated.Value(0.5)).current;
@@ -67,9 +79,7 @@ export default function TelaSplash() {
       tituloY.setValue(0);
       subtituloOpacidade.setValue(1);
 
-      const timer = setTimeout(() => {
-        router.replace(chegouPorRecuperacaoDeSenha ? '/auth/nova-senha' : '/(tabs)');
-      }, 2900);
+      const timer = setTimeout(() => setAnimacaoTerminou(true), 2900);
       return () => clearTimeout(timer);
     }
 
@@ -165,9 +175,7 @@ export default function TelaSplash() {
         toValue: 0,
         duration: 400,
         useNativeDriver: true,
-      }).start(() => {
-        router.replace(chegouPorRecuperacaoDeSenha ? '/auth/nova-senha' : '/(tabs)');
-      });
+      }).start(() => setAnimacaoTerminou(true));
     }, 2500);
 
     return () => clearTimeout(timerNavegacao);
