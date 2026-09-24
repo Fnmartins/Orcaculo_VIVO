@@ -68,7 +68,7 @@ export default function TelaBuziosResultado() {
         numero: resultado.odu.abertos,
         descricao: resultado.odu.significado,
         orixas: [resultado.odu.regente],
-        intenção: intencao || 'Orientação geral',
+        intencao: intencao || 'Orientação geral',
       });
       setInterpretacaoIA(res);
     } catch {

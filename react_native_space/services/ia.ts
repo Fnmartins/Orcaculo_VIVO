@@ -3,28 +3,15 @@ import { obterBase64ImagemCache, limparImagemCache } from './imagemCache';
 import { supabase } from './supabase';
 import { erroDaFuncao } from './erroFuncao';
 
-const MODELO_TEXTO = 'gpt-4o-mini';
-export const IA_REMOTA_DISPONIVEL = false;
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Verificação de API key
-// ─────────────────────────────────────────────────────────────────────────────
-
-function temChaveValida(): boolean {
-  // O envio externo permanece desligado até existir consentimento explícito,
-  // política de privacidade e proxy autenticado com controle de uso.
-  return IA_REMOTA_DISPONIVEL;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Chamada base à API (OpenAI-compatible)
-// ─────────────────────────────────────────────────────────────────────────────
-
-async function chamarIA(mensagens: object[], modelo: string): Promise<string> {
-  void mensagens;
-  void modelo;
-  throw new Error('Aprofundamento por IA temporariamente indisponível.');
-}
+/**
+ * Liga o bloco "Aprofundar com IA" nas telas de tarô e búzios.
+ *
+ * Ficou `false` enquanto o envio externo não tinha as três coisas que o
+ * comentário original exigia: consentimento explícito, o que está na Política,
+ * e um proxy autenticado com controle de uso — hoje as Edge Functions
+ * ia-oraculo e ia-interpretacao, que guardam a chave e descontam a cota.
+ */
+export const IA_REMOTA_DISPONIVEL = true;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Obtenção de Base64 da imagem (via cache do picker)
@@ -113,6 +100,18 @@ export async function analisarImagemIA(
   };
 }
 
+/** Mesma tradução da análise de imagem: cota esgotada não é falha de serviço. */
+async function erroDeInterpretacao(error: unknown): Promise<Error> {
+  const status = (error as { context?: { status?: number } } | null)?.context?.status;
+  const traduzido = await erroDaFuncao(error);
+  if (status === 402) {
+    const semConsultas = new Error(traduzido.message);
+    semConsultas.name = 'SemConsultasError';
+    return semConsultas;
+  }
+  return traduzido;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Interpretação de Tarot por IA
 // ─────────────────────────────────────────────────────────────────────────────
@@ -126,34 +125,33 @@ export interface InterpretacaoTarot {
   conselho: string;
 }
 
+/**
+ * Aprofunda a tiragem de tarô. O prompt vive na Edge Function: se ele viesse
+ * daqui, qualquer pessoa usaria a chave paga do projeto para gerar o que
+ * quisesse. O app manda só as cartas sorteadas.
+ */
 export async function gerarInterpretacaoTarot(cartas: {
   nome: string;
   posicao: string;
   significado: string;
 }[]): Promise<InterpretacaoTarot> {
-  if (!temChaveValida()) throw new Error('Chave não configurada');
+  const { data, error } = await supabase.functions.invoke('ia-interpretacao', {
+    body: { oraculo: 'tarot', cartas },
+  });
+  if (error) throw await erroDeInterpretacao(error);
 
-  const descricaoCartas = cartas
-    .map(c => `- ${c.posicao}: ${c.nome} (${c.significado})`)
-    .join('\n');
-
-  const prompt = `Você é um tarólOgo experiente e empático. O usuário tirou 3 cartas:
-
-${descricaoCartas}
-
-Crie uma interpretação PERSONALIZADA e FLUÍDA em Português Brasileiro que conecte as 3 cartas numa narrativa coerente.
-
-Responda SOMENTE com JSON válido:
-{"titulo":"título da leitura","narrativa":"parágrafo geral conectando as 3 cartas (4-6 frases)","passado":"interpretação aprofundada do passado (2-3 frases)","presente":"interpretação aprofundada do presente (2-3 frases)","futuro":"interpretação aprofundada do futuro (2-3 frases)","conselho":"conselho prático e espiritual (2 frases)"}
-
-Tom: empático, poético e encorajador. Apresente passado, presente e futuro como perspectivas simbólicas e possibilidades condicionais, nunca como fatos inevitáveis. Preserve o livre-arbítrio e não faça diagnósticos ou recomendações médicas, legais ou financeiras. Seja específico e pessoal, não genérico.`;
-
-  const mensagens = [{ role: 'user', content: prompt }];
-  const resposta = await chamarIA(mensagens, MODELO_TEXTO);
-
-  const jsonMatch = resposta.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error('JSON inválido');
-  return JSON.parse(jsonMatch[0]) as InterpretacaoTarot;
+  const bruto = (data ?? {}) as Partial<InterpretacaoTarot>;
+  if (!bruto.titulo || !bruto.narrativa) {
+    throw new Error('A interpretação voltou incompleta. Tente de novo.');
+  }
+  return {
+    titulo: bruto.titulo,
+    narrativa: bruto.narrativa,
+    passado: bruto.passado ?? '',
+    presente: bruto.presente ?? '',
+    futuro: bruto.futuro ?? '',
+    conselho: bruto.conselho ?? '',
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -168,44 +166,28 @@ export interface InterpretacaoBuzios {
   afirmacao: string;
 }
 
+/** Aprofunda o jogo de búzios. Como no tarô, o prompt fica na function. */
 export async function gerarInterpretacaoBuzios(odu: {
   nome: string;
   numero: number;
   descricao: string;
   orixas: string[];
-  intenção: string;
+  intencao: string;
 }): Promise<InterpretacaoBuzios> {
-  if (!temChaveValida()) throw new Error('Chave não configurada');
+  const { data, error } = await supabase.functions.invoke('ia-interpretacao', {
+    body: { oraculo: 'buzios', odu },
+  });
+  if (error) throw await erroDeInterpretacao(error);
 
-  const prompt = `Você interpreta simbolicamente um jogo de búzios com respeito às tradições afro-brasileiras, sem se apresentar como sacerdote ou substituir uma consulta religiosa presencial.
-O jogo revelou o ODU: ${odu.nome} (${odu.numero} búzios abertos).
-Orixás regentes: ${odu.orixas.join(', ')}.
-Significado base: ${odu.descricao}
-Intenção do consulente: ${odu.intenção}
-
-Crie uma interpretação PERSONALIZADA e PROFUNDA em Português Brasileiro.
-
-Responda SOMENTE com JSON válido:
-{"titulo":"título da revelação","narrativa":"leitura do odu aplicada à intenção (4-5 frases)","mensagem":"mensagem direta dos Orixás (2-3 frases)","conselho":"ação prática recomendada (2 frases)","afirmacao":"frase de axé para o consulente"}
-
-Tom: respeitoso, profundo e acolhedor. Não invente fundamentos, rituais ou falas literais dos Orixás. Trate a leitura como orientação simbólica, sem certeza sobre o futuro, e não faça diagnósticos ou recomendações médicas, legais ou financeiras.`;
-
-  const mensagens = [{ role: 'user', content: prompt }];
-  const resposta = await chamarIA(mensagens, MODELO_TEXTO);
-
-  const jsonMatch = resposta.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error('JSON inválido');
-  return JSON.parse(jsonMatch[0]) as InterpretacaoBuzios;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Texto livre para qualquer consulta
-// ─────────────────────────────────────────────────────────────────────────────
-
-export async function gerarMensagemEspiritual(contexto: string): Promise<string> {
-  if (!temChaveValida()) return '';
-
-  const prompt = `Você oferece uma reflexão espiritual simbólica. ${contexto}\n\nForneça uma mensagem em Português Brasileiro, empática e encorajadora, em 2-4 frases. Não apresente previsões como fatos, preserve o livre-arbítrio e não faça diagnósticos ou recomendações médicas, legais ou financeiras.`;
-  const mensagens = [{ role: 'user', content: prompt }];
-  return chamarIA(mensagens, MODELO_TEXTO);
+  const bruto = (data ?? {}) as Partial<InterpretacaoBuzios>;
+  if (!bruto.titulo || !bruto.narrativa) {
+    throw new Error('A interpretação voltou incompleta. Tente de novo.');
+  }
+  return {
+    titulo: bruto.titulo,
+    narrativa: bruto.narrativa,
+    mensagem: bruto.mensagem ?? '',
+    conselho: bruto.conselho ?? '',
+    afirmacao: bruto.afirmacao ?? '',
+  };
 }
