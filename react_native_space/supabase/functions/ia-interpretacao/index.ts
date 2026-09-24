@@ -79,8 +79,13 @@ function dadosDosBuzios(body: Record<string, unknown>): string {
   const nome = texto(odu.nome, 60);
   if (!nome) throw new Error('Odu sem nome');
   const numero = typeof odu.numero === 'number' ? odu.numero : null;
+  // O travessão do Opirá é "sem regente", não um nome. Sem este filtro a IA
+  // recebia `Orixás regentes: —` e escrevia em cima disso.
   const orixas = Array.isArray(odu.orixas)
-    ? odu.orixas.map((o) => texto(o, 40)).filter(Boolean).slice(0, 6).join(', ')
+    ? odu.orixas
+      .map((o) => texto(o, 40))
+      .filter((o) => o && o !== '—' && o !== '-')
+      .slice(0, 6).join(', ')
     : '';
   return [
     '<dados>',

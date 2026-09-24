@@ -14,6 +14,22 @@ export interface OduBuzios {
   cor: string;
 }
 
+/**
+ * Os orixás regentes de um odu, como lista.
+ *
+ * Três odus têm dois — Oxossi/Yemanjá, Iansã/Egúm e Obá/Ogum — e a tela
+ * mostrava só o primeiro, enquanto o texto da IA citava os dois. O Opirá, em
+ * que nenhum búzio se abre, não tem regente: seu campo é um travessão, e
+ * travessão não é nome de orixá. Devolver lista vazia é o que impede os dois
+ * erros de voltarem.
+ */
+export function regentesDoOdu(regente: string): string[] {
+  return regente
+    .split('/')
+    .map((nome) => nome.trim())
+    .filter((nome) => nome.length > 0 && nome !== '—' && nome !== '-');
+}
+
 export const ODUS: OduBuzios[] = [
   {
     id: 1,

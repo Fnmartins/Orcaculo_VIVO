@@ -23,6 +23,7 @@ import { Espacamento, RaioBorda } from '../../constants/spacing';
 import { Hapticos } from '../../utils/haptics';
 import { QUANTIDADE_BUZIOS, type ResultadoBuzios } from '../../data/buzios';
 import { gerarInterpretacaoBuzios, IA_REMOTA_DISPONIVEL, type InterpretacaoBuzios } from '../../services/ia';
+import { regentesDoOdu } from '../../data/buzios';
 import { compartilharBuzios } from '../../services/compartilhar';
 import { RatingConsulta } from '../../components/RatingConsulta';
 import { ConviteHistorico } from '../../components/ConviteHistorico';
@@ -67,7 +68,7 @@ export default function TelaBuziosResultado() {
         nome: resultado.odu.nome,
         numero: resultado.odu.abertos,
         descricao: resultado.odu.significado,
-        orixas: [resultado.odu.regente],
+        orixas: regentesDoOdu(resultado.odu.regente),
         intencao: intencao || 'Orientação geral',
       });
       setInterpretacaoIA(res);
@@ -200,8 +201,15 @@ export default function TelaBuziosResultado() {
                 <View style={estilos.statDivisor} />
                 <View style={estilos.statItem}>
                   <Ionicons name="shield-outline" size={20} color={odu.cor} />
-                  <Text style={estilos.statNum} numberOfLines={1}>{odu.regente.split('/')[0].trim()}</Text>
-                  <Text style={estilos.statLabel}>Regente</Text>
+                  {/* Truncar com split('/')[0] apagava o segundo regente de
+                      Oxossi/Yemanjá, Iansã/Egúm e Obá/Ogum — e a tela acabava
+                      dizendo um nome enquanto o texto da IA dizia outro. */}
+                  <Text style={estilos.statNum} numberOfLines={2}>
+                    {regentesDoOdu(odu.regente).join(' e ') || '—'}
+                  </Text>
+                  <Text style={estilos.statLabel}>
+                    {regentesDoOdu(odu.regente).length > 1 ? 'Regentes' : 'Regente'}
+                  </Text>
                 </View>
               </View>
 

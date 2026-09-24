@@ -1,4 +1,4 @@
-import { jogarBuzios, QUANTIDADE_BUZIOS, ODUS } from '../buzios';
+import { jogarBuzios, QUANTIDADE_BUZIOS, ODUS, regentesDoOdu } from '../buzios';
 
 afterEach(() => {
   jest.restoreAllMocks();
@@ -44,6 +44,37 @@ describe('merindilogun', () => {
     for (let i = 0; i < 30; i++) {
       const { buzios, odu } = jogarBuzios();
       expect(odu.abertos).toBe(buzios.filter(Boolean).length);
+    }
+  });
+});
+
+// O conselho de 24/09 encontrou os dois casos abaixo em produção: a tela
+// mostrava um regente e o texto da IA citava outro, e o Opirá mandava um
+// travessão para a IA como se fosse nome de orixá.
+describe('regentesDoOdu', () => {
+  it('separa os odus que têm dois regentes', () => {
+    expect(regentesDoOdu('Oxossi / Yemanjá')).toEqual(['Oxossi', 'Yemanjá']);
+    expect(regentesDoOdu('Iansã / Egúm')).toEqual(['Iansã', 'Egúm']);
+    expect(regentesDoOdu('Obá / Ogum')).toEqual(['Obá', 'Ogum']);
+  });
+
+  it('devolve um só quando é um só', () => {
+    expect(regentesDoOdu('Exú')).toEqual(['Exú']);
+  });
+
+  it('travessão do Opirá não é nome de orixá', () => {
+    expect(regentesDoOdu('—')).toEqual([]);
+    expect(regentesDoOdu('-')).toEqual([]);
+    expect(regentesDoOdu('  ')).toEqual([]);
+  });
+
+  it('nenhum odu perde regente pelo caminho', () => {
+    for (const odu of ODUS) {
+      const nomes = regentesDoOdu(odu.regente);
+      // Opirá é o único sem regente, e é o único com nenhum búzio aberto.
+      if (odu.abertos === 0) expect(nomes).toEqual([]);
+      else expect(nomes.length).toBeGreaterThan(0);
+      expect(nomes.some((n) => n.includes('/'))).toBe(false);
     }
   });
 });
