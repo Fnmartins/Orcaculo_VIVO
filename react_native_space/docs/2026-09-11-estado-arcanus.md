@@ -190,6 +190,20 @@ então decidir por ali era decidir sem ver. A coluna `decisoes.previa` guarda um
 a proposta do conselho, uma embaixo da outra, com o que muda de uma para a outra. Decisão sem prévia
 continua sendo só texto. Suíte em 153 testes.
 
+**Ideia do Fabiano, 24/09 — escolher a mesa antes de jogar.** Três a cinco mesas diferentes, que a
+pessoa escolhe antes da tirada: materiais, panos e luzes distintos, como gesto de preparo
+("escolhe a mesa, pensa na pergunta, joga"). Serviria ao búzios e ao tarô, que hoje tem uma mesa
+fixa (`app/consulta/cartas.tsx:241`) e nenhuma escolha de pano — o paralelo que motivou a ideia
+ainda não existe no app.
+
+O gesto é bom e barato. A parte a examinar antes é **"mesas com orixás diferentes" e "posição dos
+búzios em relação aos orixás"**: o conselho de 24/09 acabou de dizer que objeto litúrgico usado
+como moldura lê como desrespeito, e que quem responde é definido pelo odu, não pelo que está em
+volta do pano. Cinco mesas temáticas por orixá são a foto antiga multiplicada por cinco. Uma
+versão que sobrevive ao mesmo conselho: mesas que variam por **material, pano e luz**, sem afirmar
+correspondência com orixá — a escolha vira preparo, não assentamento. Levar ao conselho antes de
+desenhar.
+
 **Mapa Astral — apontado em 21/09**, conselho em `docs/2026-09-21-conselho-mapa-astral.md` (4 decisões
 pendentes): só o signo solar é calculado; Lua, ascendente, planetas, casas e graus saem de contas
 aritméticas e aparecem na tela como se fossem reais. Proposta: tirar da tela o que é inventado já (M0) e
