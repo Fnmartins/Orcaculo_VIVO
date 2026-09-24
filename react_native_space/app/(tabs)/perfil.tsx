@@ -28,7 +28,7 @@ import { Hapticos } from '../../utils/haptics';
 import { destinoDoAvatar } from '../../utils/avatar';
 import { useAuth } from '../../contexts/AuthContext';
 import { AuthServico } from '../../services/auth';
-import { excluirConta } from '../../services/conta';
+import { confirmacaoValida, excluirConta, PALAVRA_CONFIRMACAO } from '../../services/conta';
 import { supabase } from '../../services/supabase';
 
 const NOMES_PLANO: Record<string, string> = {
@@ -68,6 +68,9 @@ export default function TelaPerfil() {
   // Trava contra o segundo toque: a primeira exclusão já derruba a conta, e a
   // segunda só traria um "sessão inválida" sem sentido para quem tocou.
   const excluindo = useRef(false);
+  const [excluindoConta, setExcluindoConta] = useState(false);
+  const [confirmacaoExclusao, setConfirmacaoExclusao] = useState('');
+  const [apagando, setApagando] = useState(false);
   const [editandoNome, setEditandoNome] = useState(false);
   const [nomeInput, setNomeInput] = useState('');
   const [salvandoNome, setSalvandoNome] = useState(false);
@@ -166,29 +169,32 @@ export default function TelaPerfil() {
 
   // Até 23/09 esta confirmação dizia que tudo seria removido e chamava um
   // callback vazio: o app afirmava ter apagado dados que continuavam lá.
-  const excluir = useCallback(() => {
-    if (excluindo.current) return;
+  //
+  // Desde 24/09 não basta confirmar: "Excluir Conta" fica encostado em "Sair"
+  // no menu, e um toque errado é irreversível. A pessoa digita a palavra — a
+  // mesma que a Edge Function já exigia contra chamada acidental.
+  const pedirExclusao = useCallback(() => {
     Hapticos.impactoPesado();
-    confirmarAcao(
-      'Excluir Conta',
-      'Isto é irreversível. Suas leituras, desejos, foto e perfil são apagados. '
-      + 'Uma assinatura ativa é cancelada na hora, sem devolução dos dias restantes. '
-      + 'As faturas já emitidas continuam na Stripe, por obrigação fiscal.',
-      async () => {
-        excluindo.current = true;
-        try {
-          await excluirConta();
-          await AuthServico.sair().catch(() => {});
-          router.replace('/welcome');
-        } catch (e) {
-          mostrarAlerta('Não foi possível excluir', e instanceof Error ? e.message : String(e));
-        } finally {
-          excluindo.current = false;
-        }
-      },
-      { confirmarLabel: 'Excluir', destrutivo: true },
-    );
+    setConfirmacaoExclusao('');
+    setExcluindoConta(true);
   }, []);
+
+  const confirmarExclusao = useCallback(async () => {
+    if (excluindo.current || !confirmacaoValida(confirmacaoExclusao)) return;
+    excluindo.current = true;
+    setApagando(true);
+    try {
+      await excluirConta();
+      await AuthServico.sair().catch(() => {});
+      setExcluindoConta(false);
+      router.replace('/welcome');
+    } catch (e) {
+      mostrarAlerta('Não foi possível excluir', e instanceof Error ? e.message : String(e));
+    } finally {
+      excluindo.current = false;
+      setApagando(false);
+    }
+  }, [confirmacaoExclusao]);
 
   const sair = useCallback(() => {
     Hapticos.impactoMedio();
@@ -516,7 +522,7 @@ export default function TelaPerfil() {
                   icone="trash-outline"
                   titulo="Excluir Conta"
                   perigo
-                  onPress={excluir}
+                  onPress={pedirExclusao}
                 />
               </View>
             </View>
@@ -569,6 +575,59 @@ export default function TelaPerfil() {
                   ? <ActivityIndicator size="small" color={Cores.fundoEscuro} />
                   : <Text style={estilos.modalSalvarTexto}>Salvar</Text>
                 }
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Modal: excluir conta. Fechar tocando fora é de propósito — sair daqui
+          sem querer não pode custar nada; ficar é que exige digitar. */}
+      <Modal
+        visible={excluindoConta}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setExcluindoConta(false)}
+      >
+        <Pressable style={estilos.modalOverlay} onPress={() => setExcluindoConta(false)}>
+          <Pressable style={estilos.modalCard} onPress={(e) => e.stopPropagation()}>
+            <Text style={estilos.modalTitulo}>Excluir Conta</Text>
+            <Text style={estilos.modalSubtitulo}>
+              Isto é irreversível. Suas leituras, desejos, foto e perfil são apagados.
+              Uma assinatura ativa é cancelada na hora, sem devolução dos dias restantes.
+              As faturas já emitidas continuam na Stripe, por obrigação fiscal.
+            </Text>
+            <Text style={estilos.modalSubtitulo}>
+              Para confirmar, escreva {PALAVRA_CONFIRMACAO} abaixo.
+            </Text>
+            <TextInput
+              style={estilos.modalInput}
+              value={confirmacaoExclusao}
+              onChangeText={setConfirmacaoExclusao}
+              placeholder={PALAVRA_CONFIRMACAO}
+              placeholderTextColor={Cores.textoSecundario}
+              autoCapitalize="characters"
+              autoCorrect={false}
+              maxLength={20}
+              accessibilityLabel="Confirmação de exclusão"
+            />
+            <View style={estilos.modalBotoes}>
+              <Pressable style={estilos.modalCancelar} onPress={() => setExcluindoConta(false)}>
+                <Text style={estilos.modalCancelarTexto}>Cancelar</Text>
+              </Pressable>
+              <Pressable
+                style={[
+                  estilos.modalExcluir,
+                  (!confirmacaoValida(confirmacaoExclusao) || apagando) && { opacity: 0.45 },
+                ]}
+                onPress={confirmarExclusao}
+                disabled={!confirmacaoValida(confirmacaoExclusao) || apagando}
+                accessibilityRole="button"
+                accessibilityLabel="Excluir minha conta"
+              >
+                {apagando
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Text style={estilos.modalExcluirTexto}>Excluir</Text>}
               </Pressable>
             </View>
           </Pressable>
@@ -873,6 +932,20 @@ const estilos = StyleSheet.create({
     fontSize: 12,
     color: 'rgba(255,255,255,0.2)',
     marginTop: 2,
+  },
+  // O botão de excluir é vermelho e só ganha cor cheia quando a palavra bate.
+  modalExcluir: {
+    flex: 1,
+    backgroundColor: Cores.erro,
+    borderRadius: RaioBorda.full,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalExcluirTexto: {
+    fontFamily: Fontes.corpoNegrito,
+    fontSize: 15,
+    color: '#fff',
   },
   modalOverlay: {
     flex: 1,

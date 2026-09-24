@@ -3,7 +3,7 @@ jest.mock('../supabase', () => ({
   supabase: { functions: { invoke: (...args: unknown[]) => mockInvoke(...args) } },
 }));
 
-import { excluirConta } from '../conta';
+import { confirmacaoValida, excluirConta, PALAVRA_CONFIRMACAO } from '../conta';
 
 /** Erro do supabase-js para resposta não-2xx: o Response fica em `context`. */
 function erroHttp(status: number, corpo: unknown) {
@@ -47,5 +47,30 @@ describe('services/conta', () => {
       error: { context: { status: 502, json: async () => { throw new Error('não é JSON'); } } },
     });
     await expect(excluirConta()).rejects.toThrow('Falha ao falar com o servidor.');
+  });
+});
+
+// "Excluir Conta" fica encostado em "Sair" no menu do perfil. A palavra e a
+// trava contra o toque errado, e ela ja existia no servidor.
+describe('confirmacaoValida', () => {
+  it('aceita a palavra exata', () => {
+    expect(confirmacaoValida('EXCLUIR')).toBe(true);
+  });
+
+  it('perdoa espaço e minúscula — o cuidado é com o engano, não com a digitação', () => {
+    expect(confirmacaoValida('  excluir ')).toBe(true);
+    expect(confirmacaoValida('Excluir')).toBe(true);
+  });
+
+  it('recusa vazio, parcial e parecido', () => {
+    expect(confirmacaoValida('')).toBe(false);
+    expect(confirmacaoValida('   ')).toBe(false);
+    expect(confirmacaoValida('EXCLUI')).toBe(false);
+    expect(confirmacaoValida('EXCLUIR CONTA')).toBe(false);
+    expect(confirmacaoValida('sair')).toBe(false);
+  });
+
+  it('é a mesma palavra que a function exige', () => {
+    expect(confirmacaoValida(PALAVRA_CONFIRMACAO)).toBe(true);
   });
 });
