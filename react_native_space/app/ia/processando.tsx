@@ -14,8 +14,9 @@ import { GradientBackground } from '../../components/GradientBackground';
 import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
-import { analisarImagem as analisarImagemMock, type TipoAnalise } from '../../data/ia-analise';
-import { analisarImagemIA } from '../../services/ia';
+import { type TipoAnalise } from '../../data/ia-analise';
+import { analisarImagemIA, ehSemConsultas, type ProfundidadeAnalise } from '../../services/ia';
+import { mostrarAlerta } from '../../utils/alerta';
 import { SomMistico } from '../../services/somMistico';
 
 const ETAPAS_PROCESSO = [
@@ -27,7 +28,9 @@ const ETAPAS_PROCESSO = [
 ];
 
 export default function TelaProcessando() {
-  const { tipo = 'cafe', imagemUri = '' } = useLocalSearchParams<{ tipo?: string; imagemUri?: string }>();
+  const { tipo = 'cafe', imagemUri = '', profundidade = 'simples' } = useLocalSearchParams<{
+    tipo?: string; imagemUri?: string; profundidade?: string;
+  }>();
   const [etapaIndex, setEtapaIndex] = useState(0);
   const fadeEtapa = useRef(new Animated.Value(1)).current;
   const rotacaoAnim = useRef(new Animated.Value(0)).current;
@@ -66,12 +69,17 @@ export default function TelaProcessando() {
   useEffect(() => {
     let etapaAtual = 0;
     let resultadoIA: object | null = null;
+    // Antes, falha virava o texto pronto de data/ia-analise.ts e a pessoa
+    // recebia uma "leitura da IA" que nunca olhou a foto. Falhou, ela fica
+    // sabendo — e a consulta não é descontada, porque a function só desconta
+    // depois que a leitura existe.
+    let erroIA: Error | null = null;
 
-    analisarImagemIA(imagemUri, tipo as TipoAnalise).then((res) => {
-      resultadoIA = res;
-    }).catch(() => {
-      resultadoIA = analisarImagemMock(tipo as TipoAnalise);
-    });
+    analisarImagemIA(imagemUri, tipo as TipoAnalise, profundidade as ProfundidadeAnalise)
+      .then((res) => { resultadoIA = res; })
+      .catch((e: unknown) => {
+        erroIA = e instanceof Error ? e : new Error(String(e));
+      });
 
     const intervalo = setInterval(() => {
       etapaAtual += 1;
@@ -85,6 +93,15 @@ export default function TelaProcessando() {
       if (etapaAtual >= ETAPAS_PROCESSO.length - 1) {
         clearInterval(intervalo);
         const navegar = () => {
+          if (erroIA) {
+            const falha: Error = erroIA;
+            mostrarAlerta(
+              ehSemConsultas(falha) ? 'Consultas esgotadas' : 'Não foi possível analisar',
+              falha.message,
+            );
+            router.replace({ pathname: '/ia/captura', params: { tipo } });
+            return;
+          }
           if (resultadoIA) {
             router.replace({
               pathname: '/ia/resultado',

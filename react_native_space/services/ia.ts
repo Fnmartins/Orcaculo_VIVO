@@ -1,8 +1,8 @@
 import type { TipoAnalise, AnaliseIA } from '../data/ia-analise';
-import { analisarImagem as analisarImagemMock } from '../data/ia-analise';
 import { obterBase64ImagemCache, limparImagemCache } from './imagemCache';
+import { supabase } from './supabase';
+import { erroDaFuncao } from './erroFuncao';
 
-const MODELO_VISAO = 'claude-3-5-sonnet';
 const MODELO_TEXTO = 'gpt-4o-mini';
 export const IA_REMOTA_DISPONIVEL = false;
 
@@ -38,93 +38,79 @@ function obterBase64(uri: string): string {
 }
 
 function detectarMimeType(uri: string): string {
+  // Na web a URI é `data:image/png;base64,...` e não tem extensão nenhuma —
+  // olhar só o sufixo mandava tudo como jpeg.
+  const doDataUrl = /^data:(image\/[a-z0-9.+-]+);/i.exec(uri);
+  if (doDataUrl) return doDataUrl[1].toLowerCase();
+
   const lower = uri.toLowerCase();
   if (lower.includes('.png')) return 'image/png';
   if (lower.includes('.webp')) return 'image/webp';
+  if (lower.includes('.heic')) return 'image/heic';
   return 'image/jpeg';
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Prompts por tipo
-// ─────────────────────────────────────────────────────────────────────────────
-
-const PROMPTS: Record<TipoAnalise, string> = {
-  cafe: `Você é um especialista em tasseografia (leitura de borra de café). 
-Analise cuidadosamente a imagem fornecida — é o fundo de uma xícara com borra de café.
-Identifique formas, padrões e símbolos visíveis e forneça uma leitura espiritual personalizada em Português Brasileiro.
-
-Responda SOMENTE com JSON válido, sem texto antes ou depois, no seguinte formato:
-{"titulo":"título poético da leitura","resumo":"resumo da mensagem em 2 frases","detalhes":[{"secao":"Formas Identificadas","texto":"descrição das formas e o que representam"},{"secao":"Interpretação Espiritual","texto":"mensagem espiritual personalizada"},{"secao":"Conselho","texto":"orientação prática para os próximos dias"},{"secao":"Afirmação","texto":"frase de poder para o usuário carregar consigo"}],"energia":"positiva"}
-
-Regras: energia pode ser "positiva", "neutra" ou "atencao". Trate símbolos como possibilidades de reflexão, nunca como fatos ou previsões garantidas. Não faça diagnósticos nem recomendações médicas, legais ou financeiras. Tom místico, empático e encorajador.`,
-
-  quiromancia: `Você é um quiromante experiente especializado em leitura de palma.
-Analise cuidadosamente a imagem da mão fornecida — observe as linhas principais, montes e textura.
-Forneça uma leitura espiritual personalizada em Português Brasileiro.
-
-Responda SOMENTE com JSON válido, sem texto antes ou depois, no seguinte formato:
-{"titulo":"título poético da leitura","resumo":"resumo da mensagem em 2 frases","detalhes":[{"secao":"Linha da Vida","texto":"interpretação da linha da vida"},{"secao":"Linha do Coração","texto":"interpretação da linha do coração"},{"secao":"Linha da Cabeça","texto":"interpretação da linha da cabeça"},{"secao":"Conselho","texto":"orientação espiritual personalizada"}],"energia":"positiva"}
-
-Regras: energia pode ser "positiva", "neutra" ou "atencao". A leitura da mão não determina saúde, longevidade ou acontecimentos futuros. Não faça diagnósticos nem recomendações médicas, legais ou financeiras. Tom profundo, místico e encorajador.`,
-};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Função principal — análise de imagem com IA real
 // ─────────────────────────────────────────────────────────────────────────────
 
+export type ProfundidadeAnalise = 'simples' | 'completa';
+
+/** A cota do período acabou — é recusa de plano, não falha de serviço. */
+export function ehSemConsultas(e: unknown): boolean {
+  return (e as { name?: unknown } | null)?.name === 'SemConsultasError';
+}
+
+const COR_POR_TIPO: Record<TipoAnalise, string> = {
+  cafe: '#8B4513',
+  quiromancia: '#C0392B',
+};
+
+/**
+ * Manda a foto para a Edge Function `ia-oraculo`, que fala com o modelo.
+ *
+ * Nada de chave aqui: o app é código que qualquer pessoa lê. E nada de cair no
+ * texto pronto quando a chamada falha — era assim que a tela dizia "a IA
+ * analisou" sobre um texto que não tinha olhado imagem nenhuma. Falhou, a
+ * pessoa fica sabendo.
+ */
 export async function analisarImagemIA(
   imagemUri: string,
-  tipo: TipoAnalise
+  tipo: TipoAnalise,
+  profundidade: ProfundidadeAnalise = 'simples',
 ): Promise<AnaliseIA> {
-  if (!temChaveValida()) {
-    return analisarImagemMock(tipo);
+  const imagemBase64 = obterBase64(imagemUri);
+  const mediaType = detectarMimeType(imagemUri);
+
+  const { data, error } = await supabase.functions.invoke('ia-oraculo', {
+    body: { tipo, profundidade, imagemBase64, mediaType },
+  });
+
+  if (error) {
+    const status = (error as { context?: { status?: number } } | null)?.context?.status;
+    const traduzido = await erroDaFuncao(error);
+    if (status === 402) {
+      const semConsultas = new Error(traduzido.message);
+      semConsultas.name = 'SemConsultasError';
+      throw semConsultas;
+    }
+    throw traduzido;
   }
 
-  try {
-    const base64 = obterBase64(imagemUri);
-    const mimeType = detectarMimeType(imagemUri);
-
-    const mensagens = [
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'image_url',
-            image_url: {
-              url: `data:${mimeType};base64,${base64}`,
-            },
-          },
-          {
-            type: 'text',
-            text: PROMPTS[tipo],
-          },
-        ],
-      },
-    ];
-
-    const resposta = await chamarIA(mensagens, MODELO_VISAO);
-
-    const jsonMatch = resposta.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('JSON não encontrado na resposta');
-
-    const dados = JSON.parse(jsonMatch[0]);
-
-    const analise: AnaliseIA = {
-      tipo,
-      titulo: dados.titulo ?? 'Sua Leitura',
-      resumo: dados.resumo ?? '',
-      detalhes: Array.isArray(dados.detalhes) ? dados.detalhes : [],
-      energia: (['positiva', 'neutra', 'atencao'].includes(dados.energia)
-        ? dados.energia
-        : 'positiva') as AnaliseIA['energia'],
-      cor: tipo === 'cafe' ? '#8B4513' : '#E74C3C',
-    };
-
-    return analise;
-  } catch (erro) {
-    console.warn('[IA] Falha na análise de imagem, usando fallback:', erro);
-    return analisarImagemMock(tipo);
+  const bruto = (data ?? {}) as Partial<AnaliseIA>;
+  if (!bruto.titulo || !Array.isArray(bruto.detalhes) || bruto.detalhes.length === 0) {
+    throw new Error('A leitura voltou incompleta. Tente de novo.');
   }
+
+  return {
+    tipo,
+    titulo: bruto.titulo,
+    resumo: bruto.resumo ?? '',
+    detalhes: bruto.detalhes,
+    energia: bruto.energia ?? 'neutra',
+    // Cor é apresentação: fica no app, não vem do modelo.
+    cor: COR_POR_TIPO[tipo],
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

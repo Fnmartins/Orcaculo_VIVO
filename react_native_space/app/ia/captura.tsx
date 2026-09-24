@@ -7,7 +7,9 @@ import {
   Pressable,
   Platform,
 } from 'react-native';
-import { mostrarAlerta } from '../../utils/alerta';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { confirmarAcao, mostrarAlerta } from '../../utils/alerta';
+import type { ProfundidadeAnalise } from '../../services/ia';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { voltarOuIr } from '../../utils/navegacao';
@@ -24,6 +26,14 @@ import { Espacamento, RaioBorda } from '../../constants/spacing';
 import { Hapticos } from '../../utils/haptics';
 import type { TipoAnalise } from '../../data/ia-analise';
 import { salvarBase64ImagemCache } from '../../services/imagemCache';
+
+/** Consentimento fica no aparelho: é escolha de quem usa, não dado nosso. */
+const CHAVE_CONSENTIMENTO = '@arcanus:consentimento_ia';
+
+const PROFUNDIDADES: { id: ProfundidadeAnalise; titulo: string; apoio: string }[] = [
+  { id: 'simples', titulo: 'Leitura simples', apoio: 'O essencial, em três partes' },
+  { id: 'completa', titulo: 'Leitura completa', apoio: 'Sete partes, olhando cada detalhe' },
+];
 
 const TITULOS: Record<string, string> = {
   cafe: 'Borra de Café',
@@ -51,6 +61,7 @@ const INSTRUCOES: Record<string, string[]> = {
 export default function TelaCaptura() {
   const { tipo = 'cafe' } = useLocalSearchParams<{ tipo?: string }>();
   const [imagemUri, setImagemUri] = useState<string | null>(null);
+  const [profundidade, setProfundidade] = useState<ProfundidadeAnalise>('simples');
   const [cameraAberta, setCameraAberta] = useState(false);
   const [, requestPermission] = useCameraPermissions();
 
@@ -99,14 +110,46 @@ export default function TelaCaptura() {
     }
   }, []);
 
-  const analisar = useCallback(() => {
+  // A foto sai do aparelho e vai para um serviço de terceiro. Quem consulta
+  // precisa saber disso antes, e não depois de ler a Política de Privacidade.
+  const analisar = useCallback(async () => {
     if (!imagemUri) return;
-    Hapticos.impactoMedio();
-    router.push({
-      pathname: '/ia/processando',
-      params: { tipo, imagemUri },
-    });
-  }, [imagemUri, tipo]);
+
+    const seguir = () => {
+      Hapticos.impactoMedio();
+      router.push({
+        pathname: '/ia/processando',
+        params: { tipo, imagemUri, profundidade },
+      });
+    };
+
+    let jaAutorizou = false;
+    try {
+      jaAutorizou = (await AsyncStorage.getItem(CHAVE_CONSENTIMENTO)) === 'sim';
+    } catch {
+      // Sem armazenamento local, pergunta de novo: perguntar duas vezes é
+      // chato, enviar sem perguntar não é aceitável.
+    }
+    if (jaAutorizou) {
+      seguir();
+      return;
+    }
+
+    confirmarAcao(
+      'Enviar a foto para análise',
+      'Para ler a imagem, ela é enviada ao serviço de inteligência artificial que escreve a leitura. '
+      + 'Ela é usada apenas para gerar este texto e não fica guardada por nós. Você autoriza?',
+      async () => {
+        try {
+          await AsyncStorage.setItem(CHAVE_CONSENTIMENTO, 'sim');
+        } catch {
+          // Não conseguir lembrar do "sim" só custa perguntar de novo.
+        }
+        seguir();
+      },
+      { confirmarLabel: 'Autorizar' },
+    );
+  }, [imagemUri, tipo, profundidade]);
 
   const instrucoes = INSTRUCOES[tipo] ?? INSTRUCOES.cafe;
 
@@ -188,12 +231,33 @@ export default function TelaCaptura() {
                 </Pressable>
               </View>
             ) : (
-              <Button
-                variante="primary"
-                label="Analisar Imagem 🧠"
-                larguraTotal
-                onPress={analisar}
-              />
+              <>
+                <View style={estilos.profundidadeLinha}>
+                  {PROFUNDIDADES.map((opcao) => {
+                    const ativa = profundidade === opcao.id;
+                    return (
+                      <Pressable
+                        key={opcao.id}
+                        onPress={() => { Hapticos.impactoLeve(); setProfundidade(opcao.id); }}
+                        style={[estilos.profundidadeCard, ativa && estilos.profundidadeCardAtiva]}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: ativa }}
+                      >
+                        <Text style={[estilos.profundidadeTitulo, ativa && estilos.profundidadeTituloAtivo]}>
+                          {opcao.titulo}
+                        </Text>
+                        <Text style={estilos.profundidadeApoio}>{opcao.apoio}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <Button
+                  variante="primary"
+                  label="Analisar Imagem 🧠"
+                  larguraTotal
+                  onPress={analisar}
+                />
+              </>
             )}
           </View>
         </View>
@@ -260,6 +324,37 @@ const estilos = StyleSheet.create({
     marginTop: Espacamento.md,
   },
 
+  profundidadeLinha: {
+    flexDirection: 'row',
+    gap: Espacamento.sm,
+    marginBottom: Espacamento.md,
+  },
+  profundidadeCard: {
+    flex: 1,
+    paddingVertical: Espacamento.sm,
+    paddingHorizontal: Espacamento.md,
+    borderRadius: RaioBorda.md,
+    borderWidth: 1,
+    borderColor: Cores.cardBorda,
+    backgroundColor: Cores.cardFundo,
+    gap: 2,
+  },
+  profundidadeCardAtiva: {
+    borderColor: Cores.acento,
+    backgroundColor: 'rgba(181,139,70,0.10)',
+  },
+  profundidadeTitulo: {
+    fontFamily: Fontes.corpoSemibold,
+    fontSize: 13,
+    color: Cores.textoPrimario,
+  },
+  profundidadeTituloAtivo: { color: Cores.acento },
+  profundidadeApoio: {
+    fontFamily: Fontes.corpo,
+    fontSize: 11,
+    color: Cores.textoSecundario,
+    lineHeight: 15,
+  },
   instrucoesContainer: {
     backgroundColor: Cores.cardFundo,
     borderWidth: 1,

@@ -43,7 +43,9 @@ export default function TelaPrivacidade() {
         {
           titulo: 'Recursos de inteligência artificial',
           paragrafos: [
-            'Algumas funcionalidades podem utilizar processamento por inteligência artificial. Quando isso ocorrer, o conteúdo enviado por você (como um texto ou imagem) pode ser processado para gerar o resultado. Não usamos esse conteúdo para identificar você fora do serviço.',
+            'Algumas funcionalidades utilizam processamento por inteligência artificial. Quando isso ocorre, o conteúdo enviado por você é processado para gerar o resultado. Não usamos esse conteúdo para identificar você fora do serviço.',
+            'É o caso da leitura por imagem (borra de café e leitura de mão). A foto que você tira ou escolhe é enviada ao provedor de inteligência artificial que escreve a leitura, e usada apenas para isso. Nós não guardamos a imagem: ela fica na memória do aplicativo durante a análise e é descartada em seguida. Pedimos sua autorização na tela, antes do primeiro envio.',
+            'As leituras geradas são simbólicas, para reflexão. Elas não fazem diagnóstico, não avaliam saúde e não substituem orientação médica, jurídica ou financeira.',
           ],
         },
         {
