@@ -18,20 +18,21 @@ const intencoes = [
   ['trabalho', 'Trabalho', 'briefcase-outline'], ['eu', 'Eu mesmo', 'sparkles-outline'],
 ] as const;
 
-// A Lei da Atração ficou de fora desta lista até 24/09: existia, funcionava e
-// era vendida nos planos, mas não tinha porta de entrada.
+// Os seis oráculos do app. A leitura por imagem e a Lei da Atração ficaram de
+// fora desta lista até 24/09: existiam e eram vendidas nos planos, mas não
+// tinham porta de entrada — só se chegava nelas digitando a URL.
 //
-// A leitura por imagem continua fora, e de propósito: o resultado dela não olha
-// a foto — vem pronto de `data/ia-analise.ts`, porque o envio a um modelo
-// externo está desligado (`services/ia.ts`, IA_REMOTA_DISPONIVEL). Anunciar na
-// home uma análise de imagem que não analisa imagem seria vender o que não
-// existe. Volta para cá quando a análise for real.
+// A leitura por imagem ainda devolve texto que não olha a foto
+// (`data/ia-analise.ts`, com o envio externo desligado em `services/ia.ts`).
+// Fica visível porque o caminho é construir a análise de verdade, não esconder
+// a porta; enquanto isso, a tela não deve afirmar que a IA analisou a imagem.
 const oraculos = [
   ['Búzios', 'Tradição e caminhos', 'grain', P.verde, 'material', '/consulta/buzios-preparo'],
   ['Tarot', 'Símbolos para refletir', 'cards-outline', P.terracota, 'material', '/consulta'],
   ['Numerologia', 'Ciclos e significados', 'calculator-outline', P.azul, 'ion', '/numerologia'],
   ['Mapa Astral', 'Leitura do seu céu', 'planet-outline', P.dourado, 'ion', '/mapa-astral'],
-  ['Lei da Atração', 'Desejos e rituais', 'magnet', P.verdeEscuro, 'material', '/lei-atracao'],
+  ['Leitura por imagem', 'Símbolos em uma foto', 'image-search-outline', P.verdeEscuro, 'material', '/ia'],
+  ['Lei da Atração', 'Desejos e rituais', 'magnet', P.terracota, 'material', '/lei-atracao'],
 ] as const;
 
 const decisoes = [
