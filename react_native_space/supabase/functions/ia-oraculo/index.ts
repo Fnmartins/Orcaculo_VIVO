@@ -35,9 +35,13 @@ type Profundidade = (typeof PROFUNDIDADES)[number];
  * Estimativa por leitura em 24/09 (claude-opus-5, US$ 5/MTok de entrada e
  * US$ 25/MTok de saída): simples ~US$ 0,03, completa ~US$ 0,13.
  */
+// `max_tokens` inclui o raciocínio, que neste modelo vem ligado por padrão.
+// Com 2000 na simples, o modelo gastava o teto pensando e a resposta voltava
+// cortada: o JSON não fechava e a leitura morria na validação. O teto é limite
+// de segurança, não meta de tamanho — quem controla o tamanho é a instrução.
 const AJUSTE: Record<Profundidade, { esforco: 'low' | 'high'; maxTokens: number; frases: string }> = {
-  simples: { esforco: 'low', maxTokens: 2000, frases: 'de 2 a 4 frases' },
-  completa: { esforco: 'high', maxTokens: 6000, frases: 'de 4 a 7 frases' },
+  simples: { esforco: 'low', maxTokens: 6000, frases: 'de 2 a 4 frases' },
+  completa: { esforco: 'high', maxTokens: 12000, frases: 'de 4 a 7 frases' },
 };
 
 const SECOES: Record<Profundidade, Record<Tipo, string[]>> = {
@@ -217,12 +221,32 @@ Deno.serve(async (request) => {
     if (mensagem.stop_reason === 'refusal') {
       return resposta({ erro: 'Não foi possível ler esta imagem. Tente outra foto.' }, 422);
     }
+    // Sem isto, estourar o teto chegava como "erro genérico" e ninguém sabia
+    // que a causa era tamanho.
+    if (mensagem.stop_reason === 'max_tokens') {
+      console.error('leitura truncada pelo teto de tokens', JSON.stringify(mensagem.usage));
+      return resposta({ erro: 'A leitura ficou longa demais e foi interrompida. Tente de novo.' }, 502);
+    }
     const texto = mensagem.content
       .filter((bloco): bloco is { type: 'text'; text: string } => bloco.type === 'text')
       .map((bloco) => bloco.text)
       .join('\n');
 
-    const analise = validarAnalise(texto);
+    let analise;
+    try {
+      analise = validarAnalise(texto);
+    } catch (erro) {
+      // O log precisa dizer o que voltou, senão o diagnóstico vira adivinhação
+      // — foi o que aconteceu na primeira leitura real, em 24/09.
+      console.error(
+        'resposta fora do formato',
+        erro instanceof Error ? erro.message : erro,
+        '| stop_reason:', mensagem.stop_reason,
+        '| uso:', JSON.stringify(mensagem.usage),
+        '| inicio do texto:', texto.slice(0, 300),
+      );
+      return resposta({ erro: 'A leitura voltou fora do formato. Tente de novo.' }, 502);
+    }
 
     // Só desconta depois que a leitura existe: cobrar por chamada que falhou
     // seria tirar consulta de quem não recebeu nada.

@@ -162,7 +162,9 @@ Deno.serve(async (request) => {
     const anthropic = new Anthropic({ apiKey: anthropicKey });
     const mensagem = await anthropic.messages.create({
       model: MODELO,
-      max_tokens: 3000,
+      // Inclui o raciocínio, que neste modelo vem ligado por padrão: teto baixo
+      // faz a resposta voltar cortada e o JSON não fechar.
+      max_tokens: 12000,
       output_config: { effort: 'high' },
       system: oraculo === 'tarot' ? INSTRUCOES_TAROT : INSTRUCOES_BUZIOS,
       messages: [{ role: 'user', content: [{ type: 'text', text: dados }] }],
@@ -171,12 +173,28 @@ Deno.serve(async (request) => {
     if (mensagem.stop_reason === 'refusal') {
       return resposta({ erro: 'Não foi possível aprofundar esta leitura.' }, 422);
     }
+    if (mensagem.stop_reason === 'max_tokens') {
+      console.error('interpretação truncada pelo teto', JSON.stringify(mensagem.usage));
+      return resposta({ erro: 'A leitura ficou longa demais e foi interrompida. Tente de novo.' }, 502);
+    }
     const saida = mensagem.content
       .filter((bloco): bloco is { type: 'text'; text: string } => bloco.type === 'text')
       .map((bloco) => bloco.text)
       .join('\n');
 
-    const interpretacao = validarResultado(saida, oraculo);
+    let interpretacao;
+    try {
+      interpretacao = validarResultado(saida, oraculo);
+    } catch (erro) {
+      console.error(
+        'resposta fora do formato',
+        erro instanceof Error ? erro.message : erro,
+        '| stop_reason:', mensagem.stop_reason,
+        '| uso:', JSON.stringify(mensagem.usage),
+        '| inicio do texto:', saida.slice(0, 300),
+      );
+      return resposta({ erro: 'A interpretação voltou fora do formato. Tente de novo.' }, 502);
+    }
 
     // Só desconta depois que a leitura existe.
     if (!semLimite) {
