@@ -48,7 +48,16 @@ export function CameraCaptura({
   return (
     <Modal visible animationType="slide" onRequestClose={aoFechar} transparent={false}>
       <View style={estilos.fundo}>
-        <CameraView ref={camera} style={StyleSheet.absoluteFill} facing={lado} />
+        {/* Sem onMountError, uma falha ao abrir o visor aparecia como tela
+            preta: permissão concedida e nada acontecendo. */}
+        <CameraView
+          ref={camera}
+          style={StyleSheet.absoluteFill}
+          facing={lado}
+          onMountError={(e) => setErro(
+            `Não foi possível abrir a câmera aqui. ${e?.message ?? ''} Use "Tirar foto" ou a galeria.`.trim(),
+          )}
+        />
 
         <View style={estilos.topo}>
           <Pressable onPress={aoFechar} style={estilos.botaoRedondo} accessibilityRole="button" accessibilityLabel="Fechar câmera">
@@ -67,6 +76,9 @@ export function CameraCaptura({
         {erro ? (
           <View style={estilos.erroCaixa}>
             <Text style={estilos.erroTexto}>{erro}</Text>
+            <Pressable onPress={aoFechar} accessibilityRole="button" style={estilos.erroBotao}>
+              <Text style={estilos.erroBotaoTexto}>Voltar</Text>
+            </Pressable>
           </View>
         ) : null}
 
@@ -130,4 +142,13 @@ const estilos = StyleSheet.create({
     borderColor: Cores.cardBorda,
   },
   erroTexto: { fontFamily: Fontes.corpo, fontSize: 13, color: Cores.textoPrimario },
+  erroBotao: {
+    marginTop: Espacamento.sm,
+    alignSelf: 'flex-end',
+    paddingHorizontal: Espacamento.md,
+    paddingVertical: 8,
+    borderRadius: RaioBorda.full,
+    backgroundColor: Cores.acento,
+  },
+  erroBotaoTexto: { fontFamily: Fontes.corpoNegrito, fontSize: 13, color: '#fff' },
 });

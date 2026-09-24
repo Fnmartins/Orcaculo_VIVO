@@ -65,17 +65,45 @@ export default function TelaCaptura() {
   const [cameraAberta, setCameraAberta] = useState(false);
   const [, requestPermission] = useCameraPermissions();
 
-  // Abre o visor dentro do app em vez de delegar ao app de câmera do sistema:
-  // no navegador de computador esse repasse não existe e o expo caía no seletor
-  // de arquivos — quem clicava em "câmera" via a galeria.
+  /**
+   * Câmera do sistema — o caminho comprovado no celular, onde o aparelho abre o
+   * próprio app de câmera.
+   *
+   * Em 24/09 isto foi trocado por um visor dentro do app, para resolver o caso
+   * do navegador de computador, que não tem app de câmera e cai no seletor de
+   * arquivos. A troca quebrou o celular: o visor abria preto mesmo com a
+   * permissão concedida. O visor voltou a ser opção secundária, só na web.
+   */
   const tirarFoto = useCallback(async () => {
+    Hapticos.impactoLeve();
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      mostrarAlerta('Permissão necessária', 'Precisamos de acesso à câmera para capturar a imagem.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ['images'],
+      quality: 0.8,
+      allowsEditing: true,
+      aspect: [1, 1],
+      base64: true,
+    });
+    if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
+      if (asset.base64) salvarBase64ImagemCache(asset.uri, asset.base64);
+      setImagemUri(asset.uri);
+    }
+  }, []);
+
+  /** Visor dentro do app: no computador é a única forma de usar a webcam. */
+  const usarWebcam = useCallback(async () => {
     Hapticos.impactoLeve();
     const permissao = await requestPermission();
     if (!permissao?.granted) {
       mostrarAlerta(
         'Permissão necessária',
         permissao?.canAskAgain === false
-          ? 'O acesso à câmera está bloqueado. Libere nas configurações do navegador ou do aparelho e tente de novo.'
+          ? 'O acesso à câmera está bloqueado. Libere nas configurações do navegador e tente de novo.'
           : 'Precisamos de acesso à câmera para capturar a imagem.',
       );
       return;
@@ -207,7 +235,8 @@ export default function TelaCaptura() {
           {/* Botões de captura */}
           <View style={estilos.footer}>
             {!imagemUri ? (
-              <View style={estilos.capturaBotoes}>
+              <>
+                <View style={estilos.capturaBotoes}>
                 <Pressable
                   onPress={tirarFoto}
                   style={({ pressed }) => [estilos.capturaBotao, { transform: [{ scale: pressed ? 0.95 : 1 }] }]}
@@ -229,7 +258,17 @@ export default function TelaCaptura() {
                     <Text style={estilos.galeriaBotaoTexto}>Galeria</Text>
                   </View>
                 </Pressable>
-              </View>
+                </View>
+                {/* No computador o botão acima cai no seletor de arquivos,
+                    porque navegador de desktop não tem app de câmera. Só ali a
+                    webcam precisa de um caminho próprio. */}
+                {Platform.OS === 'web' && (
+                  <Pressable onPress={usarWebcam} style={estilos.webcamLink} accessibilityRole="button">
+                    <Ionicons name="videocam-outline" size={16} color={Cores.acento} />
+                    <Text style={estilos.webcamTexto}>Usar a webcam do computador</Text>
+                  </Pressable>
+                )}
+              </>
             ) : (
               <>
                 <View style={estilos.profundidadeLinha}>
@@ -354,6 +393,19 @@ const estilos = StyleSheet.create({
     fontSize: 11,
     color: Cores.textoSecundario,
     lineHeight: 15,
+  },
+  webcamLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: Espacamento.sm,
+    marginTop: Espacamento.xs,
+  },
+  webcamTexto: {
+    fontFamily: Fontes.corpoSemibold,
+    fontSize: 13,
+    color: Cores.acento,
   },
   instrucoesContainer: {
     backgroundColor: Cores.cardFundo,
