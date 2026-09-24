@@ -24,6 +24,49 @@ const MODELO = 'claude-opus-5';
 const TIPOS = ['cafe', 'quiromancia'] as const;
 type Tipo = (typeof TIPOS)[number];
 
+const PROFUNDIDADES = ['simples', 'completa'] as const;
+type Profundidade = (typeof PROFUNDIDADES)[number];
+
+/**
+ * A imagem custa o mesmo para olhar nas duas; o que muda é quanto o modelo
+ * pensa e escreve. Por isso a completa sai ~4x mais cara para produzir e pode
+ * ser vendida por ~2x — ela melhora a margem em valor absoluto, não piora.
+ *
+ * Estimativa por leitura em 24/09 (claude-opus-5, US$ 5/MTok de entrada e
+ * US$ 25/MTok de saída): simples ~US$ 0,03, completa ~US$ 0,13.
+ */
+const AJUSTE: Record<Profundidade, { esforco: 'low' | 'high'; maxTokens: number; frases: string }> = {
+  simples: { esforco: 'low', maxTokens: 2000, frases: 'de 2 a 4 frases' },
+  completa: { esforco: 'high', maxTokens: 6000, frases: 'de 4 a 7 frases' },
+};
+
+const SECOES: Record<Profundidade, Record<Tipo, string[]>> = {
+  simples: {
+    cafe: ['O que aparece na imagem', 'Leitura simbólica', 'Convite'],
+    quiromancia: ['O que aparece na imagem', 'Leitura simbólica', 'Convite'],
+  },
+  completa: {
+    cafe: [
+      'O que aparece na imagem',
+      'Formas principais',
+      'A borda da xícara',
+      'O fundo da xícara',
+      'Símbolos secundários',
+      'Leitura de conjunto',
+      'Convite',
+    ],
+    quiromancia: [
+      'O que aparece na imagem',
+      'Linha do coração',
+      'Linha da cabeça',
+      'Linha da vida',
+      'Cruzamentos e marcas',
+      'Leitura de conjunto',
+      'Convite',
+    ],
+  },
+};
+
 const MEDIA_ACEITOS = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
 // 4 MB de imagem já é mais do que qualquer foto de celular comprimida precisa,
 // e deixa folga para o limite de corpo da function e o da própria API.
@@ -41,7 +84,10 @@ const O_QUE_OLHAR: Record<Tipo, string> = {
     + 'associa a elas.',
 };
 
-const INSTRUCOES = `Você escreve leituras simbólicas para o Arcanus, um app de oráculos em português do Brasil.
+function instrucoes(tipo: Tipo, profundidade: Profundidade): string {
+  const secoes = SECOES[profundidade][tipo];
+  const modelo = secoes.map((s) => `{"secao": "${s}", "texto": "..."}`).join(', ');
+  return `Você escreve leituras simbólicas para o Arcanus, um app de oráculos em português do Brasil.
 
 Regras que não se quebram:
 - Descreva o que está NA IMAGEM antes de interpretar. Se a imagem não for o que foi pedido, ou estiver escura, tremida ou cortada demais para ler, diga isso no resumo e devolva energia "neutra" — não invente uma leitura.
@@ -50,9 +96,11 @@ Regras que não se quebram:
 - Escreva em português do Brasil, com respeito e sem misticismo grandiloquente. Trate quem lê por "você".
 
 Responda SOMENTE com um objeto JSON, sem cercas de código e sem texto antes ou depois, neste formato exato:
-{"titulo": "3 a 5 palavras", "resumo": "1 a 2 frases", "detalhes": [{"secao": "O que aparece na imagem", "texto": "..."}, {"secao": "Leitura simbólica", "texto": "..."}, {"secao": "Convite", "texto": "..."}], "energia": "positiva" | "neutra" | "atencao"}
+{"titulo": "3 a 5 palavras", "resumo": "1 a 2 frases", "detalhes": [${modelo}], "energia": "positiva" | "neutra" | "atencao"}
 
-Cada "texto" tem de 2 a 4 frases. Use exatamente essas três seções, nessa ordem.`;
+Cada "texto" tem ${AJUSTE[profundidade].frases}. Use exatamente essas ${secoes.length} seções, nessa ordem, com esses nomes.
+Se uma seção não tiver o que observar na imagem, diga isso nela em vez de inventar — seção vazia não é aceita, seção honesta é.`;
+}
 
 interface Detalhe { secao: string; texto: string }
 interface Analise {
@@ -116,8 +164,13 @@ Deno.serve(async (request) => {
   const tipo = body.tipo as Tipo;
   const imagemBase64 = body.imagemBase64;
   const mediaType = typeof body.mediaType === 'string' ? body.mediaType : 'image/jpeg';
+  // Ausente vale como simples: chamador antigo continua funcionando.
+  const profundidade = (body.profundidade ?? 'simples') as Profundidade;
 
   if (!TIPOS.includes(tipo)) return resposta({ erro: 'Tipo de análise inválido' }, 400);
+  if (!PROFUNDIDADES.includes(profundidade)) {
+    return resposta({ erro: 'Profundidade inválida' }, 400);
+  }
   if (typeof imagemBase64 !== 'string' || imagemBase64.length < 100) {
     return resposta({ erro: 'Imagem ausente' }, 400);
   }
@@ -147,10 +200,11 @@ Deno.serve(async (request) => {
     const anthropic = new Anthropic({ apiKey: anthropicKey });
     const mensagem = await anthropic.messages.create({
       model: MODELO,
-      max_tokens: 2000,
-      // Leitura curta: esforço baixo entrega o mesmo texto por uma fração do custo.
-      output_config: { effort: 'low' },
-      system: INSTRUCOES,
+      max_tokens: AJUSTE[profundidade].maxTokens,
+      // Na simples, esforço baixo entrega o mesmo texto por uma fração do custo;
+      // a completa paga esforço alto porque é o que ela vende.
+      output_config: { effort: AJUSTE[profundidade].esforco },
+      system: instrucoes(tipo, profundidade),
       messages: [{
         role: 'user',
         content: [
@@ -177,7 +231,18 @@ Deno.serve(async (request) => {
         .from('perfis').update({ consultas_restantes: restantes - 1 }).eq('id', usuarioId));
     }
 
-    return resposta({ ...analise, tipo, restantes: semLimite ? null : restantes - 1 });
+    return resposta({
+      ...analise,
+      tipo,
+      profundidade,
+      restantes: semLimite ? null : restantes - 1,
+      // Tokens de cada leitura: é com isto que o preço das duas profundidades
+      // vai ser decidido depois, com número medido em vez de estimativa.
+      uso: {
+        entrada: mensagem.usage?.input_tokens ?? null,
+        saida: mensagem.usage?.output_tokens ?? null,
+      },
+    });
   } catch (erro) {
     console.error('falha na análise', erro instanceof Error ? erro.message : erro);
     return resposta({ erro: 'Não foi possível analisar a imagem agora. Tente de novo.' }, 502);
