@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CameraView, type CameraType } from 'expo-camera';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Cores } from '../constants/colors';
@@ -46,7 +46,13 @@ export function CameraCaptura({
   }
 
   return (
-    <Modal visible animationType="slide" onRequestClose={aoFechar} transparent={false}>
+    // Camada dentro da própria tela, não `Modal`.
+    //
+    // No React Native Web o Modal monta uma camada fixa fora da árvore da tela.
+    // Quando ela não sai, tudo continua desenhado e nenhum toque chega: a tela
+    // parece normal e os botões não respondem. Foi o que aconteceu em 24/09 ao
+    // tentar tirar foto — visor preto e, depois, a tela de captura travada.
+    <View style={estilos.camada}>
       <View style={estilos.fundo}>
         {/* Sem onMountError, uma falha ao abrir o visor aparecia como tela
             preta: permissão concedida e nada acontecendo. */}
@@ -96,11 +102,17 @@ export function CameraCaptura({
           </Pressable>
         </View>
       </View>
-    </Modal>
+    </View>
   );
 }
 
 const estilos = StyleSheet.create({
+  // Cobre a tela por cima do conteúdo, e some junto com o componente.
+  camada: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 50,
+    elevation: 50,
+  },
   // Preto atrás do visor é da câmera, não do tema: é o que some quando a
   // imagem aparece, e o que dá contraste aos controles sobre qualquer cena.
   fundo: { flex: 1, backgroundColor: '#000' },
