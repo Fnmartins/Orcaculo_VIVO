@@ -71,7 +71,10 @@ const SECOES: Record<Profundidade, Record<Tipo, string[]>> = {
   },
 };
 
-const MEDIA_ACEITOS = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
+// Exatamente os formatos que o modelo lê. HEIC estava nesta lista por descuido
+// meu: o iPhone fotografa nele, a imagem chegava aqui, seguia para a API e
+// voltava recusada como erro genérico.
+const MEDIA_ACEITOS = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 // 4 MB de imagem já é mais do que qualquer foto de celular comprimida precisa,
 // e deixa folga para o limite de corpo da function e o da própria API.
 const LIMITE_BYTES = 4 * 1024 * 1024;
@@ -179,7 +182,12 @@ Deno.serve(async (request) => {
     return resposta({ erro: 'Imagem ausente' }, 400);
   }
   if (!MEDIA_ACEITOS.includes(mediaType)) {
-    return resposta({ erro: 'Formato de imagem não aceito' }, 400);
+    // Dizer qual formato chegou poupa a rodada de adivinhação que este mesmo
+    // caso custou: no iPhone, HEIC.
+    console.error('formato recusado', mediaType);
+    return resposta({
+      erro: `Este formato de imagem (${mediaType}) não pode ser analisado. Tente uma foto em JPEG ou PNG.`,
+    }, 400);
   }
   // base64 cresce ~4/3 sobre os bytes originais.
   if ((imagemBase64.length * 3) / 4 > LIMITE_BYTES) {

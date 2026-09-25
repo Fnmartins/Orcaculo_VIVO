@@ -26,6 +26,7 @@ import { Espacamento, RaioBorda } from '../../constants/spacing';
 import { Hapticos } from '../../utils/haptics';
 import type { TipoAnalise } from '../../data/ia-analise';
 import { guardarImagem } from '../../services/imagemCache';
+import { normalizarImagem } from '../../utils/imagemWeb';
 
 /** Consentimento fica no aparelho: é escolha de quem usa, não dado nosso. */
 const CHAVE_CONSENTIMENTO = '@arcanus:consentimento_ia';
@@ -63,6 +64,21 @@ export default function TelaCaptura() {
   const [imagemUri, setImagemUri] = useState<string | null>(null);
   // A foto fica no cache; pelas rotas viaja só esta chave.
   const [imagemId, setImagemId] = useState<string | null>(null);
+
+  /**
+   * Aceita a foto vinda de qualquer um dos três caminhos.
+   *
+   * Converte para JPEG e reduz antes de guardar: o iPhone fotografa em HEIC,
+   * que o modelo recusa, e foto de celular tem megabytes que seriam enviados e
+   * pagos à toa. Se a conversão falhar, segue com a original.
+   */
+  const aceitarFoto = useCallback(async (uri: string, base64?: string) => {
+    const normalizada = await normalizarImagem(uri);
+    const finalUri = normalizada?.uri ?? uri;
+    const finalBase64 = normalizada?.base64 ?? base64;
+    setImagemId(finalBase64 ? guardarImagem(finalUri, finalBase64) : null);
+    setImagemUri(finalUri);
+  }, []);
   const [profundidade, setProfundidade] = useState<ProfundidadeAnalise>('simples');
   const [cameraAberta, setCameraAberta] = useState(false);
   const [, requestPermission] = useCameraPermissions();
@@ -92,10 +108,9 @@ export default function TelaCaptura() {
     });
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
-      setImagemId(asset.base64 ? guardarImagem(asset.uri, asset.base64) : null);
-      setImagemUri(asset.uri);
+      await aceitarFoto(asset.uri, asset.base64 ?? undefined);
     }
-  }, []);
+  }, [aceitarFoto]);
 
   /** Visor dentro do app: no computador é a única forma de usar a webcam. */
   const usarWebcam = useCallback(async () => {
@@ -113,11 +128,10 @@ export default function TelaCaptura() {
     setCameraAberta(true);
   }, [requestPermission]);
 
-  const receberFoto = useCallback((foto: { uri: string; base64?: string }) => {
-    setImagemId(foto.base64 ? guardarImagem(foto.uri, foto.base64) : null);
-    setImagemUri(foto.uri);
+  const receberFoto = useCallback(async (foto: { uri: string; base64?: string }) => {
+    await aceitarFoto(foto.uri, foto.base64);
     setCameraAberta(false);
-  }, []);
+  }, [aceitarFoto]);
 
   const escolherGaleria = useCallback(async () => {
     Hapticos.impactoLeve();
@@ -135,8 +149,7 @@ export default function TelaCaptura() {
     });
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
-      setImagemId(asset.base64 ? guardarImagem(asset.uri, asset.base64) : null);
-      setImagemUri(asset.uri);
+      await aceitarFoto(asset.uri, asset.base64 ?? undefined);
     }
   }, []);
 
