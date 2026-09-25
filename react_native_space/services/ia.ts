@@ -1,5 +1,5 @@
 import type { TipoAnalise, AnaliseIA } from '../data/ia-analise';
-import { obterBase64ImagemCache, limparImagemCache } from './imagemCache';
+import { obterImagem } from './imagemCache';
 import { supabase } from './supabase';
 import { erroDaFuncao } from './erroFuncao';
 
@@ -17,11 +17,12 @@ export const IA_REMOTA_DISPONIVEL = true;
 // Obtenção de Base64 da imagem (via cache do picker)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function obterBase64(uri: string): string {
-  const base64 = obterBase64ImagemCache(uri);
-  if (!base64) throw new Error('Base64 não disponível no cache — capture a imagem novamente.');
-  limparImagemCache(uri);
-  return base64;
+function obterBase64(imagemId: string): { base64: string; uri: string } {
+  const imagem = obterImagem(imagemId);
+  // Sem apagar aqui: a tela de resultado ainda mostra a foto, e apagar depois
+  // de analisar deixava o resultado sem imagem.
+  if (!imagem) throw new Error('A imagem não está mais disponível. Capture de novo.');
+  return imagem;
 }
 
 function detectarMimeType(uri: string): string {
@@ -62,12 +63,14 @@ const COR_POR_TIPO: Record<TipoAnalise, string> = {
  * pessoa fica sabendo.
  */
 export async function analisarImagemIA(
-  imagemUri: string,
+  imagemId: string,
   tipo: TipoAnalise,
   profundidade: ProfundidadeAnalise = 'simples',
 ): Promise<AnaliseIA> {
-  const imagemBase64 = obterBase64(imagemUri);
-  const mediaType = detectarMimeType(imagemUri);
+  // Recebe o identificador, não a foto: imagem em parâmetro de rota vira uma
+  // URL de megabytes e a navegação morre em silêncio (ver services/imagemCache).
+  const { base64: imagemBase64, uri } = obterBase64(imagemId);
+  const mediaType = detectarMimeType(uri);
 
   const { data, error } = await supabase.functions.invoke('ia-oraculo', {
     body: { tipo, profundidade, imagemBase64, mediaType },

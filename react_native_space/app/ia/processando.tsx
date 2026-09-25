@@ -17,6 +17,7 @@ import { Espacamento, RaioBorda } from '../../constants/spacing';
 import { type TipoAnalise } from '../../data/ia-analise';
 import { analisarImagemIA, ehSemConsultas, type ProfundidadeAnalise } from '../../services/ia';
 import { mostrarAlerta } from '../../utils/alerta';
+import { obterImagem } from '../../services/imagemCache';
 import { SomMistico } from '../../services/somMistico';
 
 const ETAPAS_PROCESSO = [
@@ -28,9 +29,12 @@ const ETAPAS_PROCESSO = [
 ];
 
 export default function TelaProcessando() {
-  const { tipo = 'cafe', imagemUri = '', profundidade = 'simples' } = useLocalSearchParams<{
-    tipo?: string; imagemUri?: string; profundidade?: string;
+  const { tipo = 'cafe', imagemId = '', profundidade = 'simples' } = useLocalSearchParams<{
+    tipo?: string; imagemId?: string; profundidade?: string;
   }>();
+  // A foto vem do cache em memória, nunca pela URL: em base64 ela tem
+  // megabytes, e a navegação com ela no parâmetro não acontecia.
+  const imagemUri = obterImagem(imagemId)?.uri ?? '';
   const [etapaIndex, setEtapaIndex] = useState(0);
   const fadeEtapa = useRef(new Animated.Value(1)).current;
   const rotacaoAnim = useRef(new Animated.Value(0)).current;
@@ -75,7 +79,7 @@ export default function TelaProcessando() {
     // depois que a leitura existe.
     let erroIA: Error | null = null;
 
-    analisarImagemIA(imagemUri, tipo as TipoAnalise, profundidade as ProfundidadeAnalise)
+    analisarImagemIA(imagemId, tipo as TipoAnalise, profundidade as ProfundidadeAnalise)
       .then((res) => { resultadoIA = res; })
       .catch((e: unknown) => {
         erroIA = e instanceof Error ? e : new Error(String(e));
@@ -105,7 +109,7 @@ export default function TelaProcessando() {
           if (resultadoIA) {
             router.replace({
               pathname: '/ia/resultado',
-              params: { resultado: JSON.stringify(resultadoIA), imagemUri },
+              params: { resultado: JSON.stringify(resultadoIA), imagemId },
             });
           } else {
             setTimeout(navegar, 300);
@@ -116,7 +120,7 @@ export default function TelaProcessando() {
     }, 1200);
 
     return () => clearInterval(intervalo);
-  }, [fadeEtapa, tipo, imagemUri]);
+  }, [fadeEtapa, tipo, imagemId, profundidade]);
 
   const rotacao = rotacaoAnim.interpolate({
     inputRange: [0, 1],

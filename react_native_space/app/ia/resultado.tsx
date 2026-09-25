@@ -25,6 +25,7 @@ import { Hapticos } from '../../utils/haptics';
 import type { AnaliseIA } from '../../data/ia-analise';
 import { useAuth } from '../../contexts/AuthContext';
 import { DatabaseServico } from '../../services/database';
+import { obterImagem } from '../../services/imagemCache';
 import { compartilharAnaliseIA } from '../../services/compartilhar';
 import { RatingConsulta } from '../../components/RatingConsulta';
 import { NotaReflexiva } from '../../components/NotaReflexiva';
@@ -37,7 +38,9 @@ const FORMATOS = [
 ];
 
 export default function TelaIAResultado() {
-  const { resultado: resParam = '{}', imagemUri = '' } = useLocalSearchParams<{ resultado?: string; imagemUri?: string }>();
+  const { resultado: resParam = '{}', imagemId = '' } = useLocalSearchParams<{ resultado?: string; imagemId?: string }>();
+  // A foto vem do cache em memória; pela rota viaja só a chave.
+  const imagemUri = obterImagem(imagemId)?.uri ?? '';
   const { perfil, logado } = useAuth();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;

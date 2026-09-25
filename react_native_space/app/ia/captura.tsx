@@ -25,7 +25,7 @@ import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
 import { Hapticos } from '../../utils/haptics';
 import type { TipoAnalise } from '../../data/ia-analise';
-import { salvarBase64ImagemCache } from '../../services/imagemCache';
+import { guardarImagem } from '../../services/imagemCache';
 
 /** Consentimento fica no aparelho: é escolha de quem usa, não dado nosso. */
 const CHAVE_CONSENTIMENTO = '@arcanus:consentimento_ia';
@@ -61,6 +61,8 @@ const INSTRUCOES: Record<string, string[]> = {
 export default function TelaCaptura() {
   const { tipo = 'cafe' } = useLocalSearchParams<{ tipo?: string }>();
   const [imagemUri, setImagemUri] = useState<string | null>(null);
+  // A foto fica no cache; pelas rotas viaja só esta chave.
+  const [imagemId, setImagemId] = useState<string | null>(null);
   const [profundidade, setProfundidade] = useState<ProfundidadeAnalise>('simples');
   const [cameraAberta, setCameraAberta] = useState(false);
   const [, requestPermission] = useCameraPermissions();
@@ -90,7 +92,7 @@ export default function TelaCaptura() {
     });
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
-      if (asset.base64) salvarBase64ImagemCache(asset.uri, asset.base64);
+      setImagemId(asset.base64 ? guardarImagem(asset.uri, asset.base64) : null);
       setImagemUri(asset.uri);
     }
   }, []);
@@ -112,7 +114,7 @@ export default function TelaCaptura() {
   }, [requestPermission]);
 
   const receberFoto = useCallback((foto: { uri: string; base64?: string }) => {
-    if (foto.base64) salvarBase64ImagemCache(foto.uri, foto.base64);
+    setImagemId(foto.base64 ? guardarImagem(foto.uri, foto.base64) : null);
     setImagemUri(foto.uri);
     setCameraAberta(false);
   }, []);
@@ -133,7 +135,7 @@ export default function TelaCaptura() {
     });
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
-      if (asset.base64) salvarBase64ImagemCache(asset.uri, asset.base64);
+      setImagemId(asset.base64 ? guardarImagem(asset.uri, asset.base64) : null);
       setImagemUri(asset.uri);
     }
   }, []);
@@ -142,12 +144,18 @@ export default function TelaCaptura() {
   // precisa saber disso antes, e não depois de ler a Política de Privacidade.
   const analisar = useCallback(async () => {
     if (!imagemUri) return;
+    if (!imagemId) {
+      mostrarAlerta('Imagem incompleta', 'Não conseguimos ler esta foto. Tente capturar de novo.');
+      return;
+    }
 
     const seguir = () => {
       Hapticos.impactoMedio();
       router.push({
         pathname: '/ia/processando',
-        params: { tipo, imagemUri, profundidade },
+        // Só o identificador: a foto vai pelo cache em memória. Mandá-la aqui
+      // virava uma URL de megabytes, e a navegação não acontecia — sem erro.
+      params: { tipo, imagemId, profundidade },
       });
     };
 
@@ -177,7 +185,7 @@ export default function TelaCaptura() {
       },
       { confirmarLabel: 'Autorizar' },
     );
-  }, [imagemUri, tipo, profundidade]);
+  }, [imagemUri, imagemId, tipo, profundidade]);
 
   const instrucoes = INSTRUCOES[tipo] ?? INSTRUCOES.cafe;
 
@@ -203,7 +211,7 @@ export default function TelaCaptura() {
               <View style={estilos.imagemContainer}>
                 <Image source={{ uri: imagemUri }} style={estilos.imagemPreview} />
                 <Pressable
-                  onPress={() => setImagemUri(null)}
+                  onPress={() => { setImagemUri(null); setImagemId(null); }}
                   style={estilos.removerBotao}
                 >
                   <Ionicons name="close-circle" size={28} color={Cores.erro} />
