@@ -104,3 +104,33 @@ leitura não carrega texto nem ícone.
 Este briefing é a visão de um conselho conceitual. Antes de virar a mesa definitiva do Arcanus, deveria
 passar pelos olhos de **uma pessoa iniciada que jogue búzios**, com uma pergunta simples: "isso
 desrespeita alguma coisa?". É a mesma validação pendente para os textos dos odus.
+
+## A pergunta do Márcio, e a resposta (24/09/2026)
+
+No fio da decisão, dentro da aba Decisões, ele escreveu:
+
+> "Se a mesa estiver sem as guias dos Orixás à volta e os símbolos, como saberemos quais orixás estão
+> respondendo naquele momento?" — 24/09, 04:03, e às 06:10 a correção: "onde se lê ótica, leia-se Orixás".
+
+É a objeção mais séria que esta proposta recebeu, porque não é sobre estética: é sobre a leitura
+funcionar. Na mesa física, as guias e os símbolos ao redor são **referência de posição** — onde a concha
+cai em relação à marca diz quem está respondendo.
+
+**A resposta, em três partes.**
+
+1. **No Arcanus, quem responde vem do odu, não da posição.** Os dezesseis odus já têm regente declarado,
+   e a tela de resultado mostra "Regentes: Oxossi e Yemanjá" junto de abertos, fechados e elemento. Não é
+   uma informação que falta; é uma informação que chega por outro caminho.
+2. **Até 24/09 essa resposta estava quebrada, e isso ajudou a criar a dúvida.** A tela truncava o regente
+   no primeiro nome (`split('/')[0]`), então os três odus de regência dupla — Oxossi/Yemanjá,
+   Iansã/Egúm, Obá/Ogum — apareciam com um orixá só, e a interpretação escrita podia citar o outro.
+   Corrigido em `regentesDoOdu` (`data/buzios.ts`), com teste, e já no ar.
+3. **Desenhar as guias e os símbolos na palha é justamente o que o conselho recusa por unanimidade** —
+   é a linha "imagens ou nomes de orixás como ornamento" e "símbolos religiosos desenhados na palha"
+   acima. Não por timidez de design: um app não deve representar o que é consagrado e pertence a quem foi
+   iniciado.
+
+**O que fica aberto de propósito.** A leitura por posição — a que o Márcio descreve — é uma modalidade
+diferente, não um detalhe da mesa. Ela cabe na ideia de **escolher a mesa antes de jogar** (24/09), do
+mesmo jeito que se escolhe o pano no tarô: uma mesa com marcação, escolhida por quem sabe usá-la. Isso
+é proposta separada, e só se faz com validação de uma pessoa iniciada — não entra nesta decisão.
