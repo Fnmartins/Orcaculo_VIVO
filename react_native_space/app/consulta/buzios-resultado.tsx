@@ -96,6 +96,7 @@ export default function TelaBuziosResultado() {
   }
 
   const { odu, buzios } = resultado;
+  const regentes = regentesDoOdu(odu.regente);
   const numAbertos = buzios.filter((b: boolean) => b).length;
   const numFechados = QUANTIDADE_BUZIOS - numAbertos;
 
@@ -198,20 +199,25 @@ export default function TelaBuziosResultado() {
                   <Text style={estilos.statNum}>{odu.elemento}</Text>
                   <Text style={estilos.statLabel}>Elemento</Text>
                 </View>
-                <View style={estilos.statDivisor} />
-                <View style={estilos.statItem}>
-                  <Ionicons name="shield-outline" size={20} color={odu.cor} />
-                  {/* Truncar com split('/')[0] apagava o segundo regente de
-                      Oxossi/Yemanjá, Iansã/Egúm e Obá/Ogum — e a tela acabava
-                      dizendo um nome enquanto o texto da IA dizia outro. */}
-                  <Text style={estilos.statNum} numberOfLines={2}>
-                    {regentesDoOdu(odu.regente).join(' e ') || '—'}
-                  </Text>
-                  <Text style={estilos.statLabel}>
-                    {regentesDoOdu(odu.regente).length > 1 ? 'Regentes' : 'Regente'}
-                  </Text>
-                </View>
               </View>
+
+              {/* Quem responde. Aqui o orixá vem do odu, não da posição da
+                  concha na mesa — é a pergunta que o Márcio fez em 24/09, e
+                  num quadradinho de estatística a resposta não era lida.
+                  Truncar com split('/')[0] apagava o segundo regente de
+                  Oxossi/Yemanjá, Iansã/Egúm e Obá/Ogum, e a tela dizia um
+                  nome enquanto o texto da IA dizia outro. */}
+              {regentes.length > 0 && (
+                <View style={estilos.regenteLinha}>
+                  <Ionicons name="shield-outline" size={18} color={odu.cor} />
+                  <View style={estilos.regenteTextos}>
+                    <Text style={estilos.regenteLabel}>Quem responde neste odu</Text>
+                    <Text style={[estilos.regenteNomes, { color: odu.cor }]}>
+                      {regentes.join(' e ')}
+                    </Text>
+                  </View>
+                </View>
+              )}
 
               {/* Significado */}
               <View style={estilos.secao}>
@@ -452,6 +458,19 @@ const estilos = StyleSheet.create({
   statNum: { fontFamily: Fontes.corpoNegrito, fontSize: 14, color: Cores.textoClaro, marginTop: 4 },
   statLabel: { fontFamily: Fontes.corpo, fontSize: 10, color: Cores.textoSecundario, marginTop: 2 },
   statDivisor: { width: 1, height: 30, backgroundColor: 'rgba(88, 117, 101, 0.14)' },
+
+  regenteLinha: {
+    flexDirection: 'row', alignItems: 'center', gap: Espacamento.sm,
+    backgroundColor: 'rgba(88, 117, 101, 0.07)',
+    borderRadius: RaioBorda.lg, paddingVertical: Espacamento.sm,
+    paddingHorizontal: Espacamento.md, marginBottom: Espacamento.lg,
+  },
+  regenteTextos: { flex: 1 },
+  regenteLabel: {
+    fontFamily: Fontes.corpo, fontSize: 11, color: Cores.textoSecundario,
+    textTransform: 'uppercase', letterSpacing: 0.5,
+  },
+  regenteNomes: { fontFamily: Fontes.corpoNegrito, fontSize: 17, marginTop: 2 },
 
   secao: { marginBottom: Espacamento.md },
   secaoLabel: {

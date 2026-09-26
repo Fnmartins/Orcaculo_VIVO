@@ -1,4 +1,5 @@
 {
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- . ':(exclude)docs'",
   "installCommand": "corepack enable && yarn install --immutable",
   "buildCommand": "npx expo export -p web",
   "outputDirectory": "dist",
