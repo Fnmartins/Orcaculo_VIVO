@@ -28,6 +28,8 @@ import { RatingConsulta } from '../../components/RatingConsulta';
 import { ConviteHistorico } from '../../components/ConviteHistorico';
 import { CartaTarotVisual } from '../../components/CartaTarotVisual';
 import { NotaReflexiva } from '../../components/NotaReflexiva';
+import { CaixaDePergunta } from '../../components/CaixaDePergunta';
+import { SemaforoUso } from '../../components/SemaforoUso';
 
 const POSICOES = ['Passado', 'Presente', 'Futuro'];
 
@@ -215,6 +217,8 @@ export default function TelaResultado() {
           {IA_REMOTA_DISPONIVEL && (
             <Animated.View style={[estilos.iaContainer, { opacity: fadeAnim }]}> 
             {!interpretacaoIA && !carregandoIA && (
+              <>
+              <SemaforoUso tipo="interpretacao" rotulo="Aprofundamentos" />
               <Pressable
                 onPress={() => { Hapticos.impactoMedio(); aprofundarComIA(); }}
                 style={({ pressed }) => [{ transform: [{ scale: pressed ? 0.97 : 1 }] }]}
@@ -236,6 +240,7 @@ export default function TelaResultado() {
                   <Ionicons name="chevron-forward" size={18} color={Cores.acento} />
                 </LinearGradient>
               </Pressable>
+              </>
             )}
 
             {carregandoIA && (
@@ -290,6 +295,21 @@ export default function TelaResultado() {
             )}
             </Animated.View>
           )}
+
+          {/* Mesma caixa dos búzios, mesmo limite de três por leitura. O que
+              vai para o servidor são as cartas que saíram, nada do perfil. */}
+          <CaixaDePergunta
+            contexto={{
+              oraculo: 'tarot',
+              cartas: cartas.map((c, i) => ({
+                nome: c.nomeCompleto,
+                posicao: POSICOES[i] ?? `Carta ${i + 1}`,
+              })),
+            }}
+            textoDaLeitura={cartas
+              .map((c, i) => `${POSICOES[i] ?? ''}: ${c.nomeCompleto} — ${c.significado}`)
+              .join('\n')}
+          />
 
           <NotaReflexiva />
 

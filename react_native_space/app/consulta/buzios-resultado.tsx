@@ -17,6 +17,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { GradientBackground } from '../../components/GradientBackground';
 import { Button } from '../../components/Button';
 import { EstadoTela } from '../../components/EstadoTela';
+import { CaixaDePergunta } from '../../components/CaixaDePergunta';
+import { SemaforoUso } from '../../components/SemaforoUso';
 import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
@@ -252,6 +254,8 @@ export default function TelaBuziosResultado() {
           {IA_REMOTA_DISPONIVEL && (
             <Animated.View style={[estilos.iaContainer, { opacity: fadeAnim }]}> 
             {!interpretacaoIA && !carregandoIA && (
+              <>
+              <SemaforoUso tipo="interpretacao" rotulo="Aprofundamentos" />
               <Pressable
                 onPress={() => { Hapticos.impactoMedio(); aprofundarComIA(); }}
                 style={({ pressed }) => [{ transform: [{ scale: pressed ? 0.97 : 1 }] }]}
@@ -273,6 +277,7 @@ export default function TelaBuziosResultado() {
                   <Ionicons name="chevron-forward" size={18} color="#7C9A82" />
                 </LinearGradient>
               </Pressable>
+              </>
             )}
 
             {carregandoIA && (
@@ -326,6 +331,22 @@ export default function TelaBuziosResultado() {
             )}
             </Animated.View>
           )}
+
+          {/* A pergunta vem depois da leitura, nunca antes: o que se pergunta é
+              sobre o odu que já saiu. Três por leitura, e sem memória de uma
+              para a outra — ver components/CaixaDePergunta. */}
+          <CaixaDePergunta
+            contexto={{
+              oraculo: 'buzios',
+              odu: {
+                nome: odu.nome,
+                numero: numAbertos,
+                descricao: odu.significado,
+                orixas: regentes,
+              },
+            }}
+            textoDaLeitura={`${odu.nome}: ${odu.significado} — ${odu.conselho}`}
+          />
 
           <NotaReflexiva />
 

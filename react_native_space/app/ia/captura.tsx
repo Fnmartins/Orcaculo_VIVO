@@ -19,6 +19,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useCameraPermissions } from 'expo-camera';
 import { GradientBackground } from '../../components/GradientBackground';
 import { CameraCaptura } from '../../components/CameraCaptura';
+import { SemaforoUso } from '../../components/SemaforoUso';
 import { Button } from '../../components/Button';
 import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
@@ -292,6 +293,11 @@ export default function TelaCaptura() {
               </>
             ) : (
               <>
+                {/* Quanto ainda cabe hoje, antes de escolher a profundidade —
+                    é aqui que a conta é paga, então é aqui que o número tem
+                    de aparecer. */}
+                <SemaforoUso tipo="imagem" rotulo="Leituras por imagem" />
+
                 <View style={estilos.profundidadeLinha}>
                   {PROFUNDIDADES.map((opcao) => {
                     const ativa = profundidade === opcao.id;

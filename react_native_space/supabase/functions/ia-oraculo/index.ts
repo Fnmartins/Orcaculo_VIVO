@@ -7,6 +7,7 @@
 import Anthropic from 'npm:@anthropic-ai/sdk@^0.70';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { exigirEscrita } from '../_shared/escritas.ts';
+import { conferirUso, mensagemDoLimite, registrarUso } from '../_shared/uso.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -197,7 +198,8 @@ Deno.serve(async (request) => {
   // Cota: a mesma coluna que o stripe-webhook preenche na compra e na renovação.
   // Sem isto, uma conta gratuita poderia gastar chamadas pagas sem limite.
   const { data: perfil, error: erroPerfil } = await supabaseAdmin
-    .from('perfis').select('consultas_restantes, is_super_admin').eq('id', usuarioId).maybeSingle();
+    .from('perfis').select('consultas_restantes, is_super_admin, plano')
+    .eq('id', usuarioId).maybeSingle();
   if (erroPerfil) {
     console.error('falha ao ler perfil', erroPerfil.message);
     return resposta({ erro: 'Falha ao conferir seu plano' }, 502);
@@ -206,6 +208,16 @@ Deno.serve(async (request) => {
   const restantes = typeof perfil?.consultas_restantes === 'number' ? perfil.consultas_restantes : 0;
   if (!semLimite && restantes <= 0) {
     return resposta({ erro: 'Suas consultas deste período acabaram.', semConsultas: true }, 402);
+  }
+
+  // Segundo limite, que é o do dia: o interruptor por plano (configuracao_ia) e
+  // o contador de uso_ia. A cota do período diz quantas leituras o plano tem;
+  // este diz quantas cabem hoje, e é o que segura custo quando alguém
+  // descobre que a leitura por imagem é divertida.
+  const plano = typeof perfil?.plano === 'string' ? perfil.plano : 'gratuito';
+  const veredito = await conferirUso(supabaseAdmin, usuarioId, plano, semLimite, 'imagem');
+  if (!veredito.permitido) {
+    return resposta({ erro: mensagemDoLimite(veredito, 'imagem'), motivo: veredito.motivo }, 402);
   }
 
   try {
@@ -262,6 +274,7 @@ Deno.serve(async (request) => {
       exigirEscrita('perfis.consultas_restantes', await supabaseAdmin
         .from('perfis').update({ consultas_restantes: restantes - 1 }).eq('id', usuarioId));
     }
+    await registrarUso(supabaseAdmin, usuarioId, 'imagem', veredito.usadoHoje);
 
     return resposta({
       ...analise,
