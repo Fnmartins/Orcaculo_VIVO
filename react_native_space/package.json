@@ -18,7 +18,9 @@
     "testPathIgnorePatterns": [
       "<rootDir>/e2e/"
     ],
-    "setupFilesAfterEnv": ["<rootDir>/jest.setup.ts"]
+    "setupFilesAfterEnv": [
+      "<rootDir>/jest.setup.ts"
+    ]
   },
   "dependencies": {
     "@babel/runtime": "^7.20.6",
@@ -35,6 +37,7 @@
     "@shopify/react-native-skia": "2.2.12",
     "@supabase/supabase-js": "^2.49.4",
     "@tanstack/react-query": "^5.51.1",
+    "astronomy-engine": "^2.1.19",
     "babel-preset-expo": "~54.0.9",
     "date-fns": "^4.1.0",
     "expo": "~54.0.36",
