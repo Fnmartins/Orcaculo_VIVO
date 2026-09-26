@@ -1,10 +1,11 @@
 import { ABAS_MANAGER, ROTULO_ABA, resolverAba } from '../abasManager';
 
 describe('resolverAba', () => {
-  it('aceita as quatro abas', () => {
+  it('aceita as cinco abas', () => {
     expect(resolverAba('planos')).toBe('planos');
     expect(resolverAba('roadmap')).toBe('roadmap');
     expect(resolverAba('decisoes')).toBe('decisoes');
+    expect(resolverAba('moderacao')).toBe('moderacao');
     expect(resolverAba('acessos')).toBe('acessos');
   });
 
@@ -15,6 +16,7 @@ describe('resolverAba', () => {
   });
 
   it('tem rótulo para cada aba, na ordem de exibição', () => {
-    expect(ABAS_MANAGER.map((a) => ROTULO_ABA[a])).toEqual(['Planos', 'Roadmap', 'Decisões', 'Acessos']);
+    expect(ABAS_MANAGER.map((a) => ROTULO_ABA[a]))
+      .toEqual(['Planos', 'Roadmap', 'Decisões', 'Moderação', 'Acessos']);
   });
 });

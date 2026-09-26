@@ -190,6 +190,36 @@ então decidir por ali era decidir sem ver. A coluna `decisoes.previa` guarda um
 a proposta do conselho, uma embaixo da outra, com o que muda de uma para a outra. Decisão sem prévia
 continua sendo só texto. Suíte em 153 testes.
 
+**Entregue em 26/09 — a caixa de pergunta, o controle de uso e a moderação.**
+
+A pergunta depois da leitura (`components/CaixaDePergunta.tsx`), nas duas telas de resultado: três por
+leitura, sem memória de uma para a outra, três sugestões antes do campo vazio, 400 caracteres com
+contador. O **filtro de crise roda em código antes de qualquer chamada ao modelo**, e em duas pontas —
+`utils/perguntas.ts` no app e `supabase/functions/_shared/triagem.ts` no servidor, com um teste que
+compara as duas listas e quebra se uma andar sem a outra. São frases, não palavras: "matar" sozinho
+pegaria "matar a saudade". Crise vence o limite de tamanho (senão texto longo em crise voltaria como
+erro de formulário em vez do 188), não chama o modelo, não conta uso, não gasta pergunta e não é
+guardada.
+
+`supabase/perguntas.sql` (rodado em 26/09) traz `perguntas_anonimas` — **sem coluna de usuário, e com
+`dia date` em vez de timestamp, porque hora e segundo dariam para cruzar com o contador de uso e
+descobrir quem perguntou** —, `denuncias_ia` (aqui o autor fica: denúncia sem remetente não pode ser
+respondida), `uso_ia` e `configuracao_ia`. O consentimento vive em `perfis.consentimento_perguntas`,
+desligado por padrão, lido **pelo servidor** e nunca recebido no corpo da requisição.
+
+Uso por plano: `configuracao_ia` diz o que está ligado e quantas vezes por dia, e as três functions de
+IA passam pelo mesmo `_shared/uso.ts` (`conferirUso`/`registrarUso`), contando só depois que a leitura
+existe. Configuração ausente **deixa passar**, de propósito: controle novo não derruba o que já estava
+no ar. `components/SemaforoUso.tsx` mostra o número antes de gastar e desaparece quando não tem número.
+Cliente e servidor contam o dia em UTC — a mesma régua; fuso nomeado seria melhor para quem usa, mas
+`Intl` com `timeZone` não é confiável no Hermes do Android. Consequência conhecida: o limite diário vira
+no fim da tarde no Brasil.
+
+Aba **Moderação** no `/manager` (`components/manager/AbaModeracao.tsx`): as denúncias, com "marcar como
+resolvida", e as perguntas guardadas. Sem ela o botão de denúncia mandava texto para um lugar que
+ninguém abria, e a pergunta guardada era registro sem leitor — nesse caso guardar não se justifica.
+Suíte em 245 testes.
+
 **Ideia do Fabiano, 24/09 — escolher a mesa antes de jogar.** Três a cinco mesas diferentes, que a
 pessoa escolhe antes da tirada: materiais, panos e luzes distintos, como gesto de preparo
 ("escolhe a mesa, pensa na pergunta, joga"). Serviria ao búzios e ao tarô, que hoje tem uma mesa

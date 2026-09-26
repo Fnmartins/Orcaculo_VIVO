@@ -66,6 +66,10 @@ jest.mock('../../components/manager/AbaDecisoes', () => {
   const { Text } = require('react-native');
   return { AbaDecisoes: () => <Text>conteudo-decisoes</Text> };
 });
+jest.mock('../../components/manager/AbaModeracao', () => {
+  const { Text } = require('react-native');
+  return { AbaModeracao: () => <Text>conteudo-moderacao</Text> };
+});
 jest.mock('../../components/manager/AbaAcessos', () => {
   const { Text } = require('react-native');
   return { AbaAcessos: () => <Text>conteudo-acessos</Text> };

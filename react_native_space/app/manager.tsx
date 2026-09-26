@@ -8,6 +8,7 @@ import { GradientBackground } from '../components/GradientBackground';
 import { AbaPlanos } from '../components/manager/AbaPlanos';
 import { AbaRoadmap } from '../components/manager/AbaRoadmap';
 import { AbaDecisoes } from '../components/manager/AbaDecisoes';
+import { AbaModeracao } from '../components/manager/AbaModeracao';
 import { AbaAcessos } from '../components/manager/AbaAcessos';
 import { Cores } from '../constants/colors';
 import { Fontes } from '../constants/typography';
@@ -79,7 +80,8 @@ export default function Manager() {
               {aba === 'planos' && <AbaPlanos aoPerderAcesso={aoPerderAcesso} />}
               {aba === 'roadmap' && <AbaRoadmap aoPerderAcesso={aoPerderAcesso} />}
               {aba === 'decisoes' && <AbaDecisoes aoPerderAcesso={aoPerderAcesso} />}
-              {aba === 'acessos' && <AbaAcessos aoPerderAcesso={aoPerderAcesso} />}
+              {aba === 'moderacao' && <AbaModeracao aoPerderAcesso={aoPerderAcesso} />}
+          {aba === 'acessos' && <AbaAcessos aoPerderAcesso={aoPerderAcesso} />}
             </View>
           </>
         )}
