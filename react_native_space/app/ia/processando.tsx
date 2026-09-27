@@ -15,6 +15,14 @@ import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
 import { type TipoAnalise } from '../../data/ia-analise';
+
+/**
+ * Quanto a tela espera antes de desistir, em milissegundos.
+ *
+ * A leitura completa usa teto alto de tokens e pode levar perto de um minuto;
+ * duas vezes isso é folga suficiente. O que não pode é esperar para sempre.
+ */
+const ESPERA_MAXIMA = 120_000;
 import { analisarImagemIA, ehSemConsultas, type ProfundidadeAnalise } from '../../services/ia';
 import { mostrarAlerta } from '../../utils/alerta';
 import { obterImagem } from '../../services/imagemCache';
@@ -96,6 +104,12 @@ export default function TelaProcessando() {
 
       if (etapaAtual >= ETAPAS_PROCESSO.length - 1) {
         clearInterval(intervalo);
+        // A chamada pode pendurar sem resolver nem falhar — conexão de celular
+        // que cai no meio do envio, aba suspensa pelo iOS — e `invoke` não tem
+        // prazo próprio. Sem este limite, a espera abaixo se repetia a cada
+        // 300 ms para sempre: a tela ficava girando, sem mensagem e sem saída.
+        // Foi o que travou no iPhone em 27/09.
+        const limite = Date.now() + ESPERA_MAXIMA;
         const navegar = () => {
           if (erroIA) {
             const falha: Error = erroIA;
@@ -111,9 +125,18 @@ export default function TelaProcessando() {
               pathname: '/ia/resultado',
               params: { resultado: JSON.stringify(resultadoIA), imagemId },
             });
-          } else {
-            setTimeout(navegar, 300);
+            return;
           }
+          if (Date.now() > limite) {
+            mostrarAlerta(
+              'A leitura demorou demais',
+              'O servidor não respondeu a tempo. A sua consulta não foi descontada — '
+              + 'confira a conexão e tente de novo.',
+            );
+            router.replace({ pathname: '/ia/captura', params: { tipo } });
+            return;
+          }
+          setTimeout(navegar, 300);
         };
         setTimeout(navegar, 500);
       }
