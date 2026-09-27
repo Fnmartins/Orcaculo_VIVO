@@ -193,7 +193,15 @@ function regidoPor(regente: string): string {
  * O motor de verdade está proposto em docs/2026-09-21-conselho-mapa-astral.md.
  */
 export function lerSignoSolar(dia: number, mes: number): LeituraSignoSolar {
-  const signo = signoSolar(dia, mes);
+  return lerSigno(signoSolar(dia, mes));
+}
+
+/**
+ * A mesma leitura, a partir do signo já conhecido. Existe desde que o motor de
+ * efemérides passou a dizer o signo solar pela longitude do Sol, e não pela
+ * faixa de datas: quem nasce na virada tinha o signo do vizinho.
+ */
+export function lerSigno(signo: Signo): LeituraSignoSolar {
   const [p1, p2, p3, p4] = signo.palavrasChave.map((p) => p.toLowerCase());
   return {
     signo,

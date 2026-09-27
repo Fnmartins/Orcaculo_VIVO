@@ -30,7 +30,7 @@ const SIMBOLOS = ['♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','�
 export default function TelaMapaAstralGerando() {
   const params = useLocalSearchParams<{
     dia: string; mes: string; ano: string;
-    hora: string; minuto: string; cidade: string;
+    hora: string; minuto: string; semHora: string; cidade: string; cidadeId: string;
   }>();
 
   const [etapaAtual, setEtapaAtual] = useState(0);
@@ -102,7 +102,9 @@ export default function TelaMapaAstralGerando() {
           {/* Título */}
           <Text style={estilos.titulo}>Gerando Mapa Astral</Text>
           <Text style={estilos.subtitulo}>
-            {params.dia}/{params.mes}/{params.ano} às {params.hora}:{(params.minuto ?? '0').padStart(2, '0')}
+            {params.semHora === '1'
+              ? `${params.dia}/${params.mes}/${params.ano}, sem hora informada`
+              : `${params.dia}/${params.mes}/${params.ano} às ${params.hora}:${(params.minuto ?? '0').padStart(2, '0')}`}
           </Text>
 
           {/* Roda zodiacal */}

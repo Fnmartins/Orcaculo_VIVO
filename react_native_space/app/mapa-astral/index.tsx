@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,7 @@ import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
 import { Hapticos } from '../../utils/haptics';
+import { buscarCidades, rotuloDaCidade, type Cidade } from '../../data/cidades';
 
 export default function TelaMapaAstralForm() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -32,8 +33,14 @@ export default function TelaMapaAstralForm() {
   const [hora, setHora] = useState('');
   const [minuto, setMinuto] = useState('');
   const [cidade, setCidade] = useState('');
+  const [cidadeEscolhida, setCidadeEscolhida] = useState<Cidade | null>(null);
   const [naoSabeHora, setNaoSabeHora] = useState(false);
   const [erros, setErros] = useState<Record<string, string>>({});
+
+  const sugestoesCidade = useMemo(
+    () => (cidadeEscolhida ? [] : buscarCidades(cidade)),
+    [cidade, cidadeEscolhida],
+  );
 
   useEffect(() => {
     Animated.parallel([
@@ -57,7 +64,9 @@ export default function TelaMapaAstralForm() {
       if (!hora || isNaN(h) || h < 0 || h > 23) novosErros.hora = 'Hora inválida';
       if (!minuto || isNaN(min) || min < 0 || min > 59) novosErros.minuto = 'Min inválido';
     }
-    if (!cidade.trim()) novosErros.cidade = 'Informe a cidade';
+    // Cidade escolhida na lista, e não digitada: sem coordenada e fuso não
+    // existe ascendente, e texto livre não traz nenhum dos dois.
+    if (!cidadeEscolhida) novosErros.cidade = 'Escolha a cidade na lista';
 
     setErros(novosErros);
     return Object.keys(novosErros).length === 0;
@@ -72,9 +81,14 @@ export default function TelaMapaAstralForm() {
       dia,
       mes,
       ano,
+      // Sem hora, o meio-dia é só a conta de reserva; quem diz que a hora não é
+      // conhecida é `semHora`. Sem esse aviso explícito, o mapa mostraria o
+      // ascendente do meio-dia como se fosse o da pessoa.
       hora: naoSabeHora ? '12' : hora,
       minuto: naoSabeHora ? '0' : minuto,
+      semHora: naoSabeHora ? '1' : '',
       cidade: cidade.trim(),
+      cidadeId: cidadeEscolhida?.id ?? '',
     };
     router.push({ pathname: '/mapa-astral/gerando', params });
   }
@@ -211,17 +225,47 @@ export default function TelaMapaAstralForm() {
                 </View>
               )}
 
-              {/* Cidade */}
+              {/* Cidade — escolhida da lista, não digitada: o ascendente precisa de
+                  latitude, longitude e do fuso com a história do horário de verão. */}
               <Text style={[estilos.secaoLabel, { marginTop: Espacamento.lg }]}>📍 Local de Nascimento</Text>
               <View style={estilos.inputWrapper}>
                 <TextInput
                   style={[estilos.input, estilos.inputLargo, erros.cidade ? estilos.inputErro : null]}
                   value={cidade}
-                  onChangeText={(t) => { setCidade(t); setErros(e => ({...e, cidade: ''})); }}
-                  placeholder="Ex: São Paulo, SP"
+                  onChangeText={(t) => {
+                    setCidade(t);
+                    setCidadeEscolhida(null);
+                    setErros((e) => ({ ...e, cidade: '' }));
+                  }}
+                  placeholder="Comece a escrever: São Paulo"
                   placeholderTextColor={Cores.textoSecundario}
                   returnKeyType="done"
+                  accessibilityLabel="Cidade de nascimento"
                 />
+                {!cidadeEscolhida && sugestoesCidade.length > 0 && (
+                  <View style={estilos.sugestoesCidade}>
+                    {sugestoesCidade.map((c) => (
+                      <Pressable
+                        key={c.id}
+                        onPress={() => {
+                          setCidadeEscolhida(c);
+                          setCidade(rotuloDaCidade(c));
+                          setErros((e) => ({ ...e, cidade: '' }));
+                        }}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Escolher ${rotuloDaCidade(c)}`}
+                        style={estilos.sugestaoCidade}
+                      >
+                        <Text style={estilos.sugestaoCidadeTexto}>{rotuloDaCidade(c)}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                )}
+                {cidadeEscolhida && (
+                  <Text style={estilos.cidadeConfirmada}>
+                    {`Fuso ${cidadeEscolhida.fuso}. Nasceu numa cidade vizinha? Escolher a mais perto muda o ascendente em cerca de um grau.`}
+                  </Text>
+                )}
                 {erros.cidade ? <Text style={estilos.erroTexto}>{erros.cidade}</Text> : null}
               </View>
 
@@ -340,6 +384,19 @@ const estilos = StyleSheet.create({
     paddingTop: 28,
   },
   inputWrapper: {},
+  sugestoesCidade: {
+    marginTop: 6, borderWidth: 1, borderColor: 'rgba(212,175,55,0.25)',
+    borderRadius: RaioBorda.md, overflow: 'hidden',
+  },
+  sugestaoCidade: {
+    paddingVertical: 10, paddingHorizontal: Espacamento.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(212,175,55,0.15)',
+  },
+  sugestaoCidadeTexto: { fontFamily: Fontes.corpo, fontSize: 14, color: Cores.textoClaro },
+  cidadeConfirmada: {
+    fontFamily: Fontes.corpo, fontSize: 11, color: Cores.textoSecundario,
+    marginTop: 6, lineHeight: 16,
+  },
   inputLabel: {
     fontFamily: Fontes.corpo,
     fontSize: 12,

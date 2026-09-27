@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Button } from './Button';
 import { SemaforoUso } from './SemaforoUso';
@@ -9,7 +8,7 @@ import { Fontes } from '../constants/typography';
 import { Espacamento, RaioBorda } from '../constants/spacing';
 import { Hapticos } from '../utils/haptics';
 import { useAuth } from '../contexts/AuthContext';
-import { maiorDeIdade, IDADE_MINIMA } from '../utils/idade';
+import { maiorDeIdade, montarDataISO, IDADE_MINIMA } from '../utils/idade';
 import { LIMITE_PERGUNTA, PERGUNTAS_POR_LEITURA, SUGESTOES } from '../utils/perguntas';
 import {
   denunciarConteudoIA,
@@ -48,7 +47,7 @@ interface Item {
 }
 
 export function CaixaDePergunta({ contexto, textoDaLeitura }: Props) {
-  const { perfil, sessao } = useAuth();
+  const { perfil, sessao, atualizarPerfil } = useAuth();
   const [pergunta, setPergunta] = useState('');
   const [historico, setHistorico] = useState<Item[]>([]);
   const [enviando, setEnviando] = useState(false);
@@ -57,6 +56,8 @@ export function CaixaDePergunta({ contexto, textoDaLeitura }: Props) {
   const [restanteHoje, setRestanteHoje] = useState<number | null>(null);
   const [denunciando, setDenunciando] = useState<number | null>(null);
   const [motivo, setMotivo] = useState('');
+  const [nascimento, setNascimento] = useState({ dia: '', mes: '', ano: '' });
+  const [salvandoData, setSalvandoData] = useState(false);
 
   const usuarioId = sessao?.user?.id ?? null;
 
@@ -73,6 +74,27 @@ export function CaixaDePergunta({ contexto, textoDaLeitura }: Props) {
   const usadas = historico.filter((item) => !item.crise).length;
   const restamNaLeitura = Math.max(0, PERGUNTAS_POR_LEITURA - usadas);
   const podeIr = maiorDeIdade(perfil?.data_nascimento);
+
+  const salvarNascimento = useCallback(async () => {
+    const iso = montarDataISO(
+      Number(nascimento.dia), Number(nascimento.mes), Number(nascimento.ano),
+    );
+    if (!iso) {
+      setErro('Confira a data: dia, mês e ano de quatro dígitos.');
+      return;
+    }
+    setSalvandoData(true);
+    setErro(null);
+    try {
+      // Grava no perfil e não só aqui: a mesma data serve ao mapa astral, e
+      // ninguém deveria informar a data de nascimento duas vezes.
+      await atualizarPerfil({ data_nascimento: iso });
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Não foi possível salvar a data agora.');
+    } finally {
+      setSalvandoData(false);
+    }
+  }, [atualizarPerfil, nascimento]);
 
   const enviar = useCallback(async () => {
     if (enviando || !pergunta.trim() || restamNaLeitura === 0) return;
@@ -130,23 +152,55 @@ export function CaixaDePergunta({ contexto, textoDaLeitura }: Props) {
 
   if (!usuarioId) return null;
 
+  // Sem data de nascimento, pergunta aqui mesmo. Mandar a pessoa para o perfil
+  // no meio da leitura era o que fazia antes, e ela perdia a leitura no caminho.
+  if (!perfil?.data_nascimento) {
+    return (
+      <View style={estilos.caixa}>
+        <Text style={estilos.titulo}>Perguntar sobre esta leitura</Text>
+        <Text style={estilos.aviso}>
+          {`Antes da primeira pergunta: qual a sua data de nascimento? As perguntas escritas são para maiores de ${IDADE_MINIMA} anos, e a data também é o que permite calcular o seu mapa astral.`}
+        </Text>
+        <View style={estilos.linhaData}>
+          {([
+            { chave: 'dia' as const, rotulo: 'Dia', placeholder: 'DD', tamanho: 2 },
+            { chave: 'mes' as const, rotulo: 'Mês', placeholder: 'MM', tamanho: 2 },
+            { chave: 'ano' as const, rotulo: 'Ano', placeholder: 'AAAA', tamanho: 4 },
+          ]).map((campo) => (
+            <TextInput
+              key={campo.chave}
+              value={nascimento[campo.chave]}
+              onChangeText={(t) => {
+                setNascimento((atual) => ({ ...atual, [campo.chave]: t.replace(/\D/g, '') }));
+                setErro(null);
+              }}
+              placeholder={campo.placeholder}
+              placeholderTextColor={Cores.textoSecundario}
+              keyboardType="number-pad"
+              maxLength={campo.tamanho}
+              style={[estilos.campoData, campo.tamanho === 4 && estilos.campoAno]}
+              accessibilityLabel={`${campo.rotulo} de nascimento`}
+            />
+          ))}
+        </View>
+        <Button
+          label={salvandoData ? 'Salvando…' : 'Confirmar'}
+          loading={salvandoData}
+          onPress={salvarNascimento}
+          larguraTotal
+        />
+        {erro && <Text style={estilos.erro}>{erro}</Text>}
+      </View>
+    );
+  }
+
   if (!podeIr) {
     return (
       <View style={estilos.caixa}>
         <Text style={estilos.titulo}>Perguntar sobre esta leitura</Text>
         <Text style={estilos.aviso}>
-          {perfil?.data_nascimento
-            ? `As perguntas escritas são para maiores de ${IDADE_MINIMA} anos.`
-            : `Para perguntar, complete a sua data de nascimento no perfil — as perguntas escritas são para maiores de ${IDADE_MINIMA} anos.`}
+          {`As perguntas escritas são para maiores de ${IDADE_MINIMA} anos. O resto da leitura continua aberto para você.`}
         </Text>
-        {!perfil?.data_nascimento && (
-          <Button
-            variante="outline"
-            label="Abrir o perfil"
-            icone="person-outline"
-            onPress={() => router.push('/perfil')}
-          />
-        )}
       </View>
     );
   }
@@ -309,6 +363,15 @@ const estilos = StyleSheet.create({
     backgroundColor: 'rgba(88, 117, 101, 0.05)',
   },
   sugestaoTexto: { fontFamily: Fontes.corpo, fontSize: 13, color: Cores.textoClaro },
+
+  linhaData: { flexDirection: 'row', gap: Espacamento.sm },
+  campoData: {
+    flex: 1, borderWidth: 1, borderColor: Cores.cardBorda, borderRadius: RaioBorda.md,
+    paddingVertical: 10, paddingHorizontal: Espacamento.sm, textAlign: 'center',
+    fontFamily: Fontes.corpo, fontSize: 16, color: Cores.textoClaro,
+    backgroundColor: 'rgba(255,255,255,0.6)',
+  },
+  campoAno: { flex: 1.6 },
 
   campo: {
     borderWidth: 1, borderColor: Cores.cardBorda, borderRadius: RaioBorda.md,

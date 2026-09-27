@@ -8,7 +8,7 @@ import {
   Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { confirmarAcao, mostrarAlerta } from '../../utils/alerta';
+import { mostrarAlerta } from '../../utils/alerta';
 import type { ProfundidadeAnalise } from '../../services/ia';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -65,6 +65,10 @@ export default function TelaCaptura() {
   const [imagemUri, setImagemUri] = useState<string | null>(null);
   // A foto fica no cache; pelas rotas viaja só esta chave.
   const [imagemId, setImagemId] = useState<string | null>(null);
+  // O consentimento vira cartão na tela, e não diálogo do navegador: no Safari
+  // do iPhone o diálogo pode ser recusado sozinho, e o botão não fazia nada.
+  const [pedindoConsentimento, setPedindoConsentimento] = useState(false);
+  const [avisoAnalise, setAvisoAnalise] = useState<string | null>(null);
 
   /**
    * Aceita a foto vinda de qualquer um dos três caminhos.
@@ -156,22 +160,33 @@ export default function TelaCaptura() {
 
   // A foto sai do aparelho e vai para um serviço de terceiro. Quem consulta
   // precisa saber disso antes, e não depois de ler a Política de Privacidade.
-  const analisar = useCallback(async () => {
-    if (!imagemUri) return;
-    if (!imagemId) {
-      mostrarAlerta('Imagem incompleta', 'Não conseguimos ler esta foto. Tente capturar de novo.');
-      return;
-    }
-
-    const seguir = () => {
-      Hapticos.impactoMedio();
-      router.push({
-        pathname: '/ia/processando',
-        // Só o identificador: a foto vai pelo cache em memória. Mandá-la aqui
+  const seguirParaAnalise = useCallback(() => {
+    if (!imagemId) return;
+    Hapticos.impactoMedio();
+    router.push({
+      pathname: '/ia/processando',
+      // Só o identificador: a foto vai pelo cache em memória. Mandá-la aqui
       // virava uma URL de megabytes, e a navegação não acontecia — sem erro.
       params: { tipo, imagemId, profundidade },
-      });
-    };
+    });
+  }, [imagemId, tipo, profundidade]);
+
+  /**
+   * O botão de analisar.
+   *
+   * Nenhum caminho daqui pode terminar em silêncio. Antes terminavam dois: foto
+   * ausente devolvia sem dizer nada, e o consentimento dependia do
+   * `window.confirm` — que o Safari do iPhone passa a recusar sozinho depois de
+   * alguns diálogos, devolvendo "não" sem perguntar. Nos dois casos o botão
+   * simplesmente não fazia nada, que é o que apareceu no iPhone em 27/09.
+   * Por isso o consentimento virou cartão na própria tela.
+   */
+  const analisar = useCallback(async () => {
+    setAvisoAnalise(null);
+    if (!imagemUri || !imagemId) {
+      setAvisoAnalise('A foto não ficou guardada. Capture ou escolha a imagem de novo.');
+      return;
+    }
 
     let jaAutorizou = false;
     try {
@@ -181,25 +196,21 @@ export default function TelaCaptura() {
       // chato, enviar sem perguntar não é aceitável.
     }
     if (jaAutorizou) {
-      seguir();
+      seguirParaAnalise();
       return;
     }
+    setPedindoConsentimento(true);
+  }, [imagemUri, imagemId, seguirParaAnalise]);
 
-    confirmarAcao(
-      'Enviar a foto para análise',
-      'Para ler a imagem, ela é enviada ao serviço de inteligência artificial que escreve a leitura. '
-      + 'Ela é usada apenas para gerar este texto e não fica guardada por nós. Você autoriza?',
-      async () => {
-        try {
-          await AsyncStorage.setItem(CHAVE_CONSENTIMENTO, 'sim');
-        } catch {
-          // Não conseguir lembrar do "sim" só custa perguntar de novo.
-        }
-        seguir();
-      },
-      { confirmarLabel: 'Autorizar' },
-    );
-  }, [imagemUri, imagemId, tipo, profundidade]);
+  const autorizarEnvio = useCallback(async () => {
+    try {
+      await AsyncStorage.setItem(CHAVE_CONSENTIMENTO, 'sim');
+    } catch {
+      // Não conseguir lembrar do "sim" só custa perguntar de novo.
+    }
+    setPedindoConsentimento(false);
+    seguirParaAnalise();
+  }, [seguirParaAnalise]);
 
   const instrucoes = INSTRUCOES[tipo] ?? INSTRUCOES.cafe;
 
@@ -317,12 +328,39 @@ export default function TelaCaptura() {
                     );
                   })}
                 </View>
-                <Button
-                  variante="primary"
-                  label="Analisar Imagem 🧠"
-                  larguraTotal
-                  onPress={analisar}
-                />
+                {pedindoConsentimento ? (
+                  <View style={estilos.consentimentoCard}>
+                    <Text style={estilos.consentimentoTitulo}>Enviar a foto para análise</Text>
+                    <Text style={estilos.consentimentoTexto}>
+                      Para ler a imagem, ela é enviada ao serviço de inteligência artificial que
+                      escreve a leitura. Ela é usada apenas para gerar este texto e não fica
+                      guardada por nós.
+                    </Text>
+                    <Button
+                      variante="primary"
+                      label="Autorizar e analisar"
+                      larguraTotal
+                      onPress={autorizarEnvio}
+                    />
+                    <Button
+                      variante="ghost"
+                      label="Agora não"
+                      larguraTotal
+                      onPress={() => {
+                        setPedindoConsentimento(false);
+                        setAvisoAnalise('Sem a sua autorização a foto não é enviada, e a leitura não acontece.');
+                      }}
+                    />
+                  </View>
+                ) : (
+                  <Button
+                    variante="primary"
+                    label="Analisar Imagem 🧠"
+                    larguraTotal
+                    onPress={analisar}
+                  />
+                )}
+                {avisoAnalise && <Text style={estilos.avisoAnalise}>{avisoAnalise}</Text>}
               </>
             )}
           </View>
@@ -345,6 +383,21 @@ const estilos = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   headerTitulo: { fontFamily: Fontes.titulo, fontSize: 22, fontWeight: '700', color: Cores.textoClaro },
+
+  consentimentoCard: {
+    backgroundColor: Cores.cardFundo, borderWidth: 1, borderColor: Cores.cardBorda,
+    borderRadius: RaioBorda.lg, padding: Espacamento.md, gap: Espacamento.sm,
+  },
+  consentimentoTitulo: {
+    fontFamily: Fontes.corpoNegrito, fontSize: 15, color: Cores.textoClaro,
+  },
+  consentimentoTexto: {
+    fontFamily: Fontes.corpo, fontSize: 13, lineHeight: 20, color: Cores.textoSecundario,
+  },
+  avisoAnalise: {
+    fontFamily: Fontes.corpo, fontSize: 13, lineHeight: 19,
+    color: Cores.erro, marginTop: Espacamento.sm, textAlign: 'center',
+  },
 
   imagemArea: {
     flex: 1,

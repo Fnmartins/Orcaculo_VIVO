@@ -4,20 +4,26 @@ import { router } from 'expo-router';
 import { useAuth } from '../contexts/AuthContext';
 
 type RecursoPlano =
-  | 'consulta_basica'     // Tarot, Búzios, Numerologia, Mapa Astral
+  | 'consulta_basica'     // Tarot, Búzios, Numerologia, Mapa Astral (Sol, Lua e ascendente)
+  | 'mapa_completo'       // O resto do mapa: os outros oito corpos, casas e aspectos
   | 'consulta_premium'    // Matriz do Destino, Lei da Atração
   | 'ia_visual'           // Café, Quiromância (câmera)
   | 'consulta_ao_vivo';   // Agendamento com oraculista
 
+// O corte do mapa astral é a decisão M7 (26/09): o gratuito vê Sol, Lua e
+// ascendente com a síntese — as posições que fazem a pessoa reconhecer o
+// próprio mapa — e o mapa completo é dos pagos. O gratuito não perdeu nada de
+// real: o que ele mostrava antes eram números inventados, tirados em 23/09.
 const ACESSO: Record<string, RecursoPlano[]> = {
   gratuito:   ['consulta_basica'],
-  iniciante:  ['consulta_basica', 'consulta_premium'],
-  explorador: ['consulta_basica', 'consulta_premium', 'ia_visual'],
-  mestre:     ['consulta_basica', 'consulta_premium', 'ia_visual', 'consulta_ao_vivo'],
+  iniciante:  ['consulta_basica', 'mapa_completo', 'consulta_premium'],
+  explorador: ['consulta_basica', 'mapa_completo', 'consulta_premium', 'ia_visual'],
+  mestre:     ['consulta_basica', 'mapa_completo', 'consulta_premium', 'ia_visual', 'consulta_ao_vivo'],
 };
 
 const PLANO_MINIMO: Record<RecursoPlano, string> = {
   consulta_basica:    'iniciante',
+  mapa_completo:      'iniciante',
   consulta_premium:   'iniciante',
   ia_visual:          'explorador',
   consulta_ao_vivo:   'mestre',
@@ -25,6 +31,7 @@ const PLANO_MINIMO: Record<RecursoPlano, string> = {
 
 const NOME_RECURSO: Record<RecursoPlano, string> = {
   consulta_basica:    'oráculos',
+  mapa_completo:      'O mapa astral completo',
   consulta_premium:   'Matriz do Destino e Lei da Atração',
   ia_visual:          'Análise por IA (câmera)',
   consulta_ao_vivo:   'consultas ao vivo',

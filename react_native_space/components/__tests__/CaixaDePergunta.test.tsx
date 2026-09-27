@@ -22,8 +22,13 @@ jest.mock('../../services/usoIA', () => ({
 }));
 
 const perfil: { data_nascimento: string | null } = { data_nascimento: '1990-05-10' };
+const mockAtualizarPerfil = jest.fn().mockResolvedValue(undefined);
 jest.mock('../../contexts/AuthContext', () => ({
-  useAuth: () => ({ sessao: { user: { id: 'u1' } }, perfil }),
+  useAuth: () => ({
+    sessao: { user: { id: 'u1' } },
+    perfil,
+    atualizarPerfil: (...a: unknown[]) => mockAtualizarPerfil(...a),
+  }),
 }));
 
 const mockPush = jest.fn();
@@ -119,18 +124,40 @@ describe('CaixaDePergunta', () => {
     await waitFor(() => expect(mockGravarConsentimento).toHaveBeenCalledWith('u1', true));
   });
 
-  it('sem data de nascimento, a porta fica fechada e manda para o perfil', () => {
+  it('sem data de nascimento, pede a data ali mesmo, sem sair da leitura', async () => {
     perfil.data_nascimento = null;
     montar();
     expect(screen.queryByLabelText('Sua pergunta sobre esta leitura')).toBeNull();
-    fireEvent.press(screen.getByText('Abrir o perfil'));
-    expect(mockPush).toHaveBeenCalledWith('/perfil');
+    // O que fazia antes era mandar para /perfil, e a pessoa perdia a leitura.
+    expect(mockPush).not.toHaveBeenCalled();
+
+    fireEvent.changeText(screen.getByLabelText('Dia de nascimento'), '13');
+    fireEvent.changeText(screen.getByLabelText('Mês de nascimento'), '7');
+    fireEvent.changeText(screen.getByLabelText('Ano de nascimento'), '1985');
+    fireEvent.press(screen.getByText('Confirmar'));
+
+    await waitFor(() => expect(mockAtualizarPerfil)
+      .toHaveBeenCalledWith({ data_nascimento: '1985-07-13' }));
   });
 
-  it('menor de idade não vê o campo', () => {
+  it('data impossível não vai para o banco', async () => {
+    perfil.data_nascimento = null;
+    montar();
+    fireEvent.changeText(screen.getByLabelText('Dia de nascimento'), '31');
+    fireEvent.changeText(screen.getByLabelText('Mês de nascimento'), '2');
+    fireEvent.changeText(screen.getByLabelText('Ano de nascimento'), '1990');
+    fireEvent.press(screen.getByText('Confirmar'));
+
+    await waitFor(() => expect(screen.getByText(/Confira a data/)).toBeTruthy());
+    expect(mockAtualizarPerfil).not.toHaveBeenCalled();
+  });
+
+  it('menor de idade não vê o campo, e não é mandado a lugar nenhum', () => {
     perfil.data_nascimento = '2015-01-01';
     montar();
     expect(screen.queryByLabelText('Sua pergunta sobre esta leitura')).toBeNull();
+    expect(screen.queryByLabelText('Dia de nascimento')).toBeNull();
     expect(screen.getByText(/maiores de 18 anos/)).toBeTruthy();
+    expect(mockPush).not.toHaveBeenCalled();
   });
 });

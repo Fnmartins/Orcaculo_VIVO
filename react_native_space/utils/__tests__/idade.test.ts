@@ -1,4 +1,4 @@
-import { idadeEm, maiorDeIdade, IDADE_MINIMA } from '../idade';
+import { idadeEm, maiorDeIdade, montarDataISO, IDADE_MINIMA } from '../idade';
 
 const hoje = new Date(2026, 8, 26); // 26/09/2026, hora local
 
@@ -17,6 +17,30 @@ describe('idadeEm', () => {
     expect(idadeEm('', hoje)).toBeNull();
     expect(idadeEm('10/05/1990', hoje)).toBeNull();
     expect(idadeEm('1990-13-10', hoje)).toBeNull();
+  });
+});
+
+describe('montarDataISO', () => {
+  it('monta a data quando ela existe no calendário', () => {
+    expect(montarDataISO(13, 7, 1985, hoje)).toBe('1985-07-13');
+    expect(montarDataISO(29, 2, 2000, hoje)).toBe('2000-02-29');
+  });
+
+  it('recusa data que não existe', () => {
+    expect(montarDataISO(31, 2, 1990, hoje)).toBeNull();
+    expect(montarDataISO(29, 2, 1999, hoje)).toBeNull();
+    expect(montarDataISO(0, 7, 1985, hoje)).toBeNull();
+    expect(montarDataISO(13, 13, 1985, hoje)).toBeNull();
+  });
+
+  it('recusa futuro e ano fora de faixa', () => {
+    expect(montarDataISO(1, 1, 2030, hoje)).toBeNull();
+    expect(montarDataISO(27, 12, 2026, hoje)).toBeNull();
+    expect(montarDataISO(1, 1, 1800, hoje)).toBeNull();
+  });
+
+  it('recusa campo vazio, que chega como NaN', () => {
+    expect(montarDataISO(Number.NaN, 7, 1985, hoje)).toBeNull();
   });
 });
 
