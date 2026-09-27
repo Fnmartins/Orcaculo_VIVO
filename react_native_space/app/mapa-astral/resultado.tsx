@@ -66,21 +66,21 @@ function RodaZodiacal({ solIdx, marcadores }: { solIdx: number; marcadores: Marc
     <Svg width={SIZE} height={SIZE}>
       <Defs>
         <SvgRadial id="astralCore" cx="50%" cy="50%" r="50%">
-          <Stop offset="0%" stopColor="rgba(212,175,55,0.2)" />
-          <Stop offset="60%" stopColor="rgba(75,0,130,0.1)" />
-          <Stop offset="100%" stopColor="rgba(75,0,130,0)" />
+          <Stop offset="0%" stopColor="rgba(181,139,70,0.14)" />
+          <Stop offset="60%" stopColor="rgba(88,117,101,0.07)" />
+          <Stop offset="100%" stopColor="rgba(88,117,101,0)" />
         </SvgRadial>
       </Defs>
       {/* Glow central */}
       <Circle cx={cx} cy={cy} r={rExt} fill="url(#astralCore)" />
       {/* Anéis */}
-      <Circle cx={cx} cy={cy} r={rExt} fill="none" stroke="rgba(212,175,55,0.2)" strokeWidth={1} />
-      <Circle cx={cx} cy={cy} r={rMed} fill="none" stroke="rgba(212,175,55,0.12)" strokeWidth={0.8} />
-      <Circle cx={cx} cy={cy} r={rInt} fill="none" stroke="rgba(212,175,55,0.1)" strokeWidth={0.6} />
-      <Circle cx={cx} cy={cy} r={rCore} fill="rgba(212,175,55,0.08)" stroke="rgba(212,175,55,0.3)" strokeWidth={1} />
+      <Circle cx={cx} cy={cy} r={rExt} fill="none" stroke="rgba(181,139,70,0.35)" strokeWidth={1} />
+      <Circle cx={cx} cy={cy} r={rMed} fill="none" stroke="rgba(181,139,70,0.22)" strokeWidth={0.8} />
+      <Circle cx={cx} cy={cy} r={rInt} fill="none" stroke="rgba(181,139,70,0.18)" strokeWidth={0.6} />
+      <Circle cx={cx} cy={cy} r={rCore} fill="rgba(181,139,70,0.10)" stroke="rgba(181,139,70,0.45)" strokeWidth={1} />
       {/* Cruz no centro */}
-      <Line x1={cx - rCore} y1={cy} x2={cx + rCore} y2={cy} stroke="rgba(212,175,55,0.3)" strokeWidth={0.7} />
-      <Line x1={cx} y1={cy - rCore} x2={cx} y2={cy + rCore} stroke="rgba(212,175,55,0.3)" strokeWidth={0.7} />
+      <Line x1={cx - rCore} y1={cy} x2={cx + rCore} y2={cy} stroke="rgba(181,139,70,0.45)" strokeWidth={0.7} />
+      <Line x1={cx} y1={cy - rCore} x2={cx} y2={cy + rCore} stroke="rgba(181,139,70,0.45)" strokeWidth={0.7} />
       {/* 12 fatias + símbolos */}
       {SIGNOS_SIMBOLOS.map((sim, i) => {
         const angMid = (i * sliceDeg - 90 + sliceDeg / 2) * (Math.PI / 180);
@@ -97,7 +97,7 @@ function RodaZodiacal({ solIdx, marcadores }: { solIdx: number; marcadores: Marc
           <G key={i}>
             {/* Linha divisória */}
             <Path d={`M ${ex} ${ey} L ${sx} ${sy}`}
-              stroke="rgba(212,175,55,0.15)" strokeWidth={0.7} />
+              stroke="rgba(181,139,70,0.28)" strokeWidth={0.7} />
             {/* Fundo da fatia ativa */}
             {isAtivo && (
               <Path
@@ -107,7 +107,7 @@ function RodaZodiacal({ solIdx, marcadores }: { solIdx: number; marcadores: Marc
             )}
             {/* Símbolo */}
             <SvgText x={symX} y={symY + 3} textAnchor="middle"
-              fontSize={10} fill={isAtivo ? SIGNOS_CORES[i] : 'rgba(36,49,45,0.45)'}
+              fontSize={10} fill={isAtivo ? SIGNOS_CORES[i] : 'rgba(36,49,45,0.55)'}
               fontWeight={isAtivo ? '700' : '400'}>{sim}</SvgText>
           </G>
         );
@@ -131,25 +131,9 @@ function RodaZodiacal({ solIdx, marcadores }: { solIdx: number; marcadores: Marc
   );
 }
 
-// Estrela piscante para o fundo
-function EstrelaFundo({ x, y, op }: { x: number; y: number; op: number }) {
-  const anim = useRef(new Animated.Value(op)).current;
-  useEffect(() => {
-    const loop = Animated.loop(Animated.sequence([
-      Animated.timing(anim, { toValue: op * 0.2, duration: 1500 + Math.random() * 1000, useNativeDriver: true }),
-      Animated.timing(anim, { toValue: op, duration: 1500 + Math.random() * 1000, useNativeDriver: true }),
-    ]));
-    loop.start();
-    return () => loop.stop();
-  }, []);
-  return <Animated.View style={{ position: 'absolute', left: x, top: y, width: 1.5, height: 1.5, borderRadius: 1, backgroundColor: '#fff', opacity: anim }} />;
-}
-
-const ESTRELAS_FUNDO = Array.from({ length: 30 }, (_, i) => ({
-  x: (i * 131.3 % 1) * W,
-  y: (i * 83.7 % 1) * 220,
-  op: 0.2 + (i % 4) * 0.12,
-}));
+// O campo de estrelas piscando saiu junto com o fundo escuro: era branco sobre
+// preto, e esta era a única tela do app em tema inverso. O conselho de 21/09
+// também pediu "sem brilho sobre texto".
 
 export default function TelaMapaAstralResultado() {
   const params = useLocalSearchParams<{
@@ -205,7 +189,7 @@ export default function TelaMapaAstralResultado() {
 
   if (!parametrosValidos) {
     return (
-      <GradientBackground colors={['#060413', '#0D0820', '#060413']}>
+      <GradientBackground>
         <SafeAreaView style={estilos.safeArea}>
           <EstadoTela
             tipo="erro"
@@ -229,16 +213,12 @@ export default function TelaMapaAstralResultado() {
   // Os marcadores da roda, no grau real — não mais no meio da fatia do signo.
   const marcadores = [
     { longitude: sol.longitude, label: '☀', cor: '#F1C40F' },
-    { longitude: lua.longitude, label: '☾', cor: '#BFC7D5' },
+    { longitude: lua.longitude, label: '☾', cor: Cores.secundaria },
     ...(mapa.angulos ? [{ longitude: mapa.angulos.ascendente, label: 'Asc', cor: '#D4AF37' }] : []),
   ];
 
   return (
-    <GradientBackground colors={['#060413', '#0D0820', '#060413']}>
-      {/* Campo estelar */}
-      <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-        {ESTRELAS_FUNDO.map((e, i) => <EstrelaFundo key={i} {...e} />)}
-      </View>
+    <GradientBackground>
       <SafeAreaView style={estilos.safeArea}>
         <ScrollView
           contentContainerStyle={estilos.scrollContent}
@@ -271,7 +251,7 @@ export default function TelaMapaAstralResultado() {
             <View style={estilos.rodaLegenda}>
               {[
                 { label: `☀ Sol em ${signo.nome}`, cor: '#F1C40F' },
-                { label: `☾ Lua em ${lua.signo.nome}`, cor: '#BFC7D5' },
+                { label: `☾ Lua em ${lua.signo.nome}`, cor: Cores.secundaria },
                 ...(mapa.signoAscendente
                   ? [{ label: `Asc em ${mapa.signoAscendente.nome}`, cor: '#D4AF37' }]
                   : []),
@@ -545,7 +525,7 @@ function CardPrincipal(props: CardPrincipalProps) {
   return (
     <View style={estilos.cardPrincipal}>
       <LinearGradient
-        colors={[props.corSigno + '15', 'rgba(255,252,246,0.94)'] as const}
+        colors={[props.corSigno + '15', Cores.cardFundo] as const}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={estilos.cardPrincipalGradiente}
@@ -584,19 +564,19 @@ const estilos = StyleSheet.create({
 
   aberturaTexto: {
     fontFamily: Fontes.corpo, fontSize: 13, lineHeight: 20,
-    color: 'rgba(255,252,246,0.62)', textAlign: 'center',
+    color: Cores.textoSecundario, textAlign: 'center',
     paddingHorizontal: Espacamento.sm,
   },
   avisoHonesto: {
     fontFamily: Fontes.corpo, fontSize: 12, lineHeight: 18,
-    color: 'rgba(255,252,246,0.7)', marginTop: Espacamento.sm,
+    color: Cores.textoSecundario, marginTop: Espacamento.sm,
   },
   rodapeCalculo: {
     fontFamily: Fontes.corpo, fontSize: 11, lineHeight: 17,
-    color: 'rgba(255,252,246,0.5)', marginTop: Espacamento.sm,
+    color: Cores.textoSecundario, marginTop: Espacamento.sm,
   },
   planetaLinha: {
-    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(212,175,55,0.2)',
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(181,139,70,0.35)',
     paddingVertical: Espacamento.sm, gap: 4,
   },
   planetaCabeca: {
@@ -605,11 +585,11 @@ const estilos = StyleSheet.create({
   },
   planetaPapel: {
     fontFamily: Fontes.corpo, fontSize: 13, lineHeight: 20,
-    color: 'rgba(255,252,246,0.75)',
+    color: Cores.textoClaro,
   },
   notaRodape: {
     fontFamily: Fontes.corpo, fontSize: 11, lineHeight: 17,
-    color: 'rgba(255,252,246,0.5)', marginTop: Espacamento.sm,
+    color: Cores.textoSecundario, marginTop: Espacamento.sm,
   },
   botaoPlanos: {
     marginTop: Espacamento.sm, borderWidth: 1, borderColor: Cores.acento,
@@ -617,14 +597,14 @@ const estilos = StyleSheet.create({
   },
   botaoPlanosTexto: { fontFamily: Fontes.corpoSemibold, fontSize: 14, color: Cores.acento },
   equilibrioCaixa: {
-    backgroundColor: 'rgba(212,175,55,0.07)', borderRadius: RaioBorda.lg,
+    backgroundColor: 'rgba(181,139,70,0.10)', borderRadius: RaioBorda.lg,
     padding: Espacamento.md, gap: Espacamento.sm,
   },
   equilibrioLinha: {
     fontFamily: Fontes.corpoSemibold, fontSize: 13, color: Cores.acento, textAlign: 'center',
   },
   equilibrioTexto: {
-    fontFamily: Fontes.corpo, fontSize: 13, lineHeight: 20, color: 'rgba(255,252,246,0.8)',
+    fontFamily: Fontes.corpo, fontSize: 13, lineHeight: 20, color: Cores.textoClaro,
   },
   header: {
     flexDirection: 'row',
@@ -662,10 +642,10 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: Espacamento.lg,
     marginHorizontal: Espacamento.md,
-    backgroundColor: 'rgba(10,7,25,0.6)',
+    backgroundColor: Cores.cardFundo,
     borderRadius: RaioBorda.xl,
     borderWidth: 1,
-    borderColor: 'rgba(212,175,55,0.12)',
+    borderColor: Cores.cardBorda,
     marginTop: Espacamento.sm,
     marginBottom: Espacamento.md,
   },
@@ -936,7 +916,8 @@ const estilos = StyleSheet.create({
     fontFamily: Fontes.corpoSemibold,
   },
   breveBadge: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    // Era um véu branco, feito para o fundo escuro; sobre o creme sumia.
+    backgroundColor: 'rgba(88,117,101,0.10)',
     borderRadius: RaioBorda.full,
     paddingHorizontal: 6,
     paddingVertical: 1,
