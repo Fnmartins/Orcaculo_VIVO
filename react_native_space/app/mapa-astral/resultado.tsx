@@ -23,7 +23,16 @@ import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
 import { dataConsultaValida, horarioConsultaValido, textoConsultaValido } from '../../utils/validacaoConsulta';
 import { Hapticos } from '../../utils/haptics';
-import { lerSignoSolar, corElemento, type LeituraSignoSolar } from '../../data/astrologia';
+import { lerSigno, corElemento, type LeituraSignoSolar } from '../../data/astrologia';
+import {
+  escreverGrau, montarMapaAstral, ordemDeLeitura, visivelNoGratuito, type MapaAstral,
+} from '../../data/mapaAstral';
+import {
+  TEXTO_ABERTURA, TEXTO_ASCENDENTE, TEXTO_CORPO, TEXTO_ELEMENTO,
+  TEXTO_ELEMENTO_AUSENTE, TEXTO_QUALIDADE, TEXTO_RETROGRADO,
+} from '../../data/textos-mapa';
+import { rotuloDoOffset } from '../../utils/fuso';
+import { usePlano } from '../../hooks/usePlano';
 
 const { width: W } = Dimensions.get('window');
 
@@ -37,8 +46,14 @@ function idxSigno(id: string): number {
   return i >= 0 ? i : 0;
 }
 
-// Marca só o Sol: Lua e ascendente dependem do cálculo astronômico, que ainda não existe.
-function RodaZodiacal({ solIdx }: { solIdx: number }) {
+interface MarcadorRoda {
+  /** Longitude eclíptica, 0 a 360 — o grau de verdade, não o meio do signo. */
+  longitude: number;
+  label: string;
+  cor: string;
+}
+
+function RodaZodiacal({ solIdx, marcadores }: { solIdx: number; marcadores: MarcadorRoda[] }) {
   const SIZE = Math.min(W - 48, 260);
   const cx = SIZE / 2, cy = SIZE / 2;
   const rExt = SIZE * 0.48;
@@ -97,18 +112,18 @@ function RodaZodiacal({ solIdx }: { solIdx: number }) {
           </G>
         );
       })}
-      {/* Marcador do Sol */}
-      {[
-        { idx: solIdx, label: '☀', cor: '#F1C40F' },
-      ].map(({ idx, label, cor }) => {
-        const ang = (idx * sliceDeg - 90 + sliceDeg / 2) * (Math.PI / 180);
-        const px = cx + rInt * 0.72 * Math.cos(ang);
-        const py = cy + rInt * 0.72 * Math.sin(ang);
+      {/* Marcadores no grau real. Raios diferentes para dois corpos no mesmo
+          grau não virarem um borrão só. */}
+      {marcadores.map(({ longitude, label, cor }, i) => {
+        const ang = (longitude - 90) * (Math.PI / 180);
+        const raio = rInt * (0.82 - i * 0.22);
+        const px = cx + raio * Math.cos(ang);
+        const py = cy + raio * Math.sin(ang);
         return (
           <G key={label}>
             <Circle cx={px} cy={py} r={9} fill={cor + '30'} stroke={cor} strokeWidth={1} />
             <SvgText x={px} y={py + 3} textAnchor="middle"
-              fontSize={10} fill={cor}>{label}</SvgText>
+              fontSize={label.length > 1 ? 7 : 10} fill={cor}>{label}</SvgText>
           </G>
         );
       })}
@@ -139,19 +154,39 @@ const ESTRELAS_FUNDO = Array.from({ length: 30 }, (_, i) => ({
 export default function TelaMapaAstralResultado() {
   const params = useLocalSearchParams<{
     dia: string; mes: string; ano: string;
-    hora: string; minuto: string; cidade: string;
+    hora: string; minuto: string; semHora: string; cidade: string; cidadeId: string;
   }>();
+  const { temAcesso } = usePlano();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
 
-  // Só o signo solar: é o que a data permite afirmar sem cálculo astronômico.
-  // Hora e cidade continuam sendo pedidas porque o motor real vai precisar delas.
-  const leitura: LeituraSignoSolar = useMemo(() => {
-    const d = parseInt(params.dia ?? '1', 10);
-    const m = parseInt(params.mes ?? '1', 10);
-    return lerSignoSolar(d, m);
-  }, [params.dia, params.mes]);
+  // O mapa de verdade: posições do céu naquele instante, naquele lugar. Até
+  // 26/09 esta tela mostrava só o signo solar, porque o resto era inventado
+  // por aritmética e tinha sido tirado da tela em 23/09.
+  const mapa: MapaAstral | null = useMemo(() => {
+    if (!params.cidadeId) return null;
+    const semHora = params.semHora === '1';
+    try {
+      return montarMapaAstral({
+        ano: parseInt(params.ano ?? '0', 10),
+        mes: parseInt(params.mes ?? '0', 10),
+        dia: parseInt(params.dia ?? '0', 10),
+        hora: semHora ? null : parseInt(params.hora ?? '0', 10),
+        minuto: semHora ? null : parseInt(params.minuto ?? '0', 10),
+        cidadeId: params.cidadeId,
+      });
+    } catch {
+      return null;
+    }
+  }, [params.ano, params.mes, params.dia, params.hora, params.minuto, params.semHora, params.cidadeId]);
+
+  // O signo solar vem da longitude do Sol, não da faixa de datas: quem nasce na
+  // virada recebia o signo do vizinho.
+  const leitura: LeituraSignoSolar | null = useMemo(() => {
+    const sol = mapa?.posicoes.find((p) => p.corpo === 'sol');
+    return sol ? lerSigno(sol.signo) : null;
+  }, [mapa]);
 
   useEffect(() => {
     Animated.parallel([
@@ -160,9 +195,13 @@ export default function TelaMapaAstralResultado() {
     ]).start();
   }, [fadeAnim, slideAnim]);
 
+  // Sem cidade da lista não existe mapa: foi o que mudou quando a cidade deixou
+  // de ser texto livre. Link antigo cai aqui e pede para refazer.
   const parametrosValidos = dataConsultaValida(params.dia, params.mes, params.ano)
     && horarioConsultaValido(params.hora, params.minuto)
-    && textoConsultaValido(params.cidade);
+    && textoConsultaValido(params.cidade)
+    && mapa !== null
+    && leitura !== null;
 
   if (!parametrosValidos) {
     return (
@@ -171,7 +210,7 @@ export default function TelaMapaAstralResultado() {
           <EstadoTela
             tipo="erro"
             titulo="Faltam dados para o mapa astral"
-            descricao="Revise sua data, horário e cidade de nascimento para calcular o mapa corretamente."
+            descricao="Refaça o pedido escolhendo a cidade de nascimento na lista: sem a coordenada e o fuso dela não dá para calcular o seu ascendente."
             acaoLabel="Revisar dados"
             onAcao={() => voltarOuIr()}
           />
@@ -182,6 +221,17 @@ export default function TelaMapaAstralResultado() {
 
   const { signo } = leitura;
   const solIdx = idxSigno(signo.id);
+  const posicoes = ordemDeLeitura(mapa.posicoes);
+  const sol = posicoes[0];
+  const lua = posicoes[1];
+  const temMapaCompleto = temAcesso('mapa_completo');
+
+  // Os marcadores da roda, no grau real — não mais no meio da fatia do signo.
+  const marcadores = [
+    { longitude: sol.longitude, label: '☀', cor: '#F1C40F' },
+    { longitude: lua.longitude, label: '☾', cor: '#BFC7D5' },
+    ...(mapa.angulos ? [{ longitude: mapa.angulos.ascendente, label: 'Asc', cor: '#D4AF37' }] : []),
+  ];
 
   return (
     <GradientBackground colors={['#060413', '#0D0820', '#060413']}>
@@ -216,11 +266,15 @@ export default function TelaMapaAstralResultado() {
           {/* Roda zodiacal */}
           <Animated.View style={[estilos.rodaContainer, { opacity: fadeAnim }]}>
             <View style={estilos.rodaWrapper}>
-              <RodaZodiacal solIdx={solIdx} />
+              <RodaZodiacal solIdx={solIdx} marcadores={marcadores} />
             </View>
             <View style={estilos.rodaLegenda}>
               {[
                 { label: `☀ Sol em ${signo.nome}`, cor: '#F1C40F' },
+                { label: `☾ Lua em ${lua.signo.nome}`, cor: '#BFC7D5' },
+                ...(mapa.signoAscendente
+                  ? [{ label: `Asc em ${mapa.signoAscendente.nome}`, cor: '#D4AF37' }]
+                  : []),
               ].map((item) => (
                 <View key={item.label} style={estilos.rodaLegendaItem}>
                   <View style={[estilos.rodaLegendaPonto, { backgroundColor: item.cor }]} />
@@ -230,10 +284,15 @@ export default function TelaMapaAstralResultado() {
             </View>
           </Animated.View>
 
-          {/* Sol: a única posição que a data permite afirmar sem cálculo astronômico */}
+          {/* O que o mapa é, antes de qualquer interpretação */}
+          <Animated.View style={[estilos.secao, { opacity: fadeAnim }]}>
+            <Text style={estilos.aberturaTexto}>{TEXTO_ABERTURA}</Text>
+          </Animated.View>
+
+          {/* Sol, Lua e ascendente: o que o plano gratuito mostra (decisão M7) */}
           <Animated.View style={[estilos.secao, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
             <Text style={estilos.secaoTitulo}>☀ Seu Sol</Text>
-            <Text style={estilos.secaoSubtitulo}>O que a sua data de nascimento já revela</Text>
+            <Text style={estilos.secaoSubtitulo}>{escreverGrau(sol.longitude)}</Text>
 
             <CardPrincipal
               titulo="Sol"
@@ -241,12 +300,81 @@ export default function TelaMapaAstralResultado() {
               iconeLib="ionicons"
               signo={signo.nome}
               simbolo={signo.simbolo}
+              grau={Math.floor(sol.grau)}
               elemento={signo.elemento}
               corElemento={corElemento(signo.elemento)}
               corSigno={signo.cor}
-              interpretacao={leitura.texto}
+              interpretacao={`${TEXTO_CORPO.sol.papel} ${leitura.texto}`}
               subtitulo="Sua essência e identidade"
             />
+          </Animated.View>
+
+          <Animated.View style={[estilos.secao, { opacity: fadeAnim }]}>
+            <Text style={estilos.secaoTitulo}>☾ Sua Lua</Text>
+            <Text style={estilos.secaoSubtitulo}>{escreverGrau(lua.longitude)}</Text>
+
+            <CardPrincipal
+              titulo="Lua"
+              icone="moon"
+              iconeLib="ionicons"
+              signo={lua.signo.nome}
+              simbolo={lua.signo.simbolo}
+              grau={Math.floor(lua.grau)}
+              elemento={lua.signo.elemento}
+              corElemento={corElemento(lua.signo.elemento)}
+              corSigno={lua.signo.cor}
+              interpretacao={`${TEXTO_CORPO.lua.papel} Em ${lua.signo.nome}: ${lua.signo.descricao}`}
+              subtitulo="Seu mundo interno"
+            />
+            {mapa.luaIncerta && (
+              <Text style={estilos.avisoHonesto}>
+                Sem a hora de nascimento, a Lua pode ter mudado de signo nesse dia — ela anda 13
+                graus por dia, e a sua está perto da virada. Com a hora, esta resposta fica firme.
+              </Text>
+            )}
+          </Animated.View>
+
+          <Animated.View style={[estilos.secao, { opacity: fadeAnim }]}>
+            <Text style={estilos.secaoTitulo}>↑ Seu Ascendente</Text>
+            {mapa.signoAscendente && mapa.angulos ? (
+              <>
+                <Text style={estilos.secaoSubtitulo}>
+                  {escreverGrau(mapa.angulos.ascendente)}
+                </Text>
+                <CardPrincipal
+                  titulo="Ascendente"
+                  icone="arrow-up-circle"
+                  iconeLib="ionicons"
+                  signo={mapa.signoAscendente.nome}
+                  simbolo={mapa.signoAscendente.simbolo}
+                  grau={Math.floor(mapa.grauAscendente ?? 0)}
+                  elemento={mapa.signoAscendente.elemento}
+                  corElemento={corElemento(mapa.signoAscendente.elemento)}
+                  corSigno={mapa.signoAscendente.cor}
+                  interpretacao={`${TEXTO_ASCENDENTE.papel} Em ${mapa.signoAscendente.nome}: ${mapa.signoAscendente.descricao}`}
+                  subtitulo="Como você chega"
+                />
+                <Text style={estilos.rodapeCalculo}>
+                  {`Calculado para ${params.cidade} às ${params.hora}:${(params.minuto ?? '0').padStart(2, '0')} (${rotuloDoOffset(mapa.offsetMinutos)}).`}
+                  {mapa.fusoAproximado
+                    ? ' Este aparelho não soube confirmar o horário de verão da época, então o ascendente pode estar uma hora fora.'
+                    : ''}
+                </Text>
+              </>
+            ) : (
+              <View style={estilos.emConstrucaoCard}>
+                <Ionicons name="time-outline" size={22} color={Cores.acento} />
+                <Text style={estilos.emConstrucaoTitulo}>Sem a hora, não há ascendente</Text>
+                <Text style={estilos.emConstrucaoTexto}>
+                  {TEXTO_ASCENDENTE.papel}
+                </Text>
+                <Text style={estilos.emConstrucaoTexto}>
+                  Ele muda de signo a cada duas horas, mais ou menos. Chutar um seria inventar —
+                  e o resto do seu mapa acima continua valendo. Se achar a hora na certidão, refaça
+                  o pedido: leva um minuto.
+                </Text>
+              </View>
+            )}
           </Animated.View>
 
           {/* Síntese */}
@@ -263,19 +391,79 @@ export default function TelaMapaAstralResultado() {
             </LinearGradient>
           </Animated.View>
 
-          {/* O que ainda não calculamos: dito com todas as letras, em vez de inventado */}
+          {/* O resto do céu: planos pagos (decisão M7) */}
           <Animated.View style={[estilos.secao, { opacity: fadeAnim }]}>
-            <View style={estilos.emConstrucaoCard}>
-              <Ionicons name="planet-outline" size={22} color={Cores.acento} />
-              <Text style={estilos.emConstrucaoTitulo}>Seu mapa completo está a caminho</Text>
-              <Text style={estilos.emConstrucaoTexto}>
-                Lua, ascendente, planetas e casas dependem do cálculo astronômico feito com a hora e a cidade
-                do seu nascimento. Estamos construindo esse cálculo com precisão profissional. Até ele ficar
-                pronto, mostramos só o que a data permite afirmar com segurança.
+            <Text style={estilos.secaoTitulo}>Os outros planetas</Text>
+            {temMapaCompleto ? (
+              <>
+                <Text style={estilos.secaoSubtitulo}>
+                  Oito posições, calculadas para o seu instante de nascimento
+                </Text>
+                {posicoes.filter((p) => !visivelNoGratuito(p.corpo)).map((p) => (
+                  <View key={p.corpo} style={estilos.planetaLinha}>
+                    <View style={estilos.planetaCabeca}>
+                      <Text style={[estilos.planetaNome, { color: p.signo.cor }]}>
+                        {TEXTO_CORPO[p.corpo].titulo}
+                      </Text>
+                      <Text style={estilos.planetaGrau}>
+                        {escreverGrau(p.longitude)}{p.retrogrado ? ' ℞' : ''}
+                      </Text>
+                    </View>
+                    <Text style={estilos.planetaPapel}>{TEXTO_CORPO[p.corpo].papel}</Text>
+                  </View>
+                ))}
+                {posicoes.some((p) => p.retrogrado && !visivelNoGratuito(p.corpo)) && (
+                  <Text style={estilos.notaRodape}>℞ {TEXTO_RETROGRADO}</Text>
+                )}
+              </>
+            ) : (
+              <View style={estilos.emConstrucaoCard}>
+                <Ionicons name="planet-outline" size={22} color={Cores.acento} />
+                <Text style={estilos.emConstrucaoTitulo}>
+                  Mercúrio, Vênus, Marte e mais cinco
+                </Text>
+                <Text style={estilos.emConstrucaoTexto}>
+                  Sol, Lua e ascendente são os três que mais fazem alguém reconhecer o próprio mapa,
+                  e ficam abertos. As outras oito posições — como você pensa, o que te dá prazer,
+                  como você age — entram a partir do plano Iniciante.
+                </Text>
+                <Pressable
+                  onPress={() => { Hapticos.impactoLeve(); router.push('/planos'); }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Ver os planos"
+                  style={estilos.botaoPlanos}
+                >
+                  <Text style={estilos.botaoPlanosTexto}>Ver os planos</Text>
+                </Pressable>
+              </View>
+            )}
+          </Animated.View>
+
+          {/* Equilíbrio de elementos e qualidades: a leitura do mapa como um todo */}
+          <Animated.View style={[estilos.secao, { opacity: fadeAnim }]}>
+            <Text style={estilos.secaoTitulo}>O seu equilíbrio</Text>
+            <View style={estilos.equilibrioCaixa}>
+              <Text style={estilos.equilibrioLinha}>
+                {Object.entries(mapa.sintese.elementos)
+                  .map(([nome, quantos]) => `${nome} ${quantos}`)
+                  .join('   ·   ')}
               </Text>
-              <Text style={estilos.emConstrucaoTexto}>
-                Se você nasceu perto da troca de signo, o cálculo completo também vai confirmar o seu Sol.
+              <Text style={estilos.equilibrioTexto}>
+                {`Predomina ${mapa.sintese.elementoDominante}. ${TEXTO_ELEMENTO[mapa.sintese.elementoDominante] ?? ''}`}
               </Text>
+              {mapa.sintese.elementoAusente && (
+                <Text style={estilos.equilibrioTexto}>
+                  {`Sem nenhum planeta em ${mapa.sintese.elementoAusente}. ${TEXTO_ELEMENTO_AUSENTE}`}
+                </Text>
+              )}
+              <Text style={estilos.equilibrioTexto}>
+                {`Modalidade dominante: ${mapa.sintese.qualidadeDominante}. ${TEXTO_QUALIDADE[mapa.sintese.qualidadeDominante] ?? ''}`}
+              </Text>
+              {mapa.sintese.regenteDoMapa && (
+                <Text style={estilos.equilibrioTexto}>
+                  {`Regente do mapa: ${mapa.sintese.regenteDoMapa.planeta}, que rege o seu ascendente em ${mapa.sintese.regenteDoMapa.signo}.`}
+                </Text>
+              )}
             </View>
           </Animated.View>
 
@@ -393,6 +581,51 @@ function CardPrincipal(props: CardPrincipalProps) {
 const estilos = StyleSheet.create({
   safeArea: { flex: 1 },
   scrollContent: { paddingBottom: 40 },
+
+  aberturaTexto: {
+    fontFamily: Fontes.corpo, fontSize: 13, lineHeight: 20,
+    color: 'rgba(255,252,246,0.62)', textAlign: 'center',
+    paddingHorizontal: Espacamento.sm,
+  },
+  avisoHonesto: {
+    fontFamily: Fontes.corpo, fontSize: 12, lineHeight: 18,
+    color: 'rgba(255,252,246,0.7)', marginTop: Espacamento.sm,
+  },
+  rodapeCalculo: {
+    fontFamily: Fontes.corpo, fontSize: 11, lineHeight: 17,
+    color: 'rgba(255,252,246,0.5)', marginTop: Espacamento.sm,
+  },
+  planetaLinha: {
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(212,175,55,0.2)',
+    paddingVertical: Espacamento.sm, gap: 4,
+  },
+  planetaCabeca: {
+    flexDirection: 'row', alignItems: 'baseline',
+    justifyContent: 'space-between', gap: Espacamento.sm,
+  },
+  planetaPapel: {
+    fontFamily: Fontes.corpo, fontSize: 13, lineHeight: 20,
+    color: 'rgba(255,252,246,0.75)',
+  },
+  notaRodape: {
+    fontFamily: Fontes.corpo, fontSize: 11, lineHeight: 17,
+    color: 'rgba(255,252,246,0.5)', marginTop: Espacamento.sm,
+  },
+  botaoPlanos: {
+    marginTop: Espacamento.sm, borderWidth: 1, borderColor: Cores.acento,
+    borderRadius: RaioBorda.full, paddingVertical: 10, paddingHorizontal: Espacamento.lg,
+  },
+  botaoPlanosTexto: { fontFamily: Fontes.corpoSemibold, fontSize: 14, color: Cores.acento },
+  equilibrioCaixa: {
+    backgroundColor: 'rgba(212,175,55,0.07)', borderRadius: RaioBorda.lg,
+    padding: Espacamento.md, gap: Espacamento.sm,
+  },
+  equilibrioLinha: {
+    fontFamily: Fontes.corpoSemibold, fontSize: 13, color: Cores.acento, textAlign: 'center',
+  },
+  equilibrioTexto: {
+    fontFamily: Fontes.corpo, fontSize: 13, lineHeight: 20, color: 'rgba(255,252,246,0.8)',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
