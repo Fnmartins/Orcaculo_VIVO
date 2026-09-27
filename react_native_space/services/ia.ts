@@ -169,6 +169,63 @@ export interface InterpretacaoBuzios {
   afirmacao: string;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Leitura do Mapa Astral por IA
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface InterpretacaoMapa {
+  titulo: string;
+  narrativa: string;
+  forca: string;
+  tensao: string;
+  conselho: string;
+}
+
+export interface PosicaoParaIA {
+  nome: string;
+  signo: string;
+  retrogrado?: boolean;
+}
+
+export interface MapaParaIA {
+  sol: { signo: string; grau: number };
+  lua: { signo: string; grau: number };
+  /** Ausente quando a pessoa não sabe a hora de nascimento. */
+  ascendente?: { signo: string; grau: number };
+  planetas: PosicaoParaIA[];
+  elementoDominante: string;
+  qualidadeDominante: string;
+  elementoAusente?: string;
+  regente?: string;
+}
+
+/**
+ * Lê a combinação do mapa — o que Sol, Lua e Ascendente fazem juntos nesta
+ * pessoa. O que cada peça significa já está escrito na tela
+ * (`data/textos-mapa.ts`), e é revisável; o que a IA escreve é só a combinação.
+ *
+ * Sobem as posições já calculadas, nunca data, hora ou cidade de nascimento:
+ * as efemérides rodam no aparelho, e o dado pessoal não precisa viajar.
+ */
+export async function gerarInterpretacaoMapa(mapa: MapaParaIA): Promise<InterpretacaoMapa> {
+  const { data, error } = await supabase.functions.invoke('ia-interpretacao', {
+    body: { oraculo: 'mapa', mapa },
+  });
+  if (error) throw await erroDeInterpretacao(error);
+
+  const bruto = (data ?? {}) as Partial<InterpretacaoMapa>;
+  if (!bruto.titulo || !bruto.narrativa) {
+    throw new Error('A leitura voltou incompleta. Tente de novo.');
+  }
+  return {
+    titulo: bruto.titulo,
+    narrativa: bruto.narrativa,
+    forca: bruto.forca ?? '',
+    tensao: bruto.tensao ?? '',
+    conselho: bruto.conselho ?? '',
+  };
+}
+
 /** Aprofunda o jogo de búzios. Como no tarô, o prompt fica na function. */
 export async function gerarInterpretacaoBuzios(odu: {
   nome: string;
