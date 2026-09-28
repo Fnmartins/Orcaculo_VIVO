@@ -10,3 +10,24 @@ configure({ asyncUtilTimeout: 4000 });
 // o limite padrão de 5000 ms por teste. Reproduzido em 16/09 no merge da
 // feat/painel-unificado.
 jest.setTimeout(15000);
+
+// `expo-av` procura o módulo nativo `ExponentAV` no import, que não existe sob
+// Jest. Sem isto, qualquer suíte que alcance um componente com áudio morre
+// inteira no carregamento — foi o que aconteceu com `AbaDecisoes` quando o
+// comparador de vozes entrou na árvore de `components/previas`.
+//
+// Fica aqui, e não em cada teste, porque é fato do ambiente: o próximo
+// componente com som não deveria ter de descobrir isso de novo.
+jest.mock('expo-av', () => ({
+  Audio: {
+    Sound: {
+      createAsync: jest.fn(async () => ({
+        sound: {
+          unloadAsync: jest.fn(async () => {}),
+          setOnPlaybackStatusUpdate: jest.fn(),
+        },
+      })),
+    },
+    setAudioModeAsync: jest.fn(async () => {}),
+  },
+}));
