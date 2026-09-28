@@ -8,9 +8,10 @@ import { Espacamento, RaioBorda } from '../../constants/spacing';
 import { carregarConfigPlanos, salvarPlano, type PlanoStripe } from '../../services/configPlanos';
 import { MOEDAS_SUPORTADAS, SIMBOLO, type MoedaSuportada } from '../../services/stripe-planos';
 import { mostrarAlerta } from '../../utils/alerta';
+import { InterruptorIA } from './InterruptorIA';
 import type { PropsAbaManager } from './tipos';
 
-export function AbaPlanos(_props: PropsAbaManager) {
+export function AbaPlanos({ aoPerderAcesso }: PropsAbaManager) {
   const [planos, setPlanos] = useState<PlanoStripe[] | null>(null);
   const [salvando, setSalvando] = useState<string | null>(null);
 
@@ -48,6 +49,11 @@ export function AbaPlanos(_props: PropsAbaManager) {
 
   return (
     <ScrollView contentContainerStyle={estilos.conteudo}>
+      {/* O que cada plano pode usar de IA vem primeiro: é o que se mexe com
+          frequência, e mexer em preço cria Price novo na Stripe. */}
+      <InterruptorIA aoPerderAcesso={aoPerderAcesso} />
+
+      <Text style={estilos.titulo}>Preço e cota</Text>
       <Text style={estilos.ajuda}>
         Ao salvar, um Price novo é criado na Stripe (o antigo é arquivado) e o app
         passa a exibir e cobrar o valor novo em novos checkouts.
@@ -144,6 +150,12 @@ const estilos = StyleSheet.create({
     borderColor: Cores.cardBorda,
     padding: Espacamento.md,
     gap: Espacamento.sm,
+  },
+  titulo: {
+    fontFamily: Fontes.corpoNegrito,
+    fontSize: 18,
+    color: Cores.textoClaro,
+    marginTop: Espacamento.md,
   },
   cardTitulo: { fontFamily: Fontes.corpoNegrito, fontSize: 18, color: Cores.textoClaro },
   priceId: { fontFamily: Fontes.corpo, fontSize: 11, color: Cores.textoSecundario },
