@@ -15,6 +15,8 @@ import {
   type Decisao, type Manifestacao, type PosicaoManifestacao,
 } from '../../utils/decisoes';
 import { copiarTexto } from '../../utils/copiar';
+import { abrirLink, linkSeguro } from '../../utils/abrirLink';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Previa } from '../previas';
 import { confirmarAcao, mostrarAlerta } from '../../utils/alerta';
 import { EstadoCarregamento } from './EstadoCarregamento';
@@ -285,7 +287,23 @@ export function AbaDecisoes({ aoPerderAcesso }: PropsAbaManager) {
                 ) : null}
 
                 <Previa id={d.previa} />
-                {d.link ? <Text style={estilos.link}>{d.link}</Text> : null}
+                {d.link ? (
+                  linkSeguro(d.link) ? (
+                    <Pressable
+                      onPress={() => { abrirLink(d.link); }}
+                      accessibilityRole="link"
+                      accessibilityLabel={`Abrir ${d.link}`}
+                      style={estilos.linkBotao}
+                    >
+                      <Text style={estilos.link}>{d.link}</Text>
+                      <Ionicons name="open-outline" size={14} color={Cores.acento} />
+                    </Pressable>
+                  ) : (
+                    // Endereço que o app não abre (sem http, ou de outro
+                    // esquema). Continua à vista, para dar para copiar.
+                    <Text style={estilos.link}>{d.link}</Text>
+                  )
+                ) : null}
 
                 {carregandoFio ? (
                   <Text style={estilosPainel.ajuda}>Carregando histórico…</Text>
@@ -387,7 +405,14 @@ const estilos = StyleSheet.create({
   seloTexto: { fontFamily: Fontes.corpoSemibold, fontSize: 12, color: Cores.textoSecundario },
   detalhe: { marginTop: Espacamento.md, gap: Espacamento.sm },
   contexto: { fontFamily: Fontes.corpo, fontSize: 14, color: Cores.textoPrimario, lineHeight: 20 },
-  link: { fontFamily: Fontes.corpo, fontSize: 13, color: Cores.acento },
+  link: {
+    fontFamily: Fontes.corpo, fontSize: 13, color: Cores.acento,
+    textDecorationLine: 'underline', flexShrink: 1,
+  },
+  linkBotao: {
+    flexDirection: 'row', alignItems: 'center', gap: Espacamento.xs,
+    paddingVertical: Espacamento.xs,
+  },
   manifestacao: {
     borderLeftWidth: 2,
     borderLeftColor: Cores.cardBorda,
