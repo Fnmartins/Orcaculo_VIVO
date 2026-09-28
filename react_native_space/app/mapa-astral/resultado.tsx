@@ -35,6 +35,8 @@ import {
 import { rotuloDoOffset } from '../../utils/fuso';
 import { cidadePorId, type Cidade } from '../../data/cidades';
 import { usePlano } from '../../hooks/usePlano';
+import { compartilharMapaAstral } from '../../services/compartilhar';
+import { imprimirPagina, podeImprimir } from '../../utils/impressao';
 import { gerarInterpretacaoMapa, type InterpretacaoMapa } from '../../services/ia';
 import { SemaforoUso } from '../../components/SemaforoUso';
 
@@ -328,22 +330,78 @@ export default function TelaMapaAstralResultado() {
             </View>
           </Animated.View>
 
+          <View style={estilos.acoesLinha}>
+            <Pressable
+              onPress={() => {
+                Hapticos.impactoLeve();
+                compartilharMapaAstral({
+                  sol: signo.nome,
+                  lua: lua.signo.nome,
+                  ascendente: mapa.signoAscendente?.nome,
+                  elementoDominante: mapa.sintese.elementoDominante,
+                });
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Compartilhar o meu mapa"
+              style={estilos.acaoBotao}
+            >
+              <Ionicons name="share-social-outline" size={18} color={Cores.acento} />
+              <Text style={estilos.acaoTexto}>Compartilhar</Text>
+            </Pressable>
+
+            {podeImprimir() && (
+              <Pressable
+                onPress={() => { Hapticos.impactoLeve(); imprimirPagina(); }}
+                accessibilityRole="button"
+                accessibilityLabel="Salvar o mapa em PDF"
+                style={estilos.acaoBotao}
+              >
+                <Ionicons name="document-text-outline" size={18} color={Cores.acento} />
+                <Text style={estilos.acaoTexto}>Salvar em PDF</Text>
+              </Pressable>
+            )}
+          </View>
+
+          {/* A voz lê o que está escrito na tela, e não só os títulos: dizer
+              "Sol em Câncer" e parar não é ler a leitura. */}
           <BotaoOuvir
             partes={[
-              { texto: `Sol em ${signo.nome}, ${escreverGrau(sol.longitude)}.` },
-              { texto: `Lua em ${lua.signo.nome}, ${escreverGrau(lua.longitude)}.` },
-              ...(mapa.signoAscendente && mapa.angulos
-                ? [{ texto: `Ascendente em ${mapa.signoAscendente.nome}, ${escreverGrau(mapa.angulos.ascendente)}.` }]
-                : [{ texto: 'Sem a hora de nascimento, este mapa não tem ascendente.' }]),
+              { texto: TEXTO_ABERTURA },
               {
-                rotulo: 'Equilíbrio',
-                texto: `Predomina ${mapa.sintese.elementoDominante}, na modalidade ${mapa.sintese.qualidadeDominante}.`,
+                rotulo: 'Seu Sol',
+                texto: `Em ${signo.nome}, a ${escreverGrau(sol.longitude)}. ${TEXTO_CORPO.sol.papel} ${leitura.texto}`,
               },
+              {
+                rotulo: 'Sua Lua',
+                texto: `Em ${lua.signo.nome}, a ${escreverGrau(lua.longitude)}. ${TEXTO_CORPO.lua.papel} ${lua.signo.descricao}`,
+              },
+              mapa.signoAscendente && mapa.angulos
+                ? {
+                  rotulo: 'Seu Ascendente',
+                  texto: `Em ${mapa.signoAscendente.nome}, a ${escreverGrau(mapa.angulos.ascendente)}. ${TEXTO_ASCENDENTE.papel} ${mapa.signoAscendente.descricao}`,
+                }
+                : {
+                  rotulo: 'Seu Ascendente',
+                  texto: `Sem a hora de nascimento, este mapa não tem ascendente. ${TEXTO_ASCENDENTE.papel}`,
+                },
+              ...(temMapaCompleto
+                ? posicoes.filter((p) => !visivelNoGratuito(p.corpo)).map((p) => ({
+                  rotulo: TEXTO_CORPO[p.corpo].titulo,
+                  texto: `Em ${p.signo.nome}, a ${escreverGrau(p.longitude)}${p.retrogrado ? ', retrógrado' : ''}. ${TEXTO_CORPO[p.corpo].papel}`,
+                }))
+                : []),
+              {
+                rotulo: 'O seu equilíbrio',
+                texto: `Predomina ${mapa.sintese.elementoDominante}. ${TEXTO_ELEMENTO[mapa.sintese.elementoDominante] ?? ''} A modalidade dominante é ${mapa.sintese.qualidadeDominante}. ${TEXTO_QUALIDADE[mapa.sintese.qualidadeDominante] ?? ''}`,
+              },
+              ...(mapa.sintese.elementoAusente
+                ? [{ texto: `Sem nenhum planeta em ${mapa.sintese.elementoAusente}. ${TEXTO_ELEMENTO_AUSENTE}` }]
+                : []),
               ...(interpretacao
                 ? [
                   { rotulo: interpretacao.titulo, texto: interpretacao.narrativa },
-                  { texto: interpretacao.forca },
-                  { texto: interpretacao.tensao },
+                  { rotulo: 'O que essa combinação faz bem', texto: interpretacao.forca },
+                  { rotulo: 'Onde ela puxa para dois lados', texto: interpretacao.tensao },
                   { rotulo: 'Uma prática', texto: interpretacao.conselho },
                 ]
                 : []),
@@ -689,6 +747,17 @@ function CardPrincipal(props: CardPrincipalProps) {
 const estilos = StyleSheet.create({
   safeArea: { flex: 1 },
   scrollContent: { paddingBottom: 40 },
+
+  acoesLinha: {
+    flexDirection: 'row', gap: Espacamento.sm, justifyContent: 'center',
+    flexWrap: 'wrap', marginBottom: Espacamento.md,
+  },
+  acaoBotao: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    borderWidth: 1, borderColor: Cores.acento, borderRadius: RaioBorda.full,
+    paddingVertical: 10, paddingHorizontal: Espacamento.md,
+  },
+  acaoTexto: { fontFamily: Fontes.corpoSemibold, fontSize: 14, color: Cores.acento },
 
   aberturaTexto: {
     fontFamily: Fontes.corpo, fontSize: 13, lineHeight: 20,

@@ -73,6 +73,31 @@ export async function compartilharBuzios(params: {
   await Share.share({ message: linhas.join('\n') });
 }
 
+/**
+ * O mapa natal. Compartilha as três posições que a pessoa reconhece como
+ * suas — Sol, Lua e Ascendente — e não o mapa inteiro: o que se manda para
+ * alguém cabe numa mensagem, não numa página.
+ */
+export async function compartilharMapaAstral(params: {
+  sol: string;
+  lua: string;
+  /** Ausente quando a pessoa não sabe a hora de nascimento. */
+  ascendente?: string;
+  elementoDominante?: string;
+}): Promise<void> {
+  const linhas = [`☀ Sol em ${params.sol}`, `☾ Lua em ${params.lua}`];
+  if (params.ascendente) linhas.push(`↑ Ascendente em ${params.ascendente}`);
+
+  await compartilharResultado({
+    tipo: 'mapa-astral',
+    titulo: 'Meu Mapa Astral',
+    resumo: linhas.join('\n'),
+    conselho: params.elementoDominante
+      ? `Elemento dominante: ${params.elementoDominante}`
+      : undefined,
+  });
+}
+
 export async function compartilharAnaliseIA(params: {
   tipo: 'cafe' | 'quiromancia';
   titulo: string;

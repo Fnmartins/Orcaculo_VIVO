@@ -89,6 +89,38 @@ function vozEmPortugues(motor: SinteseDeVoz): { lang: string; name: string } | n
   }
 }
 
+/**
+ * O Safari do iPhone para de falar sozinho depois de alguns segundos de fala
+ * contínua — é limitação conhecida dele, não do texto. A volta é picar o
+ * roteiro em pedaços curtos e enfileirar: cada pedaço é uma fala nova, e o
+ * relógio interno reinicia.
+ *
+ * Corta em fim de frase; se a frase for longa demais, corta no último espaço
+ * antes do limite, nunca no meio de uma palavra.
+ */
+export function dividirEmPartes(texto: string, limite = 180): string[] {
+  const partes: string[] = [];
+  let resto = texto.trim();
+
+  while (resto.length > limite) {
+    const janela = resto.slice(0, limite);
+    let corte = Math.max(
+      janela.lastIndexOf('. '), janela.lastIndexOf('! '),
+      janela.lastIndexOf('? '), janela.lastIndexOf('\n'),
+    );
+    if (corte > limite * 0.4) corte += 1;
+    else {
+      corte = janela.lastIndexOf(' ');
+      if (corte <= 0) corte = limite;
+    }
+    partes.push(resto.slice(0, corte).trim());
+    resto = resto.slice(corte).trim();
+  }
+
+  if (resto) partes.push(resto);
+  return partes.filter(Boolean);
+}
+
 export interface OpcoesDeFala {
   aoTerminar?: () => void;
   aoFalhar?: () => void;
@@ -111,18 +143,24 @@ export function falar(texto: string, opcoes: OpcoesDeFala = {}): boolean {
   // Cancelar antes de falar: sem isto, tocar duas vezes enfileira duas leituras.
   motor.cancel();
 
-  const fala = new g.SpeechSynthesisUtterance(texto);
   const voz = vozEmPortugues(motor);
-  if (voz) fala.voice = voz;
-  fala.lang = voz?.lang ?? 'pt-BR';
-  // Um pouco abaixo do normal: leitura de oráculo lida depressa vira locução.
-  fala.rate = 0.95;
-  fala.pitch = 1;
-  fala.onend = () => opcoes.aoTerminar?.();
-  fala.onerror = () => opcoes.aoFalhar?.();
+  const pedacos = dividirEmPartes(texto);
+  const Fala = g.SpeechSynthesisUtterance;
 
-  motor.speak(fala);
-  return true;
+  pedacos.forEach((pedaco, i) => {
+    const fala = new Fala(pedaco);
+    if (voz) fala.voice = voz;
+    fala.lang = voz?.lang ?? 'pt-BR';
+    // Um pouco abaixo do normal: leitura de oráculo lida depressa vira locução.
+    fala.rate = 0.95;
+    fala.pitch = 1;
+    // Só o último pedaço avisa que terminou; os do meio são passagem.
+    if (i === pedacos.length - 1) fala.onend = () => opcoes.aoTerminar?.();
+    fala.onerror = () => opcoes.aoFalhar?.();
+    motor.speak(fala);
+  });
+
+  return pedacos.length > 0;
 }
 
 export function pararDeFalar(): void {
