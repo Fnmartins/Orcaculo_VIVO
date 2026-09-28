@@ -74,27 +74,39 @@ export async function compartilharBuzios(params: {
 }
 
 /**
- * O mapa natal. Compartilha as três posições que a pessoa reconhece como
- * suas — Sol, Lua e Ascendente — e não o mapa inteiro: o que se manda para
- * alguém cabe numa mensagem, não numa página.
+ * O mapa natal inteiro.
+ *
+ * A primeira versão mandava só as três posições, achando que mapa completo não
+ * cabia numa mensagem. Cabe, e é o que a pessoa quer mandar: quem compartilha
+ * o próprio mapa está mandando a leitura, não o índice dela.
  */
 export async function compartilharMapaAstral(params: {
-  sol: string;
-  lua: string;
-  /** Ausente quando a pessoa não sabe a hora de nascimento. */
-  ascendente?: string;
-  elementoDominante?: string;
+  /** Uma linha por posição, já escrita: "☀ Sol em Câncer, 21° 24′". */
+  posicoes: string[];
+  equilibrio?: string;
+  leitura?: {
+    titulo: string;
+    narrativa: string;
+    forca?: string;
+    tensao?: string;
+    conselho?: string;
+  };
 }): Promise<void> {
-  const linhas = [`☀ Sol em ${params.sol}`, `☾ Lua em ${params.lua}`];
-  if (params.ascendente) linhas.push(`↑ Ascendente em ${params.ascendente}`);
+  const partes: string[] = [...params.posicoes];
+
+  if (params.equilibrio) partes.push('', params.equilibrio);
+
+  if (params.leitura) {
+    partes.push('', `— ${params.leitura.titulo} —`, params.leitura.narrativa);
+    if (params.leitura.forca) partes.push('', params.leitura.forca);
+    if (params.leitura.tensao) partes.push('', params.leitura.tensao);
+  }
 
   await compartilharResultado({
     tipo: 'mapa-astral',
     titulo: 'Meu Mapa Astral',
-    resumo: linhas.join('\n'),
-    conselho: params.elementoDominante
-      ? `Elemento dominante: ${params.elementoDominante}`
-      : undefined,
+    resumo: partes.join('\n'),
+    conselho: params.leitura?.conselho,
   });
 }
 

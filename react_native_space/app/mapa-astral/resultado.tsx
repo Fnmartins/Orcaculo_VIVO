@@ -335,10 +335,20 @@ export default function TelaMapaAstralResultado() {
               onPress={() => {
                 Hapticos.impactoLeve();
                 compartilharMapaAstral({
-                  sol: signo.nome,
-                  lua: lua.signo.nome,
-                  ascendente: mapa.signoAscendente?.nome,
-                  elementoDominante: mapa.sintese.elementoDominante,
+                  posicoes: [
+                    `☀ Sol em ${signo.nome}, ${escreverGrau(sol.longitude)}`,
+                    `☾ Lua em ${lua.signo.nome}, ${escreverGrau(lua.longitude)}`,
+                    ...(mapa.signoAscendente && mapa.angulos
+                      ? [`↑ Ascendente em ${mapa.signoAscendente.nome}, ${escreverGrau(mapa.angulos.ascendente)}`]
+                      : ['↑ Sem hora de nascimento, este mapa não tem ascendente']),
+                    ...(temMapaCompleto
+                      ? posicoes.filter((p) => !visivelNoGratuito(p.corpo)).map(
+                        (p) => `• ${TEXTO_CORPO[p.corpo].titulo} em ${p.signo.nome}, ${escreverGrau(p.longitude)}${p.retrogrado ? ' ℞' : ''}`,
+                      )
+                      : []),
+                  ],
+                  equilibrio: `Predomina ${mapa.sintese.elementoDominante}, na modalidade ${mapa.sintese.qualidadeDominante}.`,
+                  leitura: interpretacao ?? undefined,
                 });
               }}
               accessibilityRole="button"
