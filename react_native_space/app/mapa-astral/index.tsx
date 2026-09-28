@@ -21,7 +21,8 @@ import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
 import { Hapticos } from '../../utils/haptics';
-import { buscarCidades, rotuloDaCidade, type Cidade } from '../../data/cidades';
+import { rotuloDaCidade, type Cidade } from '../../data/cidades';
+import { buscarCidades } from '../../services/cidades';
 
 export default function TelaMapaAstralForm() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -37,10 +38,24 @@ export default function TelaMapaAstralForm() {
   const [naoSabeHora, setNaoSabeHora] = useState(false);
   const [erros, setErros] = useState<Record<string, string>>({});
 
-  const sugestoesCidade = useMemo(
-    () => (cidadeEscolhida ? [] : buscarCidades(cidade)),
-    [cidade, cidadeEscolhida],
-  );
+  // A busca corre no banco (services/cidades), que cobre Brasil, Estados
+  // Unidos, Canadá e Europa. A espera de 250 ms existe para não disparar uma
+  // consulta por tecla; se o banco não responder, o serviço cai sozinho na
+  // lista local das capitais.
+  const [sugestoesCidade, setSugestoesCidade] = useState<Cidade[]>([]);
+  useEffect(() => {
+    if (cidadeEscolhida) {
+      setSugestoesCidade([]);
+      return;
+    }
+    let vivo = true;
+    const relogio = setTimeout(() => {
+      buscarCidades(cidade).then((achadas) => {
+        if (vivo) setSugestoesCidade(achadas);
+      });
+    }, 250);
+    return () => { vivo = false; clearTimeout(relogio); };
+  }, [cidade, cidadeEscolhida]);
 
   useEffect(() => {
     Animated.parallel([
