@@ -147,3 +147,25 @@ describe('escrita e ordem', () => {
     expect(ordenado[9].corpo).toBe('plutao');
   });
 });
+
+describe('casas no mapa montado', () => {
+  it('com hora, cada corpo cai em uma casa, e o ascendente abre a primeira', () => {
+    const mapa = montarMapaAstral(emSaoPaulo);
+    expect(mapa.casas).not.toBeNull();
+    expect(mapa.casas!.cuspides[0]).toBeCloseTo(mapa.angulos!.ascendente, 9);
+    expect(mapa.casaDoCorpo).not.toBeNull();
+    for (const posicao of mapa.posicoes) {
+      const casa = mapa.casaDoCorpo![posicao.corpo];
+      expect(casa).toBeGreaterThanOrEqual(1);
+      expect(casa).toBeLessThanOrEqual(12);
+    }
+  });
+
+  it('sem hora, não há casas — e o campo diz isso em vez de chutar', () => {
+    // O mesmo motivo do ascendente: sem hora não há horizonte. Um número aqui
+    // seria pior que nenhum, porque a pessoa acreditaria nele.
+    const mapa = montarMapaAstral({ ...emSaoPaulo, hora: null, minuto: null });
+    expect(mapa.casas).toBeNull();
+    expect(mapa.casaDoCorpo).toBeNull();
+  });
+});

@@ -24,7 +24,7 @@ import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
 import { dataConsultaValida, horarioConsultaValido, textoConsultaValido } from '../../utils/validacaoConsulta';
 import { Hapticos } from '../../utils/haptics';
-import { lerSigno, corElemento, type LeituraSignoSolar } from '../../data/astrologia';
+import { CASAS, lerSigno, corElemento, type LeituraSignoSolar } from '../../data/astrologia';
 import {
   escreverGrau, montarMapaAstral, ordemDeLeitura, visivelNoGratuito, type MapaAstral,
 } from '../../data/mapaAstral';
@@ -425,6 +425,7 @@ export default function TelaMapaAstralResultado() {
               signo={signo.nome}
               simbolo={signo.simbolo}
               grau={Math.floor(sol.grau)}
+              casa={temMapaCompleto ? mapa.casaDoCorpo?.sol : undefined}
               elemento={signo.elemento}
               corElemento={corElemento(signo.elemento)}
               corSigno={signo.cor}
@@ -444,6 +445,7 @@ export default function TelaMapaAstralResultado() {
               signo={lua.signo.nome}
               simbolo={lua.signo.simbolo}
               grau={Math.floor(lua.grau)}
+              casa={temMapaCompleto ? mapa.casaDoCorpo?.lua : undefined}
               elemento={lua.signo.elemento}
               corElemento={corElemento(lua.signo.elemento)}
               corSigno={lua.signo.cor}
@@ -472,6 +474,7 @@ export default function TelaMapaAstralResultado() {
                   signo={mapa.signoAscendente.nome}
                   simbolo={mapa.signoAscendente.simbolo}
                   grau={Math.floor(mapa.grauAscendente ?? 0)}
+                  casa={temMapaCompleto && mapa.casas ? 1 : undefined}
                   elemento={mapa.signoAscendente.elemento}
                   corElemento={corElemento(mapa.signoAscendente.elemento)}
                   corSigno={mapa.signoAscendente.cor}
@@ -560,6 +563,71 @@ export default function TelaMapaAstralResultado() {
                   <Text style={estilos.botaoPlanosTexto}>Ver os planos</Text>
                 </Pressable>
               </View>
+            )}
+          </Animated.View>
+
+          {/* As doze casas: onde na vida cada coisa acontece (plano pago, M7) */}
+          <Animated.View style={[estilos.secao, { opacity: fadeAnim }]}>
+            <Text style={estilos.secaoTitulo}>As suas doze casas</Text>
+            {!temMapaCompleto ? (
+              <View style={estilos.emConstrucaoCard}>
+                <Ionicons name="home-outline" size={22} color={Cores.acento} />
+                <Text style={estilos.emConstrucaoTitulo}>Onde cada coisa acontece</Text>
+                <Text style={estilos.emConstrucaoTexto}>
+                  Os planetas dizem o quê; as casas dizem onde na sua vida. Elas dependem da hora e
+                  do lugar exatos, e entram a partir do plano Iniciante.
+                </Text>
+                <Pressable
+                  onPress={() => { Hapticos.impactoLeve(); router.push('/planos'); }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Ver os planos"
+                  style={estilos.botaoPlanos}
+                >
+                  <Text style={estilos.botaoPlanosTexto}>Ver os planos</Text>
+                </Pressable>
+              </View>
+            ) : mapa.casas ? (
+              <>
+                <Text style={estilos.secaoSubtitulo}>
+                  Calculadas por Placidus, o sistema mais usado no Brasil
+                </Text>
+                <View style={estilos.casasGrid}>
+                  {CASAS.map((casa) => {
+                    const cuspide = mapa.casas!.cuspides[casa.numero - 1];
+                    const dentro = posicoes.filter(
+                      (p) => mapa.casaDoCorpo?.[p.corpo] === casa.numero,
+                    );
+                    return (
+                      <View key={casa.numero} style={estilos.casaItem}>
+                        <View style={estilos.casaNumero}>
+                          <Text style={estilos.casaNumeroTexto}>{casa.numero}</Text>
+                        </View>
+                        <View style={estilos.casaInfo}>
+                          <Text style={estilos.casaNome}>{casa.descricao}</Text>
+                          <Text style={estilos.casaSigno}>
+                            {`Começa a ${escreverGrau(cuspide)}`}
+                            {dentro.length > 0
+                              ? ` · ${dentro.map((p) => TEXTO_CORPO[p.corpo].titulo).join(', ')}`
+                              : ''}
+                          </Text>
+                        </View>
+                        <Text style={estilos.casaArea}>{casa.area}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+                <Text style={estilos.notaRodape}>
+                  As casas saem com tamanhos diferentes, e isso é do sistema, não erro de conta:
+                  Placidus divide o tempo que cada grau leva para subir no céu, não o círculo em
+                  doze fatias iguais.
+                </Text>
+              </>
+            ) : (
+              <Text style={estilos.avisoHonesto}>
+                {mapa.semHora
+                  ? 'Sem a hora de nascimento não há horizonte, e sem horizonte não há casas. Com a hora, as doze aparecem aqui.'
+                  : 'Neste lugar, acima do círculo polar, há graus do zodíaco que não nascem nem se põem no dia — e o cálculo das casas perde sentido. Preferimos não mostrar nada a mostrar número inventado.'}
+              </Text>
             )}
           </Animated.View>
 
