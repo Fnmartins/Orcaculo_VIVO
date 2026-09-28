@@ -33,6 +33,7 @@ import {
   TEXTO_ELEMENTO_AUSENTE, TEXTO_QUALIDADE, TEXTO_RETROGRADO,
 } from '../../data/textos-mapa';
 import { rotuloDoOffset } from '../../utils/fuso';
+import { cidadePorId, type Cidade } from '../../data/cidades';
 import { usePlano } from '../../hooks/usePlano';
 import { gerarInterpretacaoMapa, type InterpretacaoMapa } from '../../services/ia';
 import { SemaforoUso } from '../../components/SemaforoUso';
@@ -141,7 +142,9 @@ function RodaZodiacal({ solIdx, marcadores }: { solIdx: number; marcadores: Marc
 export default function TelaMapaAstralResultado() {
   const params = useLocalSearchParams<{
     dia: string; mes: string; ano: string;
-    hora: string; minuto: string; semHora: string; cidade: string; cidadeId: string;
+    hora: string; minuto: string; semHora: string;
+    cidade: string; cidadeId: string; cidadeUf: string; cidadePais: string;
+    lat: string; lon: string; fuso: string; offsetPadrao: string;
   }>();
   const { temAcesso } = usePlano();
 
@@ -157,6 +160,26 @@ export default function TelaMapaAstralResultado() {
   const mapa: MapaAstral | null = useMemo(() => {
     if (!params.cidadeId) return null;
     const semHora = params.semHora === '1';
+
+    // A cidade chega pronta pela rota, com coordenada e fuso. Link antigo, de
+    // antes da base no banco, ainda traz só o identificador — aí a lista local
+    // das capitais resolve.
+    const lat = Number(params.lat);
+    const lon = Number(params.lon);
+    const cidade: Cidade | null = params.fuso && Number.isFinite(lat) && Number.isFinite(lon)
+      ? {
+        id: params.cidadeId,
+        nome: (params.cidade ?? '').split(',')[0].trim(),
+        uf: params.cidadeUf || undefined,
+        pais: params.cidadePais || 'Brasil',
+        lat,
+        lon,
+        fuso: params.fuso,
+        offsetPadrao: Number(params.offsetPadrao) || 0,
+      }
+      : cidadePorId(params.cidadeId);
+    if (!cidade) return null;
+
     try {
       return montarMapaAstral({
         ano: parseInt(params.ano ?? '0', 10),
@@ -164,12 +187,16 @@ export default function TelaMapaAstralResultado() {
         dia: parseInt(params.dia ?? '0', 10),
         hora: semHora ? null : parseInt(params.hora ?? '0', 10),
         minuto: semHora ? null : parseInt(params.minuto ?? '0', 10),
-        cidadeId: params.cidadeId,
+        cidade,
       });
     } catch {
       return null;
     }
-  }, [params.ano, params.mes, params.dia, params.hora, params.minuto, params.semHora, params.cidadeId]);
+  }, [
+    params.ano, params.mes, params.dia, params.hora, params.minuto, params.semHora,
+    params.cidadeId, params.cidade, params.cidadeUf, params.cidadePais,
+    params.lat, params.lon, params.fuso, params.offsetPadrao,
+  ]);
 
   // O signo solar vem da longitude do Sol, não da faixa de datas: quem nasce na
   // virada recebia o signo do vizinho.

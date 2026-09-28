@@ -103,7 +103,16 @@ export default function TelaMapaAstralForm() {
       minuto: naoSabeHora ? '0' : minuto,
       semHora: naoSabeHora ? '1' : '',
       cidade: cidade.trim(),
-      cidadeId: cidadeEscolhida?.id ?? '',
+      // A cidade viaja inteira: coordenada, fuso e o offset de reserva. Antes
+      // ia só o identificador, e a tela seguinte o procurava na lista local de
+      // 53 capitais — o que passou a falhar quando a base foi para o banco.
+      cidadeId: String(cidadeEscolhida?.id ?? ''),
+      cidadeUf: cidadeEscolhida?.uf ?? '',
+      cidadePais: cidadeEscolhida?.pais ?? '',
+      lat: String(cidadeEscolhida?.lat ?? ''),
+      lon: String(cidadeEscolhida?.lon ?? ''),
+      fuso: cidadeEscolhida?.fuso ?? '',
+      offsetPadrao: String(cidadeEscolhida?.offsetPadrao ?? 0),
     };
     router.push({ pathname: '/mapa-astral/gerando', params });
   }

@@ -1,4 +1,4 @@
-import { cidadePorId, type Cidade } from './cidades';
+import { type Cidade } from './cidades';
 import {
   angulos as calcularAngulos,
   grauNoSigno,
@@ -35,7 +35,15 @@ export interface DadosNascimento {
   /** Nulo quando a pessoa não sabe a hora. */
   hora: number | null;
   minuto: number | null;
-  cidadeId: string;
+  /**
+   * A cidade já resolvida, com coordenada e fuso.
+   *
+   * Recebia só o identificador e procurava na lista local de 53 capitais. Com
+   * a base no banco isso quebrou em silêncio: quem escolhesse Santo Ângelo
+   * caía em "cidade não encontrada", porque ela não está — nem deve estar — na
+   * lista embutida no app.
+   */
+  cidade: Cidade;
 }
 
 export interface Sintese {
@@ -117,8 +125,10 @@ function montarSintese(posicoes: PosicaoCorpo[], signoAscendente: Signo | null):
 }
 
 export function montarMapaAstral(dados: DadosNascimento): MapaAstral {
-  const cidade = cidadePorId(dados.cidadeId);
-  if (!cidade) throw new Error('Cidade de nascimento não encontrada.');
+  const { cidade } = dados;
+  if (!cidade?.fuso || !Number.isFinite(cidade.lat) || !Number.isFinite(cidade.lon)) {
+    throw new Error('Cidade de nascimento não encontrada.');
+  }
 
   const semHora = dados.hora === null;
   // Sem hora, o meio-dia local é a convenção: erra no máximo doze horas para

@@ -75,7 +75,9 @@ const NOME_DO_PAIS: Record<string, string> = {
 
 function paraCidade(linha: LinhaCidade): Cidade {
   return {
-    id: linha.id,
+    // O importador do painel criou a coluna como bigint, então o id chega
+    // número. A rota e a lista local trabalham com texto.
+    id: String(linha.id),
     nome: linha.nome,
     uf: linha.pais === 'BR' ? (linha.regiao ?? undefined) : undefined,
     pais: NOME_DO_PAIS[linha.pais] ?? linha.pais,
