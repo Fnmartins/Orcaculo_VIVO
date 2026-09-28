@@ -540,7 +540,7 @@ export default function TelaMapaAstralResultado() {
                         <View style={estilos.casaInfo}>
                           <Text style={estilos.casaNome}>{casa.descricao}</Text>
                           <Text style={estilos.casaSigno}>
-                            {`Começa a ${escreverGrau(cuspide)}`}
+                            {`Começa em ${escreverGrau(cuspide)}`}
                             {dentro.length > 0
                               ? ` · ${dentro.map((p) => TEXTO_CORPO[p.corpo].titulo).join(', ')}`
                               : ''}
