@@ -29,7 +29,7 @@ function resposta(body: unknown, status = 200) {
 }
 
 const MODELO = 'claude-opus-5';
-const ORACULOS = ['tarot', 'buzios'] as const;
+const ORACULOS = ['tarot', 'buzios', 'mapa'] as const;
 type Oraculo = (typeof ORACULOS)[number];
 
 /** Nada que venha do app entra no prompt sem corte: texto longo é injeção barata. */
@@ -51,9 +51,29 @@ Você interpreta simbolicamente um jogo de búzios, com respeito às tradições
 Responda SOMENTE com um objeto JSON, sem cercas de código e sem texto antes ou depois:
 {"titulo": "3 a 5 palavras", "narrativa": "4 a 5 frases aplicando o odu à intenção", "mensagem": "2 a 3 frases", "conselho": "2 frases, uma ação concreta", "afirmacao": "uma frase curta para levar consigo"}`;
 
+const INSTRUCOES_MAPA = `${REGRAS}
+
+Você lê um mapa natal já calculado — as posições vêm de efemérides reais, não são suposição sua. Seu trabalho é **ligar as peças**: o que a combinação entre Sol, Lua e Ascendente faz junta, e como os outros planetas e o equilíbrio de elementos entram nisso.
+
+Mais regras, para esta leitura:
+- Não repita a definição de cada peça ("a Lua representa..."): isso já está escrito na tela, acima da sua resposta. Vá direto para a combinação desta pessoa.
+- Não invente posição, casa nem aspecto que não esteja nos dados. Se algo não veio, não existe nesta leitura.
+- A tensão é para ser dita com franqueza e sem susto: é onde a pessoa puxa para dois lados, não é defeito nem destino.
+- Nada de idade, ano, doença, dinheiro, processo, gravidez ou morte.
+
+Responda SOMENTE com um objeto JSON, sem cercas de código e sem texto antes ou depois:
+{"titulo": "3 a 5 palavras", "narrativa": "5 a 7 frases ligando Sol, Lua e Ascendente nesta pessoa", "forca": "2 a 3 frases sobre o que essa combinação faz bem", "tensao": "2 a 3 frases sobre onde ela puxa para dois lados", "conselho": "2 frases, uma prática concreta"}`;
+
+const INSTRUCOES_POR_ORACULO: Record<Oraculo, string> = {
+  tarot: INSTRUCOES_TAROT,
+  buzios: INSTRUCOES_BUZIOS,
+  mapa: INSTRUCOES_MAPA,
+};
+
 const CAMPOS: Record<Oraculo, string[]> = {
   tarot: ['titulo', 'narrativa', 'passado', 'presente', 'futuro', 'conselho'],
   buzios: ['titulo', 'narrativa', 'mensagem', 'conselho', 'afirmacao'],
+  mapa: ['titulo', 'narrativa', 'forca', 'tensao', 'conselho'],
 };
 
 function dadosDoTarot(body: Record<string, unknown>): string {
@@ -89,6 +109,50 @@ function dadosDosBuzios(body: Record<string, unknown>): string {
     orixas ? `Orixás regentes: ${orixas}` : '',
     `Significado de base: ${texto(odu.descricao, 500)}`,
     `Intenção de quem consultou: ${texto(odu.intencao, 300) || 'não informada'}`,
+    '</dados>',
+  ].filter(Boolean).join('\n');
+}
+
+/**
+ * O mapa natal já calculado. Chega pronto do aparelho — as efemérides rodam
+ * lá, e nem data, nem hora, nem cidade de nascimento sobem para cá: o que
+ * viaja são as posições que elas produziram.
+ */
+function dadosDoMapa(body: Record<string, unknown>): string {
+  const mapa = (body.mapa ?? {}) as Record<string, unknown>;
+  const ponto = (valor: unknown, rotulo: string): string => {
+    const p = (valor ?? {}) as Record<string, unknown>;
+    const signo = texto(p.signo, 30);
+    if (!signo) return '';
+    const grau = typeof p.grau === 'number' ? Math.floor(p.grau) : null;
+    return `${rotulo}: ${signo}${grau === null ? '' : ` (${grau}°)`}`;
+  };
+
+  const sol = ponto(mapa.sol, 'Sol');
+  if (!sol) throw new Error('Mapa sem posição do Sol');
+
+  const planetas = Array.isArray(mapa.planetas)
+    ? mapa.planetas.slice(0, 8).map((item) => {
+      const p = item as Record<string, unknown>;
+      const nome = texto(p.nome, 20);
+      const signo = texto(p.signo, 30);
+      if (!nome || !signo) return '';
+      return `${nome} em ${signo}${p.retrogrado === true ? ' (retrógrado)' : ''}`;
+    }).filter(Boolean).join('; ')
+    : '';
+
+  return [
+    '<dados>',
+    sol,
+    ponto(mapa.lua, 'Lua'),
+    // Sem hora de nascimento não existe ascendente, e a linha simplesmente
+    // não vai — em vez de ir vazia e a IA inventar em cima.
+    ponto(mapa.ascendente, 'Ascendente'),
+    planetas ? `Outros planetas: ${planetas}` : '',
+    `Elemento dominante: ${texto(mapa.elementoDominante, 20) || 'não calculado'}`,
+    `Modalidade dominante: ${texto(mapa.qualidadeDominante, 20) || 'não calculada'}`,
+    texto(mapa.elementoAusente, 20) ? `Elemento sem nenhum planeta: ${texto(mapa.elementoAusente, 20)}` : '',
+    texto(mapa.regente, 40) ? `Regente do mapa: ${texto(mapa.regente, 40)}` : '',
     '</dados>',
   ].filter(Boolean).join('\n');
 }
@@ -137,7 +201,9 @@ Deno.serve(async (request) => {
 
   let dados: string;
   try {
-    dados = oraculo === 'tarot' ? dadosDoTarot(body) : dadosDosBuzios(body);
+    if (oraculo === 'tarot') dados = dadosDoTarot(body);
+    else if (oraculo === 'buzios') dados = dadosDosBuzios(body);
+    else dados = dadosDoMapa(body);
   } catch (erro) {
     return resposta({ erro: erro instanceof Error ? erro.message : 'Dados incompletos' }, 400);
   }
@@ -173,7 +239,7 @@ Deno.serve(async (request) => {
       // faz a resposta voltar cortada e o JSON não fechar.
       max_tokens: 12000,
       output_config: { effort: 'high' },
-      system: oraculo === 'tarot' ? INSTRUCOES_TAROT : INSTRUCOES_BUZIOS,
+      system: INSTRUCOES_POR_ORACULO[oraculo],
       messages: [{ role: 'user', content: [{ type: 'text', text: dados }] }],
     });
 

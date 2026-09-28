@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useMemo } from 'react';
+import React, { useRef, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -33,6 +33,8 @@ import {
 } from '../../data/textos-mapa';
 import { rotuloDoOffset } from '../../utils/fuso';
 import { usePlano } from '../../hooks/usePlano';
+import { gerarInterpretacaoMapa, type InterpretacaoMapa } from '../../services/ia';
+import { SemaforoUso } from '../../components/SemaforoUso';
 
 const { width: W } = Dimensions.get('window');
 
@@ -144,6 +146,9 @@ export default function TelaMapaAstralResultado() {
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
+  const [interpretacao, setInterpretacao] = useState<InterpretacaoMapa | null>(null);
+  const [carregandoIA, setCarregandoIA] = useState(false);
+  const [erroIA, setErroIA] = useState<string | null>(null);
 
   // O mapa de verdade: posições do céu naquele instante, naquele lugar. Até
   // 26/09 esta tela mostrava só o signo solar, porque o resto era inventado
@@ -206,6 +211,37 @@ export default function TelaMapaAstralResultado() {
   const { signo } = leitura;
   const solIdx = idxSigno(signo.id);
   const posicoes = ordemDeLeitura(mapa.posicoes);
+
+  const aprofundar = async () => {
+    if (carregandoIA || interpretacao || !mapa) return;
+    setCarregandoIA(true);
+    setErroIA(null);
+    Hapticos.impactoMedio();
+    try {
+      // Sobem só as posições calculadas. Data, hora e cidade de nascimento
+      // ficam no aparelho: as efemérides já rodaram aqui.
+      setInterpretacao(await gerarInterpretacaoMapa({
+        sol: { signo: posicoes[0].signo.nome, grau: posicoes[0].grau },
+        lua: { signo: posicoes[1].signo.nome, grau: posicoes[1].grau },
+        ascendente: mapa.signoAscendente
+          ? { signo: mapa.signoAscendente.nome, grau: mapa.grauAscendente ?? 0 }
+          : undefined,
+        planetas: posicoes.filter((p) => !visivelNoGratuito(p.corpo)).map((p) => ({
+          nome: TEXTO_CORPO[p.corpo].titulo,
+          signo: p.signo.nome,
+          retrogrado: p.retrogrado,
+        })),
+        elementoDominante: mapa.sintese.elementoDominante,
+        qualidadeDominante: mapa.sintese.qualidadeDominante,
+        elementoAusente: mapa.sintese.elementoAusente ?? undefined,
+        regente: mapa.sintese.regenteDoMapa?.planeta,
+      }));
+    } catch (e) {
+      setErroIA(e instanceof Error ? e.message : 'Não foi possível ler agora. Tente de novo.');
+    } finally {
+      setCarregandoIA(false);
+    }
+  };
   const sol = posicoes[0];
   const lua = posicoes[1];
   const temMapaCompleto = temAcesso('mapa_completo');
@@ -419,6 +455,48 @@ export default function TelaMapaAstralResultado() {
             )}
           </Animated.View>
 
+          {/* A leitura da combinação, escrita na hora. O que cada peça significa
+              já está acima, em texto revisável; aqui a IA só liga as peças. */}
+          <Animated.View style={[estilos.secao, { opacity: fadeAnim }]}>
+            <Text style={estilos.secaoTitulo}>O que isso forma junto</Text>
+            {interpretacao ? (
+              <View style={estilos.equilibrioCaixa}>
+                <Text style={estilos.iaTituloResultado}>{interpretacao.titulo}</Text>
+                <Text style={estilos.equilibrioTexto}>{interpretacao.narrativa}</Text>
+                {[
+                  { rotulo: 'O que essa combinação faz bem', texto: interpretacao.forca },
+                  { rotulo: 'Onde ela puxa para dois lados', texto: interpretacao.tensao },
+                  { rotulo: 'Uma prática', texto: interpretacao.conselho },
+                ].filter((b) => b.texto).map((bloco) => (
+                  <View key={bloco.rotulo}>
+                    <Text style={estilos.iaRotulo}>{bloco.rotulo}</Text>
+                    <Text style={estilos.equilibrioTexto}>{bloco.texto}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <>
+                <SemaforoUso tipo="interpretacao" rotulo="Aprofundamentos" />
+                <Text style={estilos.secaoSubtitulo}>
+                  Acima está o que cada peça do mapa significa. Isto aqui é a leitura da sua
+                  combinação — o que Sol, Lua e Ascendente fazem juntos em você.
+                </Text>
+                {erroIA && <Text style={estilos.avisoHonesto}>{erroIA}</Text>}
+                <Pressable
+                  onPress={aprofundar}
+                  disabled={carregandoIA}
+                  accessibilityRole="button"
+                  accessibilityLabel="Ler a combinação do meu mapa com IA"
+                  style={[estilos.botaoPlanos, carregandoIA && { opacity: 0.6 }]}
+                >
+                  <Text style={estilos.botaoPlanosTexto}>
+                    {carregandoIA ? 'Lendo o seu mapa…' : 'Ler a minha combinação ✨'}
+                  </Text>
+                </Pressable>
+              </>
+            )}
+          </Animated.View>
+
           {/* Equilíbrio de elementos e qualidades: a leitura do mapa como um todo */}
           <Animated.View style={[estilos.secao, { opacity: fadeAnim }]}>
             <Text style={estilos.secaoTitulo}>O seu equilíbrio</Text>
@@ -605,6 +683,13 @@ const estilos = StyleSheet.create({
   },
   equilibrioTexto: {
     fontFamily: Fontes.corpo, fontSize: 13, lineHeight: 20, color: Cores.textoClaro,
+  },
+  iaTituloResultado: {
+    fontFamily: Fontes.titulo, fontSize: 17, color: Cores.acento,
+  },
+  iaRotulo: {
+    fontFamily: Fontes.corpoSemibold, fontSize: 12, color: Cores.textoSecundario,
+    textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2,
   },
   header: {
     flexDirection: 'row',
