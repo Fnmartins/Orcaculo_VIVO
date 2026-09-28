@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { MesaBuzios } from '../MesaBuzios';
 import { PeneiraProposta } from './PeneiraProposta';
+import { ComparadorVozes } from './ComparadorVozes';
 import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
@@ -33,6 +34,12 @@ function Quadro({ rotulo, children }: { rotulo: string; children: ReactNode }) {
 }
 
 const PREVIAS: Record<string, DefinicaoPrevia> = {
+  vozes: {
+    titulo: 'Vozes candidatas',
+    // Sem `Quadro` e sem a largura: não é um desenho para olhar dentro de um
+    // palco, é uma lista para ouvir e votar, que usa a largura toda.
+    render: () => <ComparadorVozes />,
+  },
   'mesa-buzios': {
     titulo: 'Mesa de búzios',
     render: (largura) => (

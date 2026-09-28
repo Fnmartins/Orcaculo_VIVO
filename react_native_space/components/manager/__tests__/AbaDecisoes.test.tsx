@@ -16,6 +16,17 @@ jest.mock('../../../services/decisoes', () => ({
   registrarManifestacao: (...a: unknown[]) => mockRegistrar(...a),
 }));
 
+// Pelo mesmo motivo acima: a prévia `vozes` puxa `services/vozes`, que carrega
+// o cliente do Supabase. Esta aba não testa a votação — só precisa que a árvore
+// de componentes monte.
+jest.mock('../../../services/vozes', () => ({
+  listarAmostras: jest.fn(async () => []),
+  listarVotos: jest.fn(async () => []),
+  salvarVoto: jest.fn(async () => {}),
+  apagarVoto: jest.fn(async () => {}),
+  resumirVotos: () => [],
+}));
+
 const mockCopiar = jest.fn();
 jest.mock('../../../utils/copiar', () => ({
   copiarTexto: (...a: unknown[]) => mockCopiar(...a),

@@ -19,3 +19,6 @@ supabase/.temp/
 
 .vercel
 .env*
+
+# Amostras de voz geradas localmente (audio pesado, nao versionar)
+amostras-voz/
