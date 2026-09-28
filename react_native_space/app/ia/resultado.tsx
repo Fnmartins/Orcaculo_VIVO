@@ -22,6 +22,7 @@ import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
 import { Hapticos } from '../../utils/haptics';
+import { BotaoOuvir } from '../../components/BotaoOuvir';
 import type { AnaliseIA } from '../../data/ia-analise';
 import { useAuth } from '../../contexts/AuthContext';
 import { DatabaseServico } from '../../services/database';
@@ -32,7 +33,7 @@ import { NotaReflexiva } from '../../components/NotaReflexiva';
 
 const FORMATOS = [
   { id: 'texto', icone: 'document-text-outline', titulo: 'Texto', disponivel: true },
-  { id: 'audio', icone: 'headset-outline', titulo: 'Áudio', disponivel: false },
+  { id: 'audio', icone: 'headset-outline', titulo: 'Áudio', disponivel: true },
   { id: 'video', icone: 'videocam-outline', titulo: 'Vídeo', disponivel: false },
   { id: 'pdf', icone: 'download-outline', titulo: 'PDF', disponivel: false },
 ];
@@ -182,6 +183,16 @@ export default function TelaIAResultado() {
               <Text style={estilos.resultadoResumo}>{analise.resumo}</Text>
             </LinearGradient>
           </Animated.View>
+
+          {/* A etiqueta "Áudio" desta tela dizia "em breve" enquanto as outras
+              três já falavam. Com a voz no servidor, o texto todo — resumo e
+              seções — vira leitura falada aqui também. */}
+          <BotaoOuvir
+            partes={[
+              { texto: `${analise.titulo}. ${analise.resumo}` },
+              ...analise.detalhes.map((d) => ({ rotulo: d.secao, texto: d.texto })),
+            ]}
+          />
 
           {/* Detalhes */}
           {analise.detalhes.map((detalhe, index) => (

@@ -47,6 +47,16 @@ const ESPERA_MAXIMA = 45000;
 /** Quanto tempo a URL assinada vale. Basta para tocar; não serve para guardar. */
 const VALIDADE_URL = 3600;
 
+/**
+ * Validade de um link que a pessoa vai mandar para outra.
+ *
+ * Uma hora não serve: quem recebe abre depois, e o link já morreu. Sete dias é
+ * o meio-termo — dá tempo de ouvir, e o link não vira endereço permanente de
+ * uma leitura pessoal. Quem compartilha sabe que está compartilhando; é a
+ * mesma exposição de mandar o texto, só que em voz.
+ */
+const VALIDADE_COMPARTILHAR = 7 * 24 * 3600;
+
 async function sha256(texto: string): Promise<string> {
   const bytes = new TextEncoder().encode(texto);
   const digest = await crypto.subtle.digest('SHA-256', bytes);
@@ -127,6 +137,8 @@ Deno.serve(async (request) => {
   const bruto = typeof body.texto === 'string' ? body.texto : '';
   if (!bruto.trim()) return resposta({ erro: 'Sem texto para falar' }, 400);
 
+  const validade = body.compartilhar === true ? VALIDADE_COMPARTILHAR : VALIDADE_URL;
+
   const { texto, cortado } = limitar(bruto);
   const hash = await sha256(`${VOZ}\n${texto}`);
 
@@ -138,7 +150,7 @@ Deno.serve(async (request) => {
 
   if (guardado?.arquivo) {
     const { data: assinada, error: erroUrl } = await supabaseAdmin
-      .storage.from(BUCKET).createSignedUrl(guardado.arquivo, VALIDADE_URL);
+      .storage.from(BUCKET).createSignedUrl(guardado.arquivo, validade);
     if (!erroUrl && assinada?.signedUrl) {
       await supabaseAdmin.from('voz_cache').update({
         usos: (typeof guardado.usos === 'number' ? guardado.usos : 1) + 1,
@@ -186,7 +198,7 @@ Deno.serve(async (request) => {
   }
 
   const { data: assinada, error: erroUrl } = await supabaseAdmin
-    .storage.from(BUCKET).createSignedUrl(arquivo, VALIDADE_URL);
+    .storage.from(BUCKET).createSignedUrl(arquivo, validade);
   if (erroUrl || !assinada?.signedUrl) {
     console.error('falha ao assinar url', erroUrl?.message);
     return resposta({ erro: 'Não foi possível entregar a leitura falada.' }, 502);
