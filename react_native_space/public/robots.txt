@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+
+# Areas que so fazem sentido com sessao: indexar isso rende so tela de login.
+Disallow: /manager
+Disallow: /perfil
+Disallow: /auth
