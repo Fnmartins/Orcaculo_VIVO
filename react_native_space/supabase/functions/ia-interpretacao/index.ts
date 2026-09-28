@@ -173,8 +173,19 @@ function dadosDoMapa(body: Record<string, unknown>): string {
  * nascimento — então a tabela não guarda dado pessoal nenhum, e ainda assim
  * quem abrir o próprio mapa dez vezes paga uma.
  */
+/**
+ * A versão do FORMATO da leitura entra na chave.
+ *
+ * Em 28/09 a resposta do mapa ganhou quatro áreas (amor, trabalho, dinheiro,
+ * caminho). Sem este número, uma leitura guardada antes disso voltaria do cache
+ * no formato velho — sem as áreas — e a tela mostraria menos do que mostra para
+ * quem gerou depois, sem erro nenhum aparecendo. Mudou o formato, sobe o
+ * número, e as leituras antigas simplesmente deixam de ser encontradas.
+ */
+const VERSAO_FORMATO = 'v2-areas';
+
 async function chaveDoMapa(dados: string): Promise<string> {
-  const bytes = new TextEncoder().encode(dados);
+  const bytes = new TextEncoder().encode(`${VERSAO_FORMATO}\n${dados}`);
   const resumo = await crypto.subtle.digest('SHA-256', bytes);
   return Array.from(new Uint8Array(resumo))
     .map((b) => b.toString(16).padStart(2, '0'))

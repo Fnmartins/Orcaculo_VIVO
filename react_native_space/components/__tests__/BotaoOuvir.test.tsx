@@ -78,7 +78,13 @@ describe('BotaoOuvir', () => {
     fireEvent.press(screen.getByLabelText('Continuar a leitura em voz'));
 
     await waitFor(() => expect(screen.getByText('Pausar')).toBeTruthy());
-    expect(mockGerar).toHaveBeenCalledTimes(1);
+    // Conta só as chamadas de TOCAR. A outra é a busca antecipada do link de
+    // compartilhar, que é acerto de cache e existe justamente para o envio sair
+    // no primeiro toque.
+    const paraTocar = mockGerar.mock.calls.filter(
+      ([, opcoes]) => !(opcoes && (opcoes as { paraCompartilhar?: boolean }).paraCompartilhar),
+    );
+    expect(paraTocar).toHaveLength(1);
   });
 
   it('navegador que recusa tocar vira o botão em Tocar, não em erro', async () => {

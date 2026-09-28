@@ -44,6 +44,11 @@ export function BotaoOuvir({ partes, titulo }: Props) {
   // A URL fica guardada: ouvir de novo a mesma leitura não chama a function,
   // não gasta cota e não espera.
   const url = useRef<string | null>(null);
+  // O link de compartilhar é outro: dura sete dias em vez de uma hora. Fica
+  // buscado de antemão porque o Safari exige que o envio nasça do toque — se a
+  // busca acontecer depois do toque, o gesto já passou e o primeiro clique não
+  // envia nada. Foi o "tive que clicar duas vezes" do teste.
+  const urlCompartilhar = useRef<string | null>(null);
   const vivo = useRef(true);
 
   const descarregar = useCallback(async () => {
@@ -138,6 +143,7 @@ export function BotaoOuvir({ partes, titulo }: Props) {
       if (!vivo.current) return;
       setEstado(ok ? 'tocando' : 'pronto');
       if (!ok) setErro('Toque de novo para começar a leitura.');
+      void prepararCompartilhamento();
     } catch (e) {
       if (!vivo.current) return;
       setEstado('parado');
@@ -152,14 +158,28 @@ export function BotaoOuvir({ partes, titulo }: Props) {
    * arquivo ao WhatsApp; só texto e endereço. Então o link vem assinado com
    * validade longa, porque um de uma hora morre antes de quem recebe abrir.
    */
+  const prepararCompartilhamento = useCallback(async () => {
+    if (urlCompartilhar.current) return;
+    try {
+      const leitura = await gerarLeituraFalada(montarRoteiro(partes), {
+        paraCompartilhar: true,
+      });
+      if (vivo.current) urlCompartilhar.current = leitura.url;
+    } catch {
+      // Sem link pronto, o botão busca na hora — volta a ser dois toques, que
+      // é o comportamento antigo, e não um erro para mostrar.
+    }
+  }, [partes]);
+
   const compartilhar = useCallback(async () => {
     Hapticos.impactoLeve();
     setCompartilhando(true);
     setErro(null);
     try {
-      const leitura = await gerarLeituraFalada(montarRoteiro(partes), {
-        paraCompartilhar: true,
-      });
+      const endereco = urlCompartilhar.current
+        ?? (await gerarLeituraFalada(montarRoteiro(partes), { paraCompartilhar: true })).url;
+      urlCompartilhar.current = endereco;
+      const leitura = { url: endereco };
       await Share.share({
         message: [
           titulo ? `🔮 ${titulo} — em áudio` : '🔮 A minha leitura, em áudio',
