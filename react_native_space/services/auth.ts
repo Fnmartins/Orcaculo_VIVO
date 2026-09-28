@@ -20,6 +20,23 @@ export interface Perfil {
   email: string | null;
   avatar_url: string | null;
   data_nascimento: string | null;
+  /**
+   * Hora de nascimento, `HH:MM`. Nulo quando ainda não foi preenchida **ou**
+   * quando a pessoa respondeu que não sabe — e é `nascimento_sem_hora` que
+   * separa os dois. Sem essa separação o app perguntaria para sempre a quem já
+   * respondeu.
+   */
+  nascimento_hora?: string | null;
+  nascimento_sem_hora?: boolean;
+  /**
+   * A cidade inteira, congelada: a base tem 36 mil linhas e cresce, e guardar
+   * só o identificador faria a leitura depender de aquela linha continuar
+   * existindo com as mesmas coordenadas.
+   */
+  nascimento_cidade?: {
+    id: string; nome: string; uf?: string; pais?: string;
+    lat: number; lon: number; fuso: string; offsetPadrao?: number;
+  } | null;
   signo: string | null;
   caminho_espiritual: string | null;
   intencao: string | null;

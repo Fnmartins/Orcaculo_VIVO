@@ -21,6 +21,7 @@ import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
 import { Hapticos } from '../../utils/haptics';
+import { useAuth } from '../../contexts/AuthContext';
 import { rotuloDaCidade, type Cidade } from '../../data/cidades';
 import { buscarCidades } from '../../services/cidades';
 
@@ -28,6 +29,7 @@ export default function TelaMapaAstralForm() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
 
+  const { perfil, atualizarPerfil } = useAuth();
   const [dia, setDia] = useState('');
   const [mes, setMes] = useState('');
   const [ano, setAno] = useState('');
@@ -87,6 +89,35 @@ export default function TelaMapaAstralForm() {
     return Object.keys(novosErros).length === 0;
   }
 
+  // Os dados de nascimento moram no perfil, vinculados à conta. Preenche a
+  // primeira vez e confirma nas seguintes — e ninguém troca a data a cada
+  // geração para tirar leitura de outra pessoa.
+  //
+  // Roda uma vez só: depois disso o que vale é o que está na tela, senão o
+  // perfil desfaria o que a pessoa acabou de corrigir.
+  const jaPreencheu = useRef(false);
+  useEffect(() => {
+    if (jaPreencheu.current || !perfil) return;
+    jaPreencheu.current = true;
+
+    if (perfil.data_nascimento) {
+      // `YYYY-MM-DD` lido à mão: `new Date(string)` desloca o dia em fuso
+      // negativo, e a data de nascimento errada por um dia muda o mapa.
+      const [a, m, d] = perfil.data_nascimento.split('-');
+      if (a && m && d) { setAno(a); setMes(m); setDia(d); }
+    }
+    if (perfil.nascimento_sem_hora) {
+      setNaoSabeHora(true);
+    } else if (perfil.nascimento_hora) {
+      const [h, min] = perfil.nascimento_hora.split(':');
+      if (h && min) { setHora(h); setMinuto(min); }
+    }
+    if (perfil.nascimento_cidade) {
+      setCidadeEscolhida(perfil.nascimento_cidade as Cidade);
+      setCidade(perfil.nascimento_cidade.nome ?? '');
+    }
+  }, [perfil]);
+
   function enviar() {
     Hapticos.impactoLeve();
     if (!validar()) return;
@@ -114,6 +145,27 @@ export default function TelaMapaAstralForm() {
       fuso: cidadeEscolhida?.fuso ?? '',
       offsetPadrao: String(cidadeEscolhida?.offsetPadrao ?? 0),
     };
+    // Grava no perfil sem esperar: se a rede falhar, o mapa é gerado do mesmo
+    // jeito — quem está na tela não deve ficar parado por causa de um registro
+    // que é conveniência, não requisito.
+    if (perfil) {
+      void atualizarPerfil({
+        data_nascimento: `${ano}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`,
+        nascimento_sem_hora: naoSabeHora,
+        nascimento_hora: naoSabeHora
+          ? null
+          : `${hora.padStart(2, '0')}:${minuto.padStart(2, '0')}`,
+        nascimento_cidade: cidadeEscolhida
+          ? {
+            id: String(cidadeEscolhida.id), nome: cidadeEscolhida.nome,
+            uf: cidadeEscolhida.uf, pais: cidadeEscolhida.pais,
+            lat: cidadeEscolhida.lat, lon: cidadeEscolhida.lon,
+            fuso: cidadeEscolhida.fuso, offsetPadrao: cidadeEscolhida.offsetPadrao,
+          }
+          : null,
+      }).catch(() => {});
+    }
+
     router.push({ pathname: '/mapa-astral/gerando', params });
   }
 

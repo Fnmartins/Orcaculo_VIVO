@@ -165,6 +165,33 @@ function dadosDoMapa(body: Record<string, unknown>): string {
   ].filter(Boolean).join('\n');
 }
 
+/**
+ * A chave da leitura já escrita.
+ *
+ * O mapa é determinístico: mesma data, hora e cidade dão o mesmo céu, e o
+ * mesmo céu dá a mesma leitura. A chave é o resumo das **posições** — não do
+ * nascimento — então a tabela não guarda dado pessoal nenhum, e ainda assim
+ * quem abrir o próprio mapa dez vezes paga uma.
+ */
+/**
+ * A versão do FORMATO da leitura entra na chave.
+ *
+ * Em 28/09 a resposta do mapa ganhou quatro áreas (amor, trabalho, dinheiro,
+ * caminho). Sem este número, uma leitura guardada antes disso voltaria do cache
+ * no formato velho — sem as áreas — e a tela mostraria menos do que mostra para
+ * quem gerou depois, sem erro nenhum aparecendo. Mudou o formato, sobe o
+ * número, e as leituras antigas simplesmente deixam de ser encontradas.
+ */
+const VERSAO_FORMATO = 'v2-areas';
+
+async function chaveDoMapa(dados: string): Promise<string> {
+  const bytes = new TextEncoder().encode(`${VERSAO_FORMATO}\n${dados}`);
+  const resumo = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(resumo))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
 function validarResultado(bruto: string, oraculo: Oraculo): Record<string, string> {
   const limpo = bruto.trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
   const dado = JSON.parse(limpo) as Record<string, unknown>;
@@ -214,6 +241,25 @@ Deno.serve(async (request) => {
     else dados = dadosDoMapa(body);
   } catch (erro) {
     return resposta({ erro: erro instanceof Error ? erro.message : 'Dados incompletos' }, 400);
+  }
+
+  // A leitura do mapa já escrita vem antes de tudo: não custa chamada, não
+  // desconta consulta e não entra no limite do dia. O mapa é determinístico —
+  // mesma data, hora e cidade dão o mesmo céu — então reescrever seria pagar
+  // duas vezes pela mesma frase.
+  let chave = '';
+  if (oraculo === 'mapa') {
+    chave = await chaveDoMapa(dados);
+    const { data: guardada, error: erroCache } = await supabaseAdmin
+      .from('interpretacoes_mapa').select('conteudo, usos').eq('chave', chave).maybeSingle();
+    if (erroCache) console.error('falha ao ler interpretacao guardada', erroCache.message);
+    else if (guardada?.conteudo) {
+      const usos = typeof guardada.usos === 'number' ? guardada.usos : 1;
+      const { error: erroContar } = await supabaseAdmin
+        .from('interpretacoes_mapa').update({ usos: usos + 1 }).eq('chave', chave);
+      if (erroContar) console.error('falha ao contar reuso', erroContar.message);
+      return resposta({ ...(guardada.conteudo as Record<string, unknown>), oraculo, doCache: true });
+    }
   }
 
   const { data: perfil, error: erroPerfil } = await supabaseAdmin
@@ -275,6 +321,15 @@ Deno.serve(async (request) => {
         '| inicio do texto:', saida.slice(0, 300),
       );
       return resposta({ erro: 'A interpretação voltou fora do formato. Tente de novo.' }, 502);
+    }
+
+    // Guarda a leitura do mapa para a próxima abertura. Falhar aqui não pode
+    // estragar a leitura que a pessoa já tem na tela — custa uma reescrita,
+    // não a resposta.
+    if (oraculo === 'mapa' && chave) {
+      const { error: erroGuardar } = await supabaseAdmin
+        .from('interpretacoes_mapa').insert({ chave, conteudo: interpretacao });
+      if (erroGuardar) console.error('falha ao guardar interpretacao', erroGuardar.message);
     }
 
     // Só desconta depois que a leitura existe.
