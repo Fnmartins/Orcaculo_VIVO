@@ -25,6 +25,11 @@ jest.mock('expo-av', () => ({
         sound: {
           unloadAsync: jest.fn(async () => {}),
           setOnPlaybackStatusUpdate: jest.fn(),
+          // Pausar e continuar entram aqui porque o componente os chama de
+          // verdade: um mock sem eles faz a pausa cair no caminho de erro e o
+          // teste falhar por um motivo que não existe em produção.
+          pauseAsync: jest.fn(async () => {}),
+          playAsync: jest.fn(async () => {}),
         },
       })),
     },

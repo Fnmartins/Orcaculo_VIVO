@@ -179,6 +179,23 @@ export interface InterpretacaoMapa {
   forca: string;
   tensao: string;
   conselho: string;
+  /**
+   * As quatro áreas da vida, na versão básica: escritas a partir de Sol, Lua e
+   * Ascendente. A versão completa, que usa as casas e os planetas de cada área,
+   * ficou no roadmap para depois.
+   *
+   * Opcionais porque leituras geradas antes destes campos existirem não os
+   * têm — e a tela precisa continuar abrindo com elas.
+   */
+  amor?: string;
+  trabalho?: string;
+  dinheiro?: string;
+  /**
+   * Direção, não previsão. O mapa natal não sabe quando: quem sabe de tempo é
+   * trânsito, que este app não calcula. Chamar de "futuro" faria a pessoa
+   * esperar data e receber tema — e sair achando que foi enrolada.
+   */
+  caminho?: string;
 }
 
 export interface PosicaoParaIA {

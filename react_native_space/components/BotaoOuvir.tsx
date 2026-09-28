@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { Audio } from 'expo-av';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Cores } from '../constants/colors';
@@ -26,14 +26,19 @@ import { gerarLeituraFalada } from '../services/voz';
 
 interface Props {
   partes: ParteDaLeitura[];
+  /** Nome da leitura, usado só no texto que acompanha o áudio compartilhado. */
+  titulo?: string;
 }
 
-type Estado = 'parado' | 'preparando' | 'pronto' | 'tocando';
+const ASSINATURA = '🔮 Arcanus — arcanus.com.br';
 
-export function BotaoOuvir({ partes }: Props) {
+type Estado = 'parado' | 'preparando' | 'pronto' | 'tocando' | 'pausado';
+
+export function BotaoOuvir({ partes, titulo }: Props) {
   const [estado, setEstado] = useState<Estado>('parado');
   const [erro, setErro] = useState<string | null>(null);
   const [cortado, setCortado] = useState(false);
+  const [compartilhando, setCompartilhando] = useState(false);
 
   const som = useRef<Audio.Sound | null>(null);
   // A URL fica guardada: ouvir de novo a mesma leitura não chama a function,
@@ -87,9 +92,30 @@ export function BotaoOuvir({ partes }: Props) {
 
     if (estado === 'preparando') return;
 
-    if (estado === 'tocando') {
-      await descarregar();
-      setEstado('parado');
+    // Pausa de verdade, e não parada: uma leitura de mapa passa de dois
+    // minutos, e voltar ao início por causa de uma interrupção é o mesmo que
+    // não poder pausar. Relatado no teste do iPhone.
+    if (estado === 'tocando' && som.current) {
+      try {
+        await som.current.pauseAsync();
+        setEstado('pausado');
+      } catch {
+        // Não deu para pausar: descarrega, que é o comportamento antigo, em
+        // vez de deixar o botão dizendo "Pausar" com a voz falando por cima.
+        await descarregar();
+        setEstado('parado');
+      }
+      return;
+    }
+
+    if (estado === 'pausado' && som.current) {
+      try {
+        await som.current.playAsync();
+        setEstado('tocando');
+      } catch {
+        setEstado('pausado');
+        setErro('Toque de novo para continuar.');
+      }
       return;
     }
 
@@ -119,10 +145,48 @@ export function BotaoOuvir({ partes }: Props) {
     }
   }, [estado, partes, tocar, descarregar]);
 
+  /**
+   * Compartilhar o áudio é compartilhar um **link**, não o arquivo.
+   *
+   * No navegador — que é como o app é usado no iPhone — não há como entregar um
+   * arquivo ao WhatsApp; só texto e endereço. Então o link vem assinado com
+   * validade longa, porque um de uma hora morre antes de quem recebe abrir.
+   */
+  const compartilhar = useCallback(async () => {
+    Hapticos.impactoLeve();
+    setCompartilhando(true);
+    setErro(null);
+    try {
+      const leitura = await gerarLeituraFalada(montarRoteiro(partes), {
+        paraCompartilhar: true,
+      });
+      await Share.share({
+        message: [
+          titulo ? `🔮 ${titulo} — em áudio` : '🔮 A minha leitura, em áudio',
+          leitura.url,
+          '',
+          'O link vale por sete dias.',
+          ASSINATURA,
+        ].join('\n'),
+      });
+    } catch (e) {
+      // Cancelar o compartilhamento não é falha, e a Share não distingue bem
+      // cancelamento de erro — por isso a mensagem é morna, não alarmante.
+      if (e instanceof Error && e.message) setErro(e.message);
+    } finally {
+      setCompartilhando(false);
+    }
+  }, [partes, titulo]);
+
   const rotulo = estado === 'preparando' ? 'Preparando a leitura…'
-    : estado === 'tocando' ? 'Parar'
-      : estado === 'pronto' ? 'Tocar'
-        : 'Ouvir a leitura';
+    : estado === 'tocando' ? 'Pausar'
+      : estado === 'pausado' ? 'Continuar'
+        : estado === 'pronto' ? 'Tocar'
+          : 'Ouvir a leitura';
+
+  const icone = estado === 'tocando' ? 'pause-circle-outline'
+    : estado === 'pausado' ? 'play-circle-outline'
+      : 'volume-high-outline';
 
   return (
     <View style={estilos.area}>
@@ -130,19 +194,32 @@ export function BotaoOuvir({ partes }: Props) {
         onPress={() => { void alternar(); }}
         disabled={estado === 'preparando'}
         accessibilityRole="button"
-        accessibilityLabel={estado === 'tocando' ? 'Parar a leitura em voz' : 'Ouvir a leitura em voz'}
+        accessibilityLabel={
+          estado === 'tocando' ? 'Pausar a leitura em voz'
+            : estado === 'pausado' ? 'Continuar a leitura em voz'
+              : 'Ouvir a leitura em voz'
+        }
         style={[estilos.botao, estado === 'preparando' && estilos.botaoOcupado]}
       >
         {estado === 'preparando' ? (
           <ActivityIndicator size="small" color={Cores.acento} />
         ) : (
-          <Ionicons
-            name={estado === 'tocando' ? 'stop-circle-outline' : 'volume-high-outline'}
-            size={18}
-            color={Cores.acento}
-          />
+          <Ionicons name={icone} size={18} color={Cores.acento} />
         )}
         <Text style={estilos.texto}>{rotulo}</Text>
+      </Pressable>
+
+      <Pressable
+        onPress={() => { void compartilhar(); }}
+        disabled={compartilhando}
+        accessibilityRole="button"
+        accessibilityLabel="Compartilhar a leitura em áudio"
+        style={estilos.compartilhar}
+      >
+        <Ionicons name="share-social-outline" size={15} color={Cores.textoSecundario} />
+        <Text style={estilos.compartilharTexto}>
+          {compartilhando ? 'Preparando o áudio…' : 'Compartilhar o áudio'}
+        </Text>
       </Pressable>
 
       {cortado && (
@@ -164,6 +241,14 @@ const estilos = StyleSheet.create({
     paddingVertical: 10, paddingHorizontal: Espacamento.lg,
   },
   botaoOcupado: { opacity: 0.7 },
+  compartilhar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, alignSelf: 'center', paddingVertical: 4,
+  },
+  compartilharTexto: {
+    fontFamily: Fontes.corpo, fontSize: 12, color: Cores.textoSecundario,
+    textDecorationLine: 'underline',
+  },
   texto: { fontFamily: Fontes.corpoSemibold, fontSize: 14, color: Cores.acento },
   nota: {
     fontFamily: Fontes.corpo, fontSize: 12, color: Cores.textoSecundario,
