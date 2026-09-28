@@ -7,7 +7,7 @@ import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
 import { useAuth } from '../../contexts/AuthContext';
 import {
-  apagarVoto, listarAmostras, listarVotos, resumirVotos, salvarVoto,
+  apagarVoto, listarAmostras, listarVotos, resumirGeral, resumirVotos, salvarVoto,
   type AmostraVoz, type VotoVoz,
 } from '../../services/vozes';
 import { mostrarAlerta } from '../../utils/alerta';
@@ -27,8 +27,9 @@ import { mostrarAlerta } from '../../utils/alerta';
 const ESTRELAS = [1, 2, 3, 4, 5];
 
 export function ComparadorVozes() {
-  const { sessao } = useAuth();
+  const { sessao, perfil } = useAuth();
   const meuId = sessao?.user?.id ?? null;
+  const meuNome = (perfil?.nome ?? '').trim() || sessao?.user?.email || 'Você';
 
   const [amostras, setAmostras] = useState<AmostraVoz[] | null>(null);
   const [votos, setVotos] = useState<VotoVoz[]>([]);
@@ -103,12 +104,14 @@ export function ComparadorVozes() {
     const antes = votos;
     setVotos((atual) => {
       const semAMinha = atual.filter((v) => !(v.voz === amostra.id && v.usuario_id === meuId));
-      return limpar ? semAMinha : [...semAMinha, { voz: amostra.id, usuario_id: meuId, nota }];
+      return limpar
+        ? semAMinha
+        : [...semAMinha, { voz: amostra.id, usuario_id: meuId, autor_nome: meuNome, nota }];
     });
     setSalvando(amostra.id);
     try {
       if (limpar) await apagarVoto(amostra.id, meuId);
-      else await salvarVoto(amostra.id, meuId, nota);
+      else await salvarVoto(amostra.id, meuId, meuNome, nota);
     } catch (e) {
       setVotos(antes);
       mostrarAlerta('Não foi possível salvar', e instanceof Error ? e.message : String(e));
@@ -134,6 +137,23 @@ export function ComparadorVozes() {
 
   const podio = resumirVotos(votos).slice(0, 5);
   const nomePorId = new Map(amostras.map((a) => [a.id, `${a.nome} (${a.marca})`]));
+  const geral = resumirGeral(votos, amostras.length);
+
+  // Quem participa da decisão: eu, mais todo mundo que já votou em qualquer
+  // voz. É essa lista que permite mostrar "—" para quem ainda não ouviu uma
+  // voz — sem ela, quem não votou some da tela e fica igual a nota em branco.
+  const participantes = [
+    ...(meuId ? [{ usuario_id: meuId, nome: 'Você' }] : []),
+    ...geral.porPessoa
+      .filter((p) => p.usuario_id !== meuId)
+      // Voto gravado antes de o nome passar a ser guardado não tem autor. Com
+      // duas pessoas decidindo, "o outro" é exato; assim que essa pessoa votar
+      // de novo em qualquer voz, o nome dela aparece.
+      .map((p) => ({ usuario_id: p.usuario_id, nome: p.nome || 'o outro' })),
+  ];
+
+  const notaDe = (voz: string, usuarioId: string) =>
+    votos.find((v) => v.voz === voz && v.usuario_id === usuarioId)?.nota ?? null;
 
   return (
     <View style={estilos.bloco}>
@@ -142,16 +162,43 @@ export function ComparadorVozes() {
         estrela limpa a sua nota. Cada um vê a nota do outro ao lado.
       </Text>
 
+      {geral.porPessoa.length > 0 ? (
+        <View style={estilos.resumo}>
+          <Text style={estilos.rotulo}>Onde a decisão está</Text>
+          {geral.porPessoa.map((p) => (
+            <Text key={p.usuario_id} style={estilos.resumoLinha}>
+              {`${p.usuario_id === meuId ? 'Você' : (p.nome || 'o outro')}: ${p.quantas} de ${geral.totalVotado} vozes`}
+            </Text>
+          ))}
+          <Text style={estilos.resumoDestaque}>
+            {participantes.length < 2
+              ? 'Só você votou até agora. Falta o outro entrar no Painel para a média valer.'
+              : `${geral.ouvidasPorTodos} ${geral.ouvidasPorTodos === 1 ? 'voz tem' : 'vozes têm'} nota dos dois — é entre elas que dá para decidir.`}
+          </Text>
+        </View>
+      ) : null}
+
       {podio.length > 0 ? (
         <View style={estilos.podio}>
           <Text style={estilos.rotulo}>Mais bem votadas</Text>
+          <Text style={estilos.podioAjuda}>
+            Ordenado por quantos votaram primeiro, média depois: uma voz que só
+            uma pessoa ouviu ainda não é candidata.
+          </Text>
           {podio.map((p, i) => (
-            <View key={p.voz} style={estilos.podioLinha}>
-              <Text style={estilos.podioPos}>{i + 1}</Text>
-              <Text style={estilos.podioNome}>{nomePorId.get(p.voz) ?? p.voz}</Text>
-              <Text style={estilos.podioMedia}>{p.media.toFixed(1)}</Text>
-              <Text style={estilos.podioQuantos}>
-                {p.quantos === 1 ? '1 voto' : `${p.quantos} votos`}
+            <View key={p.voz} style={estilos.podioItem}>
+              <View style={estilos.podioLinha}>
+                <Text style={estilos.podioPos}>{i + 1}</Text>
+                <Text style={estilos.podioNome}>{nomePorId.get(p.voz) ?? p.voz}</Text>
+                <Text style={estilos.podioMedia}>{p.media.toFixed(1)}</Text>
+              </View>
+              <Text style={estilos.podioDetalhe}>
+                {participantes
+                  .map((quem) => {
+                    const nota = notaDe(p.voz, quem.usuario_id);
+                    return `${quem.nome} ${nota ?? '—'}`;
+                  })
+                  .join('   ·   ')}
               </Text>
             </View>
           ))}
@@ -159,10 +206,8 @@ export function ComparadorVozes() {
       ) : null}
 
       {amostras.map((a) => {
-        const minha = votos.find((v) => v.voz === a.id && v.usuario_id === meuId)?.nota ?? 0;
-        const dosOutros = votos
-          .filter((v) => v.voz === a.id && v.usuario_id !== meuId)
-          .map((v) => v.nota);
+        const minha = meuId ? notaDe(a.id, meuId) ?? 0 : 0;
+        const outros = participantes.filter((p) => p.usuario_id !== meuId);
 
         return (
           <View key={a.id} style={estilos.voz}>
@@ -201,9 +246,27 @@ export function ComparadorVozes() {
               ))}
             </View>
 
-            <Text style={estilos.outros}>
-              {dosOutros.length > 0 ? dosOutros.join(', ') : ''}
-            </Text>
+            {/* Antes aqui só saíam os números dos outros, e quem não tinha
+                votado aparecia em branco — igualzinho a quem votou zero. O
+                nome com o travessão é o que separa "não gostou" de "nem
+                ouviu". */}
+            <View style={estilos.outros}>
+              {outros.length === 0 ? (
+                <Text style={estilos.outroVazio}>só você</Text>
+              ) : (
+                outros.map((quem) => {
+                  const nota = notaDe(a.id, quem.usuario_id);
+                  return (
+                    <Text key={quem.usuario_id} style={estilos.outroLinha}>
+                      <Text style={estilos.outroNome}>{`${quem.nome} `}</Text>
+                      <Text style={nota === null ? estilos.outroFalta : estilos.outroNota}>
+                        {nota === null ? '—' : String(nota)}
+                      </Text>
+                    </Text>
+                  );
+                })
+              )}
+            </View>
           </View>
         );
       })}
@@ -227,11 +290,28 @@ const estilos = StyleSheet.create({
     borderWidth: 1, borderColor: Cores.cardBorda,
     padding: Espacamento.sm, marginBottom: Espacamento.sm, gap: 3,
   },
+  podioAjuda: {
+    fontFamily: Fontes.corpo, fontSize: 11, color: Cores.textoSecundario,
+    marginBottom: 6, lineHeight: 15,
+  },
+  podioItem: { marginBottom: 5 },
   podioLinha: { flexDirection: 'row', alignItems: 'baseline', gap: Espacamento.xs },
   podioPos: { fontFamily: Fontes.corpoNegrito, fontSize: 13, color: Cores.acento, width: 16 },
   podioNome: { flex: 1, fontFamily: Fontes.corpoSemibold, fontSize: 13, color: Cores.textoClaro },
   podioMedia: { fontFamily: Fontes.corpoNegrito, fontSize: 13, color: Cores.acento },
-  podioQuantos: { fontFamily: Fontes.corpo, fontSize: 11, color: Cores.textoSecundario },
+  podioDetalhe: {
+    fontFamily: Fontes.corpo, fontSize: 11, color: Cores.textoSecundario,
+    marginLeft: 16 + Espacamento.xs,
+  },
+  resumo: {
+    backgroundColor: Cores.cardFundo, borderRadius: RaioBorda.md,
+    borderWidth: 1, borderColor: Cores.cardBorda,
+    padding: Espacamento.sm, marginBottom: Espacamento.sm, gap: 2,
+  },
+  resumoLinha: { fontFamily: Fontes.corpo, fontSize: 13, color: Cores.textoClaro },
+  resumoDestaque: {
+    fontFamily: Fontes.corpoSemibold, fontSize: 13, color: Cores.acento, marginTop: 4,
+  },
   voz: {
     flexDirection: 'row', alignItems: 'center', gap: Espacamento.sm,
     backgroundColor: Cores.cardFundo, borderRadius: RaioBorda.md,
@@ -249,8 +329,10 @@ const estilos = StyleSheet.create({
   estrelas: { flexDirection: 'row', gap: 1 },
   estrela: { fontSize: 18, color: Cores.acento, paddingHorizontal: 1 },
   estrelaTravada: { opacity: 0.4 },
-  outros: {
-    fontFamily: Fontes.corpo, fontSize: 12, color: Cores.textoSecundario,
-    minWidth: 34, textAlign: 'right',
-  },
+  outros: { minWidth: 62, alignItems: 'flex-end' },
+  outroLinha: { fontSize: 11, lineHeight: 15 },
+  outroNome: { fontFamily: Fontes.corpo, color: Cores.textoSecundario },
+  outroNota: { fontFamily: Fontes.corpoNegrito, color: Cores.acento, fontSize: 12 },
+  outroFalta: { fontFamily: Fontes.corpo, color: Cores.textoSecundario },
+  outroVazio: { fontFamily: Fontes.corpo, fontSize: 11, color: Cores.textoSecundario },
 });

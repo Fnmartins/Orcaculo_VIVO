@@ -19,7 +19,7 @@ const BUCKET = 'vozes';
 const TABELA_VOTOS = 'voz_votos';
 // Numa linha só: o supabase-js infere o tipo do retorno a partir deste literal,
 // e string concatenada faz a inferência desabar.
-const COLUNAS_VOTO = 'voz, usuario_id, nota, atualizado_em';
+const COLUNAS_VOTO = 'voz, usuario_id, autor_nome, nota, atualizado_em';
 const PERMISSAO_NEGADA = '42501';
 const JWT_VENCIDO = 'PGRST301';
 
@@ -34,6 +34,15 @@ export interface AmostraVoz {
 export interface VotoVoz {
   voz: string;
   usuario_id: string;
+  /**
+   * O nome de quem votou, gravado junto com o voto.
+   *
+   * Mesmo motivo que `decisao_manifestacoes.autor_nome` já traz: o registro não
+   * muda se a pessoa trocar o nome depois. E evita a tela ter de resolver id
+   * para nome a cada abertura, que era o que deixava "não votou" e "votou" com
+   * a mesma cara — ambos em branco.
+   */
+  autor_nome: string;
   nota: number;
 }
 
@@ -82,11 +91,20 @@ export async function listarVotos(): Promise<VotoVoz[]> {
   return (data ?? []).map((v) => ({
     voz: v.voz,
     usuario_id: v.usuario_id,
+    // Votos gravados antes de a coluna existir vêm sem nome. Fica vazio aqui, e
+    // quem desenha decide o rótulo — com duas pessoas decidindo, "o outro" é
+    // exato, e inventar um nome seria pior que não ter.
+    autor_nome: (v.autor_nome ?? '').trim(),
     nota: typeof v.nota === 'number' ? v.nota : 0,
   }));
 }
 
-export async function salvarVoto(voz: string, usuarioId: string, nota: number): Promise<void> {
+export async function salvarVoto(
+  voz: string,
+  usuarioId: string,
+  autorNome: string,
+  nota: number,
+): Promise<void> {
   if (!Number.isInteger(nota) || nota < 1 || nota > 5) {
     throw new Error('A nota tem de ser um número inteiro de 1 a 5.');
   }
@@ -95,7 +113,13 @@ export async function salvarVoto(voz: string, usuarioId: string, nota: number): 
   const { error } = await supabase
     .from(TABELA_VOTOS)
     .upsert(
-      { voz, usuario_id: usuarioId, nota, atualizado_em: new Date().toISOString() },
+      {
+        voz,
+        usuario_id: usuarioId,
+        autor_nome: autorNome.trim() || 'sem nome',
+        nota,
+        atualizado_em: new Date().toISOString(),
+      },
       { onConflict: 'voz,usuario_id' },
     );
   if (error) throw traduzirErro(error);
@@ -115,26 +139,67 @@ export interface ResumoVoz {
   voz: string;
   media: number;
   quantos: number;
+  /** Quem votou e com quanto, para a tela mostrar nome por nome. */
+  votos: VotoVoz[];
 }
 
 /**
- * O pódio: média por voz, da maior para a menor.
+ * O pódio.
  *
- * Empate de média desempata por quantidade — quatro estrelas com dois votos
- * valem mais que quatro estrelas com um.
+ * **Ordena por quantidade primeiro, média depois** — e isso é deliberado. Por
+ * média sozinha, uma voz que só uma pessoa ouviu e deu 5 fica na frente de uma
+ * que as duas ouviram e deram 4. Numa decisão a dois é o contrário do que
+ * interessa: concordância vale mais que entusiasmo de um só. Uma voz com um
+ * voto não é candidata ainda, é sugestão.
  */
 export function resumirVotos(votos: VotoVoz[]): ResumoVoz[] {
-  const porVoz = new Map<string, number[]>();
+  const porVoz = new Map<string, VotoVoz[]>();
   for (const voto of votos) {
     const lista = porVoz.get(voto.voz) ?? [];
-    lista.push(voto.nota);
+    lista.push(voto);
     porVoz.set(voto.voz, lista);
   }
   return [...porVoz.entries()]
-    .map(([voz, notas]) => ({
+    .map(([voz, lista]) => ({
       voz,
-      media: notas.reduce((a, b) => a + b, 0) / notas.length,
-      quantos: notas.length,
+      media: lista.reduce((a, v) => a + v.nota, 0) / lista.length,
+      quantos: lista.length,
+      votos: [...lista].sort((a, b) => a.autor_nome.localeCompare(b.autor_nome)),
     }))
-    .sort((a, b) => b.media - a.media || b.quantos - a.quantos || a.voz.localeCompare(b.voz));
+    .sort((a, b) => b.quantos - a.quantos || b.media - a.media || a.voz.localeCompare(b.voz));
+}
+
+export interface ResumoGeral {
+  /** Quantas vozes cada pessoa já pontuou. */
+  porPessoa: { usuario_id: string; nome: string; quantas: number }[];
+  /** Vozes que todo mundo que votou já pontuou. */
+  ouvidasPorTodos: number;
+  totalVotado: number;
+}
+
+/**
+ * O resumo de cima: quem votou quanto, e em quantas vozes já há opinião de
+ * todos. É o número que diz se a decisão está madura para ser fechada.
+ */
+export function resumirGeral(votos: VotoVoz[], totalDeVozes: number): ResumoGeral {
+  const porPessoa = new Map<string, { usuario_id: string; nome: string; quantas: number }>();
+  for (const voto of votos) {
+    const atual = porPessoa.get(voto.usuario_id)
+      ?? { usuario_id: voto.usuario_id, nome: voto.autor_nome, quantas: 0 };
+    atual.quantas += 1;
+    porPessoa.set(voto.usuario_id, atual);
+  }
+  const pessoas = [...porPessoa.values()].sort((a, b) => a.nome.localeCompare(b.nome));
+
+  const porVoz = new Map<string, Set<string>>();
+  for (const voto of votos) {
+    const quem = porVoz.get(voto.voz) ?? new Set<string>();
+    quem.add(voto.usuario_id);
+    porVoz.set(voto.voz, quem);
+  }
+  const ouvidasPorTodos = pessoas.length === 0
+    ? 0
+    : [...porVoz.values()].filter((quem) => quem.size === pessoas.length).length;
+
+  return { porPessoa: pessoas, ouvidasPorTodos, totalVotado: totalDeVozes };
 }
