@@ -14,7 +14,6 @@ import { voltarOuIr } from '../../utils/navegacao';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Circle, Path, G, Text as SvgText, Defs, RadialGradient as SvgRadial, Stop, Line } from 'react-native-svg';
 import { GradientBackground } from '../../components/GradientBackground';
 import { BotaoOuvir } from '../../components/BotaoOuvir';
 import { EstadoTela } from '../../components/EstadoTela';
@@ -24,7 +23,7 @@ import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
 import { dataConsultaValida, horarioConsultaValido, textoConsultaValido } from '../../utils/validacaoConsulta';
 import { Hapticos } from '../../utils/haptics';
-import { CASAS, lerSigno, corElemento, type LeituraSignoSolar } from '../../data/astrologia';
+import { CASAS, PLANETAS, lerSigno, corElemento, type LeituraSignoSolar } from '../../data/astrologia';
 import {
   escreverGrau, montarMapaAstral, ordemDeLeitura, visivelNoGratuito, type MapaAstral,
 } from '../../data/mapaAstral';
@@ -37,105 +36,11 @@ import { cidadePorId, type Cidade } from '../../data/cidades';
 import { usePlano } from '../../hooks/usePlano';
 import { compartilharMapaAstral } from '../../services/compartilhar';
 import { imprimirPagina, podeImprimir } from '../../utils/impressao';
+import { GLIFO_CORPO, RodaZodiacal, idxSigno } from '../../components/RodaMapa';
 import { gerarInterpretacaoMapa, type InterpretacaoMapa } from '../../services/ia';
 import { SemaforoUso } from '../../components/SemaforoUso';
 
 const { width: W } = Dimensions.get('window');
-
-const SIGNOS_SIMBOLOS = ['♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','♒','♓'];
-const SIGNOS_CORES = ['#E74C3C','#27AE60','#F1C40F','#3498DB','#E74C3C','#27AE60',
-  '#9B59B6','#C0392B','#E67E22','#2C3E50','#3498DB','#1ABC9C'];
-const SIGNOS_IDS = ['aries','touro','gemeos','cancer','leao','virgem',
-  'libra','escorpiao','sagitario','capricornio','aquario','peixes'];
-function idxSigno(id: string): number {
-  const i = SIGNOS_IDS.indexOf(id);
-  return i >= 0 ? i : 0;
-}
-
-interface MarcadorRoda {
-  /** Longitude eclíptica, 0 a 360 — o grau de verdade, não o meio do signo. */
-  longitude: number;
-  label: string;
-  cor: string;
-}
-
-function RodaZodiacal({ solIdx, marcadores }: { solIdx: number; marcadores: MarcadorRoda[] }) {
-  const SIZE = Math.min(W - 48, 260);
-  const cx = SIZE / 2, cy = SIZE / 2;
-  const rExt = SIZE * 0.48;
-  const rMed = SIZE * 0.38;
-  const rInt = SIZE * 0.28;
-  const rCore = SIZE * 0.14;
-  const sliceDeg = 360 / 12;
-
-  return (
-    <Svg width={SIZE} height={SIZE}>
-      <Defs>
-        <SvgRadial id="astralCore" cx="50%" cy="50%" r="50%">
-          <Stop offset="0%" stopColor="rgba(181,139,70,0.14)" />
-          <Stop offset="60%" stopColor="rgba(88,117,101,0.07)" />
-          <Stop offset="100%" stopColor="rgba(88,117,101,0)" />
-        </SvgRadial>
-      </Defs>
-      {/* Glow central */}
-      <Circle cx={cx} cy={cy} r={rExt} fill="url(#astralCore)" />
-      {/* Anéis */}
-      <Circle cx={cx} cy={cy} r={rExt} fill="none" stroke="rgba(181,139,70,0.35)" strokeWidth={1} />
-      <Circle cx={cx} cy={cy} r={rMed} fill="none" stroke="rgba(181,139,70,0.22)" strokeWidth={0.8} />
-      <Circle cx={cx} cy={cy} r={rInt} fill="none" stroke="rgba(181,139,70,0.18)" strokeWidth={0.6} />
-      <Circle cx={cx} cy={cy} r={rCore} fill="rgba(181,139,70,0.10)" stroke="rgba(181,139,70,0.45)" strokeWidth={1} />
-      {/* Cruz no centro */}
-      <Line x1={cx - rCore} y1={cy} x2={cx + rCore} y2={cy} stroke="rgba(181,139,70,0.45)" strokeWidth={0.7} />
-      <Line x1={cx} y1={cy - rCore} x2={cx} y2={cy + rCore} stroke="rgba(181,139,70,0.45)" strokeWidth={0.7} />
-      {/* 12 fatias + símbolos */}
-      {SIGNOS_SIMBOLOS.map((sim, i) => {
-        const angMid = (i * sliceDeg - 90 + sliceDeg / 2) * (Math.PI / 180);
-        const angSlice = (i * sliceDeg - 90) * (Math.PI / 180);
-        const angNext = ((i + 1) * sliceDeg - 90) * (Math.PI / 180);
-        const sx = cx + rExt * Math.cos(angSlice);
-        const sy = cy + rExt * Math.sin(angSlice);
-        const ex = cx + rMed * Math.cos(angSlice);
-        const ey = cy + rMed * Math.sin(angSlice);
-        const symX = cx + (rMed + (rExt - rMed) / 2) * Math.cos(angMid);
-        const symY = cy + (rMed + (rExt - rMed) / 2) * Math.sin(angMid);
-        const isAtivo = i === solIdx;
-        return (
-          <G key={i}>
-            {/* Linha divisória */}
-            <Path d={`M ${ex} ${ey} L ${sx} ${sy}`}
-              stroke="rgba(181,139,70,0.28)" strokeWidth={0.7} />
-            {/* Fundo da fatia ativa */}
-            {isAtivo && (
-              <Path
-                d={`M ${cx} ${cy} L ${cx + rExt * Math.cos(angSlice)} ${cy + rExt * Math.sin(angSlice)} A ${rExt} ${rExt} 0 0 1 ${cx + rExt * Math.cos(angNext)} ${cy + rExt * Math.sin(angNext)} Z`}
-                fill={SIGNOS_CORES[i] + '18'}
-              />
-            )}
-            {/* Símbolo */}
-            <SvgText x={symX} y={symY + 3} textAnchor="middle"
-              fontSize={10} fill={isAtivo ? SIGNOS_CORES[i] : 'rgba(36,49,45,0.55)'}
-              fontWeight={isAtivo ? '700' : '400'}>{sim}</SvgText>
-          </G>
-        );
-      })}
-      {/* Marcadores no grau real. Raios diferentes para dois corpos no mesmo
-          grau não virarem um borrão só. */}
-      {marcadores.map(({ longitude, label, cor }, i) => {
-        const ang = (longitude - 90) * (Math.PI / 180);
-        const raio = rInt * (0.82 - i * 0.22);
-        const px = cx + raio * Math.cos(ang);
-        const py = cy + raio * Math.sin(ang);
-        return (
-          <G key={label}>
-            <Circle cx={px} cy={py} r={9} fill={cor + '30'} stroke={cor} strokeWidth={1} />
-            <SvgText x={px} y={py + 3} textAnchor="middle"
-              fontSize={label.length > 1 ? 7 : 10} fill={cor}>{label}</SvgText>
-          </G>
-        );
-      })}
-    </Svg>
-  );
-}
 
 // O campo de estrelas piscando saiu junto com o fundo escuro: era branco sobre
 // preto, e esta era a única tela do app em tema inverso. O conselho de 21/09
@@ -277,9 +182,16 @@ export default function TelaMapaAstralResultado() {
   const temMapaCompleto = temAcesso('mapa_completo');
 
   // Os marcadores da roda, no grau real — não mais no meio da fatia do signo.
+  // No plano pago entram os dez corpos; no gratuito, os dois luminares. O que a
+  // roda mostra é o que a lista mostra, para a tela não se contradizer.
   const marcadores = [
-    { longitude: sol.longitude, label: '☀', cor: '#F1C40F' },
-    { longitude: lua.longitude, label: '☾', cor: Cores.secundaria },
+    ...posicoes
+      .filter((p) => temMapaCompleto || visivelNoGratuito(p.corpo))
+      .map((p) => ({
+        longitude: p.longitude,
+        label: GLIFO_CORPO[p.corpo].simbolo,
+        cor: GLIFO_CORPO[p.corpo].cor,
+      })),
     ...(mapa.angulos ? [{ longitude: mapa.angulos.ascendente, label: 'Asc', cor: '#D4AF37' }] : []),
   ];
 
@@ -312,7 +224,12 @@ export default function TelaMapaAstralResultado() {
           {/* Roda zodiacal */}
           <Animated.View style={[estilos.rodaContainer, { opacity: fadeAnim }]}>
             <View style={estilos.rodaWrapper}>
-              <RodaZodiacal solIdx={solIdx} marcadores={marcadores} />
+              <RodaZodiacal
+                solIdx={solIdx}
+                marcadores={marcadores}
+                ascendente={mapa.angulos?.ascendente ?? null}
+                cuspides={temMapaCompleto ? mapa.casas?.cuspides ?? null : null}
+              />
             </View>
             <View style={estilos.rodaLegenda}>
               {[
@@ -328,6 +245,14 @@ export default function TelaMapaAstralResultado() {
                 </View>
               ))}
             </View>
+            <Text style={estilos.rodaNota}>
+              {mapa.angulos
+                ? 'O ascendente fica na esquerda e as casas correm daí no sentido anti-horário, como astrólogo desenha mapa.'
+                : 'Sem a hora de nascimento a roda não pode girar para o seu ascendente, então começa em Áries, na esquerda.'}
+              {temMapaCompleto && mapa.casas
+                ? ' Os traços grossos são os quatro eixos: ascendente, fundo do céu, descendente e meio do céu.'
+                : ''}
+            </Text>
           </Animated.View>
 
           <View style={estilos.acoesLinha}>
@@ -932,6 +857,15 @@ const estilos = StyleSheet.create({
     marginBottom: Espacamento.md,
   },
   rodaWrapper: { marginBottom: Espacamento.md },
+  rodaNota: {
+    fontFamily: Fontes.corpo,
+    fontSize: 11,
+    lineHeight: 16,
+    color: Cores.textoSecundario,
+    textAlign: 'center',
+    paddingHorizontal: Espacamento.md,
+    marginTop: Espacamento.xs,
+  },
   rodaLegenda: {
     flexDirection: 'row',
     gap: Espacamento.md,
