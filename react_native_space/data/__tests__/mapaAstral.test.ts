@@ -1,3 +1,4 @@
+import { cidadePorId } from '../cidades';
 import {
   CORPOS_NO_GRATUITO,
   escreverGrau,
@@ -6,8 +7,14 @@ import {
   visivelNoGratuito,
 } from '../mapaAstral';
 
+// A cidade chega resolvida, como vem do banco desde 28/09. Antes o motor
+// recebia só o identificador e procurava na lista local — o que quebrava para
+// qualquer cidade fora das 53 embutidas no app.
+const saoPaulo = cidadePorId('sao-paulo-sp')!;
+const manaus = cidadePorId('manaus-am')!;
+
 const emSaoPaulo = {
-  ano: 1985, mes: 7, dia: 13, hora: 18, minuto: 30, cidadeId: 'sao-paulo-sp',
+  ano: 1985, mes: 7, dia: 13, hora: 18, minuto: 30, cidade: saoPaulo,
 };
 
 describe('montarMapaAstral', () => {
@@ -38,8 +45,8 @@ describe('montarMapaAstral', () => {
 
   it('a mesma hora em duas cidades dá ascendentes diferentes', () => {
     const sp = montarMapaAstral(emSaoPaulo);
-    const manaus = montarMapaAstral({ ...emSaoPaulo, cidadeId: 'manaus-am' });
-    expect(sp.angulos?.ascendente).not.toBeCloseTo(manaus.angulos?.ascendente as number, 1);
+    const noNorte = montarMapaAstral({ ...emSaoPaulo, cidade: manaus });
+    expect(sp.angulos?.ascendente).not.toBeCloseTo(noNorte.angulos?.ascendente as number, 1);
   });
 
   it('sem hora, não inventa ascendente', () => {
@@ -75,9 +82,11 @@ describe('montarMapaAstral', () => {
     }
   });
 
-  it('cidade que não existe é erro, não mapa silencioso', () => {
-    expect(() => montarMapaAstral({ ...emSaoPaulo, cidadeId: 'atlantida' }))
-      .toThrow('Cidade de nascimento não encontrada.');
+  it('cidade sem coordenada é erro, não mapa silencioso', () => {
+    expect(() => montarMapaAstral({
+      ...emSaoPaulo,
+      cidade: { ...saoPaulo, fuso: '' },
+    })).toThrow('Cidade de nascimento não encontrada.');
   });
 });
 
