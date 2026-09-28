@@ -15,6 +15,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GradientBackground } from '../../components/GradientBackground';
+import { BotaoOuvir } from '../../components/BotaoOuvir';
 import { Button } from '../../components/Button';
 import { EstadoTela } from '../../components/EstadoTela';
 import { CaixaDePergunta } from '../../components/CaixaDePergunta';
@@ -34,7 +35,7 @@ import { NotaReflexiva } from '../../components/NotaReflexiva';
 
 const FORMATOS = [
   { id: 'texto', icone: 'document-text-outline', titulo: 'Texto', disponivel: true },
-  { id: 'audio', icone: 'headset-outline', titulo: 'Áudio', disponivel: false },
+  { id: 'audio', icone: 'headset-outline', titulo: 'Áudio', disponivel: true },
   { id: 'video', icone: 'videocam-outline', titulo: 'Vídeo', disponivel: false },
   { id: 'pdf', icone: 'download-outline', titulo: 'PDF', disponivel: false },
 ];
@@ -202,6 +203,17 @@ export default function TelaBuziosResultado() {
                   <Text style={estilos.statLabel}>Elemento</Text>
                 </View>
               </View>
+
+              <BotaoOuvir
+                partes={[
+                  { texto: `${odu.nome}. ${numAbertos} búzios abertos e ${numFechados} fechados.` },
+                  ...(regentes.length
+                    ? [{ texto: `Quem responde neste odu: ${regentes.join(' e ')}.` }]
+                    : []),
+                  { rotulo: 'Significado', texto: odu.significado },
+                  { rotulo: 'Conselho', texto: odu.conselho },
+                ]}
+              />
 
               {/* Quem responde. Aqui o orixá vem do odu, não da posição da
                   concha na mesa — é a pergunta que o Márcio fez em 24/09, e

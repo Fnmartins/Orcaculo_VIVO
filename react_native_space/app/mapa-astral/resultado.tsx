@@ -16,6 +16,7 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Path, G, Text as SvgText, Defs, RadialGradient as SvgRadial, Stop, Line } from 'react-native-svg';
 import { GradientBackground } from '../../components/GradientBackground';
+import { BotaoOuvir } from '../../components/BotaoOuvir';
 import { EstadoTela } from '../../components/EstadoTela';
 import { NotaReflexiva } from '../../components/NotaReflexiva';
 import { Cores } from '../../constants/colors';
@@ -299,6 +300,28 @@ export default function TelaMapaAstralResultado() {
               ))}
             </View>
           </Animated.View>
+
+          <BotaoOuvir
+            partes={[
+              { texto: `Sol em ${signo.nome}, ${escreverGrau(sol.longitude)}.` },
+              { texto: `Lua em ${lua.signo.nome}, ${escreverGrau(lua.longitude)}.` },
+              ...(mapa.signoAscendente && mapa.angulos
+                ? [{ texto: `Ascendente em ${mapa.signoAscendente.nome}, ${escreverGrau(mapa.angulos.ascendente)}.` }]
+                : [{ texto: 'Sem a hora de nascimento, este mapa não tem ascendente.' }]),
+              {
+                rotulo: 'Equilíbrio',
+                texto: `Predomina ${mapa.sintese.elementoDominante}, na modalidade ${mapa.sintese.qualidadeDominante}.`,
+              },
+              ...(interpretacao
+                ? [
+                  { rotulo: interpretacao.titulo, texto: interpretacao.narrativa },
+                  { texto: interpretacao.forca },
+                  { texto: interpretacao.tensao },
+                  { rotulo: 'Uma prática', texto: interpretacao.conselho },
+                ]
+                : []),
+            ]}
+          />
 
           {/* O que o mapa é, antes de qualquer interpretação */}
           <Animated.View style={[estilos.secao, { opacity: fadeAnim }]}>

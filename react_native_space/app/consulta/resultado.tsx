@@ -15,6 +15,7 @@ import { voltarOuIr } from '../../utils/navegacao';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GradientBackground } from '../../components/GradientBackground';
+import { BotaoOuvir } from '../../components/BotaoOuvir';
 import { Button } from '../../components/Button';
 import { EstadoTela } from '../../components/EstadoTela';
 import { Cores } from '../../constants/colors';
@@ -35,7 +36,7 @@ const POSICOES = ['Passado', 'Presente', 'Futuro'];
 
 const FORMATOS_ENTREGA = [
   { id: 'texto', icone: 'document-text-outline', titulo: 'Texto', disponivel: true },
-  { id: 'audio', icone: 'headset-outline', titulo: 'Áudio', disponivel: false },
+  { id: 'audio', icone: 'headset-outline', titulo: 'Áudio', disponivel: true },
   { id: 'video', icone: 'videocam-outline', titulo: 'Vídeo', disponivel: false },
   { id: 'pdf', icone: 'download-outline', titulo: 'PDF', disponivel: false },
 ];
@@ -309,6 +310,13 @@ export default function TelaResultado() {
             textoDaLeitura={cartas
               .map((c, i) => `${POSICOES[i] ?? ''}: ${c.nomeCompleto} — ${c.significado}`)
               .join('\n')}
+          />
+
+          <BotaoOuvir
+            partes={cartas.map((c, i) => ({
+              rotulo: POSICOES[i] ?? `Carta ${i + 1}`,
+              texto: `${c.nomeCompleto}. ${c.significado}`,
+            }))}
           />
 
           <NotaReflexiva />
