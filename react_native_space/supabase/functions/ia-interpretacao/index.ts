@@ -61,8 +61,16 @@ Mais regras, para esta leitura:
 - A tensão é para ser dita com franqueza e sem susto: é onde a pessoa puxa para dois lados, não é defeito nem destino.
 - Nada de idade, ano, doença, dinheiro, processo, gravidez ou morte.
 
+Depois da leitura geral, escreva quatro areas da vida. Cada uma sai do mapa, nao de generalidade:
+- **amor**: como esta pessoa se vincula — o que procura, o que oferece, onde costuma travar.
+- **trabalho**: como ela funciona trabalhando — ambiente, ritmo, relacao com reconhecimento e com autoridade.
+- **dinheiro**: a RELACAO dela com recursos — seguranca, valor proprio, atitude diante de ter e de gastar. Nunca indique aplicacao, nunca diga se compra ou vende, nunca fale de valor futuro.
+- **caminho**: a direcao que este mapa aponta — o tema que se repete, o que esta em desenvolvimento. NAO e previsao: nao diga quando, nao diga que vai acontecer, nao prometa desfecho. E tendencia simbolica, e a frase precisa deixar isso claro por si.
+
+Se os dados nao trouxerem o suficiente para uma area, escreva o que der com o que ha e diga numa frase que essa parte fica mais firme com a hora de nascimento. Nunca preencha com invencao.
+
 Responda SOMENTE com um objeto JSON, sem cercas de código e sem texto antes ou depois:
-{"titulo": "3 a 5 palavras", "narrativa": "5 a 7 frases ligando Sol, Lua e Ascendente nesta pessoa", "forca": "2 a 3 frases sobre o que essa combinação faz bem", "tensao": "2 a 3 frases sobre onde ela puxa para dois lados", "conselho": "2 frases, uma prática concreta"}`;
+{"titulo": "3 a 5 palavras", "narrativa": "5 a 7 frases ligando Sol, Lua e Ascendente nesta pessoa", "forca": "2 a 3 frases sobre o que essa combinação faz bem", "tensao": "2 a 3 frases sobre onde ela puxa para dois lados", "conselho": "2 frases, uma prática concreta", "amor": "3 a 4 frases", "trabalho": "3 a 4 frases", "dinheiro": "3 a 4 frases", "caminho": "3 a 4 frases"}`;
 
 const INSTRUCOES_POR_ORACULO: Record<Oraculo, string> = {
   tarot: INSTRUCOES_TAROT,
@@ -73,7 +81,7 @@ const INSTRUCOES_POR_ORACULO: Record<Oraculo, string> = {
 const CAMPOS: Record<Oraculo, string[]> = {
   tarot: ['titulo', 'narrativa', 'passado', 'presente', 'futuro', 'conselho'],
   buzios: ['titulo', 'narrativa', 'mensagem', 'conselho', 'afirmacao'],
-  mapa: ['titulo', 'narrativa', 'forca', 'tensao', 'conselho'],
+  mapa: ['titulo', 'narrativa', 'forca', 'tensao', 'conselho', 'amor', 'trabalho', 'dinheiro', 'caminho'],
 };
 
 function dadosDoTarot(body: Record<string, unknown>): string {

@@ -25,8 +25,18 @@ export interface LeituraFalada {
   cortado: boolean;
 }
 
-export async function gerarLeituraFalada(texto: string): Promise<LeituraFalada> {
-  const { data, error } = await supabase.functions.invoke(FUNCAO, { body: { texto } });
+/**
+ * `paraCompartilhar` pede um link de validade longa. O de tocar dura uma hora,
+ * o que basta para ouvir e não serve para mandar a alguém — quem recebe abre
+ * depois e encontra link morto.
+ */
+export async function gerarLeituraFalada(
+  texto: string,
+  opcoes: { paraCompartilhar?: boolean } = {},
+): Promise<LeituraFalada> {
+  const { data, error } = await supabase.functions.invoke(FUNCAO, {
+    body: { texto, compartilhar: opcoes.paraCompartilhar === true },
+  });
   if (error) throw await erroDaFuncao(error);
 
   const corpo = data as Partial<LeituraFalada> | null;

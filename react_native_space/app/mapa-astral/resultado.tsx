@@ -578,12 +578,26 @@ export default function TelaMapaAstralResultado() {
                   { rotulo: 'O que essa combinação faz bem', texto: interpretacao.forca },
                   { rotulo: 'Onde ela puxa para dois lados', texto: interpretacao.tensao },
                   { rotulo: 'Uma prática', texto: interpretacao.conselho },
+                  // As quatro áreas da vida. Entram na mesma resposta da IA, e
+                  // não numa chamada nova: mesma leitura, mais recortes. Leitura
+                  // guardada de antes não tem estes campos, e o filtro abaixo
+                  // faz ela continuar abrindo sem eles.
+                  { rotulo: 'Amor', texto: interpretacao.amor },
+                  { rotulo: 'Trabalho', texto: interpretacao.trabalho },
+                  { rotulo: 'Dinheiro', texto: interpretacao.dinheiro },
+                  { rotulo: 'Caminho', texto: interpretacao.caminho },
                 ].filter((b) => b.texto).map((bloco) => (
                   <View key={bloco.rotulo}>
                     <Text style={estilos.iaRotulo}>{bloco.rotulo}</Text>
                     <Text style={estilos.equilibrioTexto}>{bloco.texto}</Text>
                   </View>
                 ))}
+                {interpretacao.caminho ? (
+                  <Text style={estilos.notaRodape}>
+                    Caminho é a direção que o seu mapa aponta, não uma previsão:
+                    o mapa natal não diz quando nem garante desfecho.
+                  </Text>
+                ) : null}
               </View>
             ) : (
               <>

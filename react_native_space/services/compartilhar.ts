@@ -90,6 +90,10 @@ export async function compartilharMapaAstral(params: {
     forca?: string;
     tensao?: string;
     conselho?: string;
+    amor?: string;
+    trabalho?: string;
+    dinheiro?: string;
+    caminho?: string;
   };
 }): Promise<void> {
   const partes: string[] = [...params.posicoes];
@@ -100,6 +104,16 @@ export async function compartilharMapaAstral(params: {
     partes.push('', `— ${params.leitura.titulo} —`, params.leitura.narrativa);
     if (params.leitura.forca) partes.push('', params.leitura.forca);
     if (params.leitura.tensao) partes.push('', params.leitura.tensao);
+    // As quatro areas vao junto: o que se le na tela e o que se manda tem de
+    // ser a mesma leitura. Mandar so metade foi defeito uma vez ja.
+    for (const [rotulo, texto] of [
+      ['Amor', params.leitura.amor],
+      ['Trabalho', params.leitura.trabalho],
+      ['Dinheiro', params.leitura.dinheiro],
+      ['Caminho', params.leitura.caminho],
+    ] as const) {
+      if (texto) partes.push('', `${rotulo}: ${texto}`);
+    }
   }
 
   await compartilharResultado({
