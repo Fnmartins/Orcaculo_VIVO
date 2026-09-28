@@ -1,9 +1,12 @@
 {
   "ignoreCommand": "git diff --quiet HEAD^ HEAD -- . ':(exclude)docs'",
   "installCommand": "corepack enable && yarn install --immutable",
-  "buildCommand": "npx expo export -p web",
+  "buildCommand": "npx expo export -p web && node scripts/head-web.js",
   "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/(.*)", "destination": "/" }
+    {
+      "source": "/(.*)",
+      "destination": "/"
+    }
   ]
 }

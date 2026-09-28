@@ -11,7 +11,8 @@
     "test": "jest --runInBand",
     "test:e2e": "playwright test",
     "test:e2e:report": "playwright show-report",
-    "eas-build-pre-install": "corepack enable && yarn install --immutable"
+    "eas-build-pre-install": "corepack enable && yarn install --immutable",
+    "build:web": "expo export -p web && node scripts/head-web.js"
   },
   "jest": {
     "preset": "jest-expo",
