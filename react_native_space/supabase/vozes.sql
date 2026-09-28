@@ -63,6 +63,18 @@ create table if not exists public.voz_votos (
 -- abertura. Sao poucas linhas hoje, mas o indice custa nada.
 create index if not exists idx_voz_votos_voz on public.voz_votos (voz);
 
+-- O nome de quem votou, gravado junto com o voto.
+--
+-- Mesmo padrao de `decisao_manifestacoes.autor_nome`, e pelo mesmo motivo: o
+-- registro nao muda se a pessoa trocar o nome depois. Acrescentado em 28/09,
+-- depois de a tela mostrar so o numero da nota do outro, sem dizer de quem era
+-- — o que fazia "nao gostou" (nota 1) parecer igual a "nem ouviu" (em branco).
+--
+-- Anulavel de proposito: os votos que ja existiam nao tem como saber o nome, e
+-- a tela chama essa pessoa de "o outro" ate ela votar de novo. Inventar um nome
+-- seria pior que nao ter.
+alter table public.voz_votos add column if not exists autor_nome text;
+
 alter table public.voz_votos enable row level security;
 
 -- O Supabase da todos os privilegios (inclusive TRUNCATE, que ignora a RLS) a
