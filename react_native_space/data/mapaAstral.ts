@@ -1,3 +1,4 @@
+import { casaDoGrau, casasPlacidus, type Casas } from './casas';
 import { type Cidade } from './cidades';
 import {
   angulos as calcularAngulos,
@@ -69,6 +70,17 @@ export interface MapaAstral {
   angulos: Angulos | null;
   signoAscendente: Signo | null;
   grauAscendente: number | null;
+  /**
+   * As doze cúspides, por Placidus.
+   *
+   * Nulo em dois casos, por motivos diferentes: sem hora de nascimento não há
+   * horizonte, então não há casa; e acima do círculo polar o próprio sistema se
+   * desfaz (`data/casas.ts`). A tela precisa distinguir os dois na hora de
+   * explicar a ausência.
+   */
+  casas: Casas | null;
+  /** Em que casa cai cada corpo, de 1 a 12. Nulo quando não há casas. */
+  casaDoCorpo: Record<Corpo, number> | null;
   sintese: Sintese;
 }
 
@@ -153,6 +165,13 @@ export function montarMapaAstral(dados: DadosNascimento): MapaAstral {
   const angulos = semHora ? null : calcularAngulos(momento, cidade.lat, cidade.lon);
   const signoAscendente = angulos ? signoDoGrau(angulos.ascendente) : null;
 
+  const casas = semHora ? null : casasPlacidus(momento, cidade.lat, cidade.lon);
+  const casaDoCorpo = casas
+    ? (Object.fromEntries(
+        posicoes.map((p) => [p.corpo, casaDoGrau(p.longitude, casas)]),
+      ) as Record<Corpo, number>)
+    : null;
+
   return {
     cidade,
     momentoUTC: momento,
@@ -164,6 +183,8 @@ export function montarMapaAstral(dados: DadosNascimento): MapaAstral {
     angulos,
     signoAscendente,
     grauAscendente: angulos ? grauNoSigno(angulos.ascendente) : null,
+    casas,
+    casaDoCorpo,
     sintese: montarSintese(posicoes, signoAscendente),
   };
 }
