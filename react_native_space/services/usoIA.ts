@@ -9,7 +9,7 @@ import { supabase } from './supabase';
  * gastar, em vez de ela descobrir no erro.
  */
 
-export type TipoUso = 'imagem' | 'interpretacao' | 'pergunta';
+export type TipoUso = 'imagem' | 'interpretacao' | 'pergunta' | 'voz';
 
 export interface UsoDoDia {
   /** O recurso está ligado para este plano. */
@@ -21,7 +21,7 @@ export interface UsoDoDia {
 
 // Colunas literais, numa linha: o supabase-js analisa esta string em tempo de
 // compilação para tipar o retorno, e montá-la com template derruba o tsc.
-const COLUNAS = 'imagem_ligada, interpretacao_ligada, pergunta_ligada, limite_dia';
+const COLUNAS = 'imagem_ligada, interpretacao_ligada, pergunta_ligada, voz_ligada, limite_dia';
 
 /**
  * O dia em UTC, 'YYYY-MM-DD' — a mesma régua que `_shared/uso.ts` usa para
@@ -56,7 +56,8 @@ export async function lerUsoDoDia(
 
   const ligado = tipo === 'imagem' ? config.imagem_ligada === true
     : tipo === 'interpretacao' ? config.interpretacao_ligada === true
-      : config.pergunta_ligada === true;
+      : tipo === 'voz' ? config.voz_ligada === true
+        : config.pergunta_ligada === true;
   const limite = typeof config.limite_dia === 'number' ? config.limite_dia : 0;
 
   const { data: uso } = await supabase

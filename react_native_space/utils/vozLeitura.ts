@@ -1,39 +1,21 @@
-import { Platform } from 'react-native';
-
 /**
- * Ouvir a leitura, com a voz do próprio aparelho.
+ * O texto que vai ser falado.
  *
- * O Arcanus roda na web, e todo navegador moderno — inclusive o Safari do
- * iPhone — já traz síntese de voz em português. Isso faz a etiqueta "Áudio"
- * das telas de resultado deixar de ser promessa, sem custo por leitura e sem
- * servidor no meio.
+ * Este arquivo já foi o motor de voz inteiro, com a síntese do próprio
+ * navegador. Em 28/09 a voz passou a vir do servidor (`services/voz.ts` →
+ * function `ia-voz`, Google Chirp 3 HD), e o que sobrou aqui é a parte que
+ * continua valendo: preparar o texto.
  *
- * Não é a voz encantada de um app de oráculo: é a voz do sistema. A voz
- * natural, comprada de um serviço de síntese, continua fazendo sentido como
- * benefício de plano — e este arquivo não atrapalha isso, porque quem chama
- * pede "fale este texto" e não sabe de onde a voz vem.
+ * Preparar não é detalhe. Ler "21° 24′" em voz alta como "vinte e um grau
+ * vinte e quatro linha" seria pior que não ler — e agora que cada leitura
+ * custa por caractere, mandar emoji para o sintetizador seria pagar por
+ * silêncio.
  *
- * O texto falado é montado por `montarRoteiro`, que é função pura e testada:
- * ler "21° 24′" em voz alta como "vinte e um grau vinte e quatro linha" seria
- * pior que não ler.
+ * O que saiu junto com o motor antigo: `falar`, `pararDeFalar`,
+ * `vozDisponivel` e `dividirEmPartes`. Esta última picava o roteiro em pedaços
+ * curtos porque o Safari do iPhone interrompe fala contínua depois de alguns
+ * segundos; com um arquivo de áudio tocando, o problema deixou de existir.
  */
-
-interface SinteseDeVoz {
-  speaking: boolean;
-  speak: (fala: unknown) => void;
-  cancel: () => void;
-  getVoices: () => { lang: string; name: string }[];
-}
-
-function sintese(): SinteseDeVoz | null {
-  if (Platform.OS !== 'web') return null;
-  const g = globalThis as unknown as { speechSynthesis?: SinteseDeVoz };
-  return g.speechSynthesis ?? null;
-}
-
-export function vozDisponivel(): boolean {
-  return sintese() !== null;
-}
 
 export interface ParteDaLeitura {
   /** Título da seção, falado antes do texto. Opcional. */
@@ -75,98 +57,4 @@ export function montarRoteiro(partes: ParteDaLeitura[]): string {
     .replace(/ ?\n ?/g, '\n')
     .replace(/\.\s*\./g, '.')
     .trim();
-}
-
-/** A voz em português, se o aparelho tiver uma. Senão, a que o sistema escolher. */
-function vozEmPortugues(motor: SinteseDeVoz): { lang: string; name: string } | null {
-  try {
-    const vozes = motor.getVoices() ?? [];
-    return vozes.find((v) => /^pt[-_]BR/i.test(v.lang))
-      ?? vozes.find((v) => /^pt/i.test(v.lang))
-      ?? null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * O Safari do iPhone para de falar sozinho depois de alguns segundos de fala
- * contínua — é limitação conhecida dele, não do texto. A volta é picar o
- * roteiro em pedaços curtos e enfileirar: cada pedaço é uma fala nova, e o
- * relógio interno reinicia.
- *
- * Corta em fim de frase; se a frase for longa demais, corta no último espaço
- * antes do limite, nunca no meio de uma palavra.
- */
-export function dividirEmPartes(texto: string, limite = 180): string[] {
-  const partes: string[] = [];
-  let resto = texto.trim();
-
-  while (resto.length > limite) {
-    const janela = resto.slice(0, limite);
-    let corte = Math.max(
-      janela.lastIndexOf('. '), janela.lastIndexOf('! '),
-      janela.lastIndexOf('? '), janela.lastIndexOf('\n'),
-    );
-    if (corte > limite * 0.4) corte += 1;
-    else {
-      corte = janela.lastIndexOf(' ');
-      if (corte <= 0) corte = limite;
-    }
-    partes.push(resto.slice(0, corte).trim());
-    resto = resto.slice(corte).trim();
-  }
-
-  if (resto) partes.push(resto);
-  return partes.filter(Boolean);
-}
-
-export interface OpcoesDeFala {
-  aoTerminar?: () => void;
-  aoFalhar?: () => void;
-}
-
-/**
- * Fala o texto. Precisa ser chamada **dentro** do toque do usuário: o Safari
- * do iPhone recusa fala que não venha de um gesto.
- */
-export function falar(texto: string, opcoes: OpcoesDeFala = {}): boolean {
-  const motor = sintese();
-  const g = globalThis as unknown as {
-    SpeechSynthesisUtterance?: new (t: string) => Record<string, unknown>;
-  };
-  if (!motor || !g.SpeechSynthesisUtterance || !texto.trim()) {
-    opcoes.aoFalhar?.();
-    return false;
-  }
-
-  // Cancelar antes de falar: sem isto, tocar duas vezes enfileira duas leituras.
-  motor.cancel();
-
-  const voz = vozEmPortugues(motor);
-  const pedacos = dividirEmPartes(texto);
-  const Fala = g.SpeechSynthesisUtterance;
-
-  pedacos.forEach((pedaco, i) => {
-    const fala = new Fala(pedaco);
-    if (voz) fala.voice = voz;
-    fala.lang = voz?.lang ?? 'pt-BR';
-    // Um pouco abaixo do normal: leitura de oráculo lida depressa vira locução.
-    fala.rate = 0.95;
-    fala.pitch = 1;
-    // Só o último pedaço avisa que terminou; os do meio são passagem.
-    if (i === pedacos.length - 1) fala.onend = () => opcoes.aoTerminar?.();
-    fala.onerror = () => opcoes.aoFalhar?.();
-    motor.speak(fala);
-  });
-
-  return pedacos.length > 0;
-}
-
-export function pararDeFalar(): void {
-  sintese()?.cancel();
-}
-
-export function estaFalando(): boolean {
-  return sintese()?.speaking === true;
 }

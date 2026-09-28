@@ -19,7 +19,7 @@ export function hojeISO(hoje: Date = new Date()): string {
   return hoje.toISOString().slice(0, 10);
 }
 
-const COLUNAS_CONFIG = 'imagem_ligada, interpretacao_ligada, pergunta_ligada, limite_dia';
+const COLUNAS_CONFIG = 'imagem_ligada, interpretacao_ligada, pergunta_ligada, voz_ligada, limite_dia';
 
 /**
  * Erro de leitura não barra ninguém: `decidirUso` com configuração nula deixa
@@ -65,6 +65,7 @@ const NOME: Record<TipoUso, string> = {
   imagem: 'A leitura por imagem',
   interpretacao: 'O aprofundamento com IA',
   pergunta: 'As perguntas',
+  voz: 'A leitura falada',
 };
 
 export function mensagemDoLimite(veredito: Veredito, tipo: TipoUso): string {

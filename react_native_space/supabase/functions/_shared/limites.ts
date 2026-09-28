@@ -6,13 +6,14 @@
 // motivos: o Jest do app testa (services/__tests__/limites.test.ts) e o tsc
 // não engasga com import de Deno. A leitura das tabelas fica em quem chama.
 
-export type TipoUso = 'imagem' | 'interpretacao' | 'pergunta';
+export type TipoUso = 'imagem' | 'interpretacao' | 'pergunta' | 'voz';
 
 /** Uma linha de public.configuracao_ia. */
 export interface ConfiguracaoIA {
   imagem_ligada: boolean;
   interpretacao_ligada: boolean;
   pergunta_ligada: boolean;
+  voz_ligada: boolean;
   /** Zero quer dizer sem limite diário. */
   limite_dia: number;
 }
@@ -30,6 +31,7 @@ const CAMPO: Record<TipoUso, keyof ConfiguracaoIA> = {
   imagem: 'imagem_ligada',
   interpretacao: 'interpretacao_ligada',
   pergunta: 'pergunta_ligada',
+  voz: 'voz_ligada',
 };
 
 export function ligado(tipo: TipoUso, config: ConfiguracaoIA): boolean {
