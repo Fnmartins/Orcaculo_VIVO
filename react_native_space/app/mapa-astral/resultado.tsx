@@ -24,6 +24,8 @@ import { Espacamento, RaioBorda } from '../../constants/spacing';
 import { dataConsultaValida, horarioConsultaValido, textoConsultaValido } from '../../utils/validacaoConsulta';
 import { Hapticos } from '../../utils/haptics';
 import { CASAS, PLANETAS, lerSigno, corElemento, type LeituraSignoSolar } from '../../data/astrologia';
+import { ROTULO_ASPECTO } from '../../data/aspectos';
+import { signoDoGrau } from '../../data/efemerides';
 import {
   escreverGrau, montarMapaAstral, ordemDeLeitura, visivelNoGratuito, type MapaAstral,
 } from '../../data/mapaAstral';
@@ -41,6 +43,19 @@ import { gerarInterpretacaoMapa, type InterpretacaoMapa } from '../../services/i
 import { SemaforoUso } from '../../components/SemaforoUso';
 
 const { width: W } = Dimensions.get('window');
+
+/**
+ * O nome de um ponto do mapa, corpo ou ângulo.
+ *
+ * Aspecto liga os dez corpos e também o ascendente e o meio do céu, e esses
+ * dois não estão no dicionário de corpos — sem este desvio sairia "ascendente
+ * em quadratura com saturno", em minúscula e fora do padrão do resto da tela.
+ */
+function nomeDoPonto(ponto: string): string {
+  if (ponto === 'ascendente') return 'Ascendente';
+  if (ponto === 'meioCeu') return 'Meio do Céu';
+  return TEXTO_CORPO[ponto as keyof typeof TEXTO_CORPO]?.titulo ?? ponto;
+}
 
 // O campo de estrelas piscando saiu junto com o fundo escuro: era branco sobre
 // preto, e esta era a única tela do app em tema inverso. O conselho de 21/09
@@ -165,6 +180,27 @@ export default function TelaMapaAstralResultado() {
           nome: TEXTO_CORPO[p.corpo].titulo,
           signo: p.signo.nome,
           retrogrado: p.retrogrado,
+          // Grau e casa vão junto desde 28/09. Sem eles a IA escrevia o que
+          // dava para escrever com signo apenas — e isso serve para qualquer
+          // pessoa com o mesmo signo.
+          grau: Math.floor(p.grau),
+          casa: mapa.casaDoCorpo?.[p.corpo],
+        })),
+        casas: mapa.casas
+          ? CASAS.map((casa) => ({
+            numero: casa.numero,
+            signo: signoDoGrau(mapa.casas!.cuspides[casa.numero - 1]).nome,
+            area: casa.descricao,
+            corpos: posicoes
+              .filter((p) => mapa.casaDoCorpo?.[p.corpo] === casa.numero)
+              .map((p) => TEXTO_CORPO[p.corpo].titulo),
+          }))
+          : undefined,
+        // Só os mais exatos: um mapa produz dezenas de aspectos, e mandar todos
+        // afoga o que importa no meio do que mal encosta.
+        aspectos: mapa.aspectos.slice(0, 8).map((a) => ({
+          texto: `${nomeDoPonto(a.a)} em ${ROTULO_ASPECTO[a.tipo]} com ${nomeDoPonto(a.b)}`,
+          natureza: a.natureza,
         })),
         elementoDominante: mapa.sintese.elementoDominante,
         qualidadeDominante: mapa.sintese.qualidadeDominante,
