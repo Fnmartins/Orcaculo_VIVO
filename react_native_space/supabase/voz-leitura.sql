@@ -70,6 +70,25 @@ create table if not exists public.voz_cache (
 create index if not exists idx_voz_cache_ultimo_uso
   on public.voz_cache (ultimo_uso desc);
 
+-- ------------------------------------------------------------
+-- 3.1 O link curto
+-- ------------------------------------------------------------
+-- A URL assinada do Supabase passa de 700 caracteres, porque carrega o token
+-- inteiro. No WhatsApp aquilo vira uma parede. Relatado no teste de 28/09:
+-- "ele vem num link muito, muito comprido".
+--
+-- O codigo e curto e aleatorio, nao derivado do hash nem do usuario: quem
+-- recebe o link nao consegue deduzir outro, nem descobrir de quem e.
+alter table public.voz_cache add column if not exists codigo text;
+
+-- `compartilhado_em` e o relogio da expiracao. Sem ele, um codigo valeria para
+-- sempre — e o audio de uma leitura pessoal nao pode ter endereco eterno so
+-- porque alguem compartilhou uma vez.
+alter table public.voz_cache add column if not exists compartilhado_em timestamptz;
+
+create unique index if not exists idx_voz_cache_codigo
+  on public.voz_cache (codigo) where codigo is not null;
+
 alter table public.voz_cache enable row level security;
 
 -- O Supabase da todos os privilegios (inclusive TRUNCATE, que ignora RLS) a
