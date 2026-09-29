@@ -18,10 +18,27 @@ const marcio = {
 beforeEach(() => mockInvoke.mockReset());
 
 describe('services/acessos', () => {
-  it('listarUsuarios chama a função com acao=listar e devolve a lista', async () => {
+  it('listarUsuarios pede a primeira página e devolve a lista com o total', async () => {
+    mockInvoke.mockResolvedValue({ data: { usuarios: [marcio], total: 137 }, error: null });
+    await expect(listarUsuarios()).resolves.toEqual({ usuarios: [marcio], total: 137 });
+    expect(mockInvoke).toHaveBeenCalledWith('admin-acessos', {
+      body: { acao: 'listar', pagina: 0 },
+    });
+  });
+
+  it('pede a página que foi pedida', async () => {
+    mockInvoke.mockResolvedValue({ data: { usuarios: [], total: 137 }, error: null });
+    await listarUsuarios(3);
+    expect(mockInvoke).toHaveBeenCalledWith('admin-acessos', {
+      body: { acao: 'listar', pagina: 3 },
+    });
+  });
+
+  it('resposta sem total não vira "0 usuários"', async () => {
+    // Function antiga ainda no ar: o que veio é o que se sabe. Um `undefined`
+    // virando zero faria o Painel dizer que não há ninguém enquanto mostra gente.
     mockInvoke.mockResolvedValue({ data: { usuarios: [marcio] }, error: null });
-    await expect(listarUsuarios()).resolves.toEqual([marcio]);
-    expect(mockInvoke).toHaveBeenCalledWith('admin-acessos', { body: { acao: 'listar' } });
+    await expect(listarUsuarios()).resolves.toEqual({ usuarios: [marcio], total: 1 });
   });
 
   it('definirAdmin envia usuarioId e admin e devolve o usuário gravado', async () => {

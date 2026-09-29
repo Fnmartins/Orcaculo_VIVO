@@ -26,22 +26,71 @@ export function AbaAcessos({ aoPerderAcesso }: PropsAbaManager) {
   const [termo, setTermo] = useState('');
   const [alterando, setAlterando] = useState<string | null>(null);
 
+  // Quantos existem no banco, contra quantos já estão na tela. A lista vinha
+  // cortada em mil linhas sem avisar; agora vem por página, e a tela diz quanto
+  // falta em vez de mentir por omissão.
+  const [total, setTotal] = useState(0);
+  const [carregandoMais, setCarregandoMais] = useState(false);
+  // Conta páginas, e não linhas divididas por um tamanho: o tamanho da página é do
+  // servidor, e repeti-lo aqui criaria duas versões do mesmo número — que um dia
+  // divergem e fazem a paginação pular gente.
+  const [proximaPagina, setProximaPagina] = useState(1);
+
+  /** Trata o erro pelo que ele significa. Devolve true quando já tratou. */
+  const tratarErro = useCallback((e: unknown): boolean => {
+    if (ehSessaoExpirada(e)) {
+      irParaLoginPorSessaoExpirada();
+      return true;
+    }
+    if (ehAcessoNegado(e)) {
+      aoPerderAcesso();
+      return true;
+    }
+    return false;
+  }, [aoPerderAcesso]);
+
   const carregar = useCallback(() => {
     setErro(null);
-    listarUsuarios()
-      .then(setUsuarios)
+    listarUsuarios(0)
+      .then((pagina) => {
+        setUsuarios(pagina.usuarios);
+        setTotal(pagina.total);
+        setProximaPagina(1);
+      })
       .catch((e) => {
-        if (ehSessaoExpirada(e)) {
-          irParaLoginPorSessaoExpirada();
-          return;
-        }
-        if (ehAcessoNegado(e)) {
-          aoPerderAcesso();
-          return;
-        }
+        if (tratarErro(e)) return;
         setErro('Não foi possível carregar os usuários.');
       });
-  }, [aoPerderAcesso]);
+  }, [tratarErro]);
+
+  /**
+   * A página seguinte, acrescentada ao que já está na tela.
+   *
+   * Acrescentar em vez de trocar de página é de propósito: a busca por nome e
+   * e-mail acontece aqui, sobre o que está carregado. Trocar de página faria a
+   * busca ver só uma fatia, e o Painel diria "ninguém encontrado" sobre alguém que
+   * existe.
+   */
+  const carregarMais = useCallback(() => {
+    setCarregandoMais(true);
+    listarUsuarios(proximaPagina)
+      .then((pagina) => {
+        setTotal(pagina.total);
+        setProximaPagina((n) => n + 1);
+        setUsuarios((atuais) => {
+          const conhecidos = new Set((atuais ?? []).map((u) => u.id));
+          // Filtra repetido: se alguém se cadastrar entre dois pedidos, a ordem por
+          // data empurra uma linha para a página seguinte e ela voltaria duplicada,
+          // com chave repetida na lista.
+          return [...(atuais ?? []), ...pagina.usuarios.filter((u) => !conhecidos.has(u.id))];
+        });
+      })
+      .catch((e) => {
+        if (tratarErro(e)) return;
+        setErro('Não foi possível carregar mais usuários.');
+      })
+      .finally(() => setCarregandoMais(false));
+  }, [proximaPagina, tratarErro]);
 
   useEffect(() => {
     carregar();
@@ -102,8 +151,18 @@ export function AbaAcessos({ aoPerderAcesso }: PropsAbaManager) {
         autoCorrect={false}
         accessibilityLabel="Buscar usuário"
       />
-      <Text style={estilosPainel.ajuda}>{`${visiveis.length} de ${usuarios.length} usuários`}</Text>
+      <Text style={estilosPainel.ajuda}>
+        {`${visiveis.length} de ${usuarios.length} carregados`}
+        {total > usuarios.length ? ` · ${total} no total` : ''}
+      </Text>
       {visiveis.length === 0 ? <Text style={estilosPainel.ajuda}>Nenhum usuário encontrado.</Text> : null}
+      {/* Dito em voz alta quando a busca não viu todo mundo. Antes a lista vinha
+          cortada em silêncio, e "nenhum usuário encontrado" podia ser mentira. */}
+      {termo && total > usuarios.length ? (
+        <Text style={estilosPainel.ajuda}>
+          {`A busca procura entre os ${usuarios.length} já carregados. Carregue mais para alcançar o resto.`}
+        </Text>
+      ) : null}
 
       {visiveis.map((u) => {
         const ehVoce = u.id === meuId;
@@ -141,6 +200,28 @@ export function AbaAcessos({ aoPerderAcesso }: PropsAbaManager) {
           </View>
         );
       })}
+      {/* O erro de carregar mais precisa aparecer AQUI: `EstadoCarregamento` só
+          existe enquanto a lista está vazia, e sem esta linha a mensagem era
+          gravada num estado que ninguém mostrava — o botão simplesmente não fazia
+          nada, sem explicação. */}
+      {erro && usuarios.length > 0 ? <Text style={estilosPainel.ajuda}>{erro}</Text> : null}
+
+      {total > usuarios.length ? (
+        <Pressable
+          onPress={carregarMais}
+          disabled={carregandoMais}
+          accessibilityRole="button"
+          accessibilityLabel={`Carregar mais usuários, ${total - usuarios.length} restantes`}
+          accessibilityState={{ disabled: carregandoMais }}
+          style={[estilosPainel.botaoSecundario, carregandoMais && estilosPainel.botaoDesabilitado]}
+        >
+          <Text style={estilosPainel.botaoSecundarioTexto}>
+            {carregandoMais
+              ? 'Carregando…'
+              : `Carregar mais (${total - usuarios.length} restantes)`}
+          </Text>
+        </Pressable>
+      ) : null}
       <View style={estilos.rodape} />
     </ScrollView>
   );
