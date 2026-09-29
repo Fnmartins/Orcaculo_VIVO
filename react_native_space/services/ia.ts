@@ -202,6 +202,17 @@ export interface PosicaoParaIA {
   nome: string;
   signo: string;
   retrogrado?: boolean;
+  /** O grau dentro do signo. Sem ele, "Mercúrio em Escorpião" perde precisão. */
+  grau?: number;
+  /** Em que casa o planeta caiu. Ausente quando não há hora de nascimento. */
+  casa?: number;
+}
+
+/** Uma conversa entre dois pontos do mapa, já resolvida em palavras. */
+export interface AspectoParaIA {
+  /** Ex.: "Sol em quadratura com Saturno". */
+  texto: string;
+  natureza: 'harmonico' | 'tenso' | 'neutro';
 }
 
 export interface MapaParaIA {
@@ -214,6 +225,18 @@ export interface MapaParaIA {
   qualidadeDominante: string;
   elementoAusente?: string;
   regente?: string;
+  /**
+   * As casas, quando existem: o que cada uma governa e o signo da cúspide.
+   *
+   * Calculávamos as doze e não contávamos nenhuma para quem escreve o texto —
+   * era por isso que a leitura saía servindo para qualquer pessoa.
+   */
+  casas?: { numero: number; signo: string; area: string; corpos: string[] }[];
+  /**
+   * Os aspectos mais fortes, já em palavras. Só os mais exatos: um mapa produz
+   * dezenas, e mandar todos afoga o que importa.
+   */
+  aspectos?: AspectoParaIA[];
 }
 
 /**

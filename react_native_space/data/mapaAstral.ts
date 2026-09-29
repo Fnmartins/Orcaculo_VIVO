@@ -1,3 +1,4 @@
+import { calcularAspectos, entradasDoMapa, type Aspecto } from './aspectos';
 import { casaDoGrau, casasPlacidus, type Casas } from './casas';
 import { type Cidade } from './cidades';
 import {
@@ -81,6 +82,15 @@ export interface MapaAstral {
   casas: Casas | null;
   /** Em que casa cai cada corpo, de 1 a 12. Nulo quando não há casas. */
   casaDoCorpo: Record<Corpo, number> | null;
+  /**
+   * As conversas entre os corpos, do aspecto mais exato para o mais frouxo.
+   *
+   * Lista vazia é resposta legítima: um mapa pode ter os planetas espalhados e
+   * nenhum par dentro do orbe. Sem hora de nascimento a lista existe do mesmo
+   * jeito, só não inclui ascendente nem meio do céu — aspecto a ângulo que não
+   * existe seria invenção.
+   */
+  aspectos: Aspecto[];
   sintese: Sintese;
 }
 
@@ -172,6 +182,8 @@ export function montarMapaAstral(dados: DadosNascimento): MapaAstral {
       ) as Record<Corpo, number>)
     : null;
 
+  const aspectos = calcularAspectos(entradasDoMapa(posicoes, angulos));
+
   return {
     cidade,
     momentoUTC: momento,
@@ -185,6 +197,7 @@ export function montarMapaAstral(dados: DadosNascimento): MapaAstral {
     grauAscendente: angulos ? grauNoSigno(angulos.ascendente) : null,
     casas,
     casaDoCorpo,
+    aspectos,
     sintese: montarSintese(posicoes, signoAscendente),
   };
 }

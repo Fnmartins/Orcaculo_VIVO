@@ -58,6 +58,8 @@ Você lê um mapa natal já calculado — as posições vêm de efemérides reai
 Mais regras, para esta leitura:
 - Não repita a definição de cada peça ("a Lua representa..."): isso já está escrito na tela, acima da sua resposta. Vá direto para a combinação desta pessoa.
 - Não invente posição, casa nem aspecto que não esteja nos dados. Se algo não veio, não existe nesta leitura.
+- **Use a casa e o aspecto, não só o signo.** "Mercúrio em Escorpião" serve para muita gente; "o seu Mercúrio em Escorpião na casa 12, em quadratura com Saturno" serve para uma. Quando os dados trouxerem casa e aspecto, eles são o que torna a leitura desta pessoa.
+- Aspecto tenso não é defeito nem castigo, e harmônico não é sorte: são jeitos diferentes de duas partes se falarem. Diga isso pelo tom, sem precisar explicar a palavra.
 - A tensão é para ser dita com franqueza e sem susto: é onde a pessoa puxa para dois lados, não é defeito nem destino.
 - Nada de idade, ano, doença, dinheiro, processo, gravidez ou morte.
 
@@ -145,7 +147,38 @@ function dadosDoMapa(body: Record<string, unknown>): string {
       const nome = texto(p.nome, 20);
       const signo = texto(p.signo, 30);
       if (!nome || !signo) return '';
-      return `${nome} em ${signo}${p.retrogrado === true ? ' (retrógrado)' : ''}`;
+      const grau = typeof p.grau === 'number' ? ` ${Math.floor(p.grau)}°` : '';
+      const casa = typeof p.casa === 'number' ? `, casa ${p.casa}` : '';
+      return `${nome} em ${signo}${grau}${casa}${p.retrogrado === true ? ' (retrógrado)' : ''}`;
+    }).filter(Boolean).join('; ')
+    : '';
+
+  // As casas: o que cada uma governa, o signo da cuspide e quem mora la.
+  // Calculavamos as doze e nao contavamos nenhuma — era por isso que a leitura
+  // saia servindo para qualquer pessoa.
+  const casas = Array.isArray(mapa.casas)
+    ? mapa.casas.slice(0, 12).map((item) => {
+      const c = item as Record<string, unknown>;
+      const numero = typeof c.numero === 'number' ? c.numero : null;
+      const signo = texto(c.signo, 30);
+      if (numero === null || !signo) return '';
+      const corpos = Array.isArray(c.corpos)
+        ? c.corpos.map((n) => texto(n, 20)).filter(Boolean).join(', ')
+        : '';
+      const area = texto(c.area, 60);
+      return `Casa ${numero} (${area}): comeca em ${signo}${corpos ? ` — ${corpos}` : ''}`;
+    }).filter(Boolean).join('
+')
+    : '';
+
+  const aspectos = Array.isArray(mapa.aspectos)
+    ? mapa.aspectos.slice(0, 8).map((item) => {
+      const a = item as Record<string, unknown>;
+      const frase = texto(a.texto, 80);
+      if (!frase) return '';
+      const natureza = a.natureza === 'tenso' ? ' (tenso)'
+        : a.natureza === 'harmonico' ? ' (harmonico)' : '';
+      return `${frase}${natureza}`;
     }).filter(Boolean).join('; ')
     : '';
 
@@ -161,6 +194,9 @@ function dadosDoMapa(body: Record<string, unknown>): string {
     `Modalidade dominante: ${texto(mapa.qualidadeDominante, 20) || 'não calculada'}`,
     texto(mapa.elementoAusente, 20) ? `Elemento sem nenhum planeta: ${texto(mapa.elementoAusente, 20)}` : '',
     texto(mapa.regente, 40) ? `Regente do mapa: ${texto(mapa.regente, 40)}` : '',
+    casas ? `As casas:
+${casas}` : '',
+    aspectos ? `Aspectos mais exatos: ${aspectos}` : '',
     '</dados>',
   ].filter(Boolean).join('\n');
 }
