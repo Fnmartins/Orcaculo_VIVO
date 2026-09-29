@@ -180,9 +180,8 @@ export interface InterpretacaoMapa {
   tensao: string;
   conselho: string;
   /**
-   * As quatro áreas da vida, na versão básica: escritas a partir de Sol, Lua e
-   * Ascendente. A versão completa, que usa as casas e os planetas de cada área,
-   * ficou no roadmap para depois.
+   * As quatro áreas da vida, escritas a partir das casas e dos planetas de cada
+   * assunto (`data/areas.ts`).
    *
    * Opcionais porque leituras geradas antes destes campos existirem não os
    * têm — e a tela precisa continuar abrindo com elas.
@@ -237,6 +236,25 @@ export interface MapaParaIA {
    * dezenas, e mandar todos afoga o que importa.
    */
   aspectos?: AspectoParaIA[];
+  /**
+   * As quatro áreas com as peças de mapa de cada uma (`data/areas.ts`).
+   *
+   * Sem isto, quem escreve recebia o mapa inteiro e quatro títulos, e o texto de
+   * amor saía do mesmo lugar que o de dinheiro. Com isto, cada área chega com a
+   * casa dela, o regente dela e os planetas dela — as mesmas peças que a tela
+   * mostra ao lado do texto, para a pessoa poder conferir de onde veio.
+   */
+  areas?: AreaParaIA[];
+}
+
+/** Uma área da vida, com as peças do mapa que respondem por ela. */
+export interface AreaParaIA {
+  id: string;
+  titulo: string;
+  /** Falso quando não há hora de nascimento: sem casas, a área é a básica. */
+  comCasas: boolean;
+  /** Cada peça em uma linha: "Casa 7 — Relacionamentos: começa em Libra…". */
+  pecas: string[];
 }
 
 /**
@@ -263,6 +281,15 @@ export async function gerarInterpretacaoMapa(mapa: MapaParaIA): Promise<Interpre
     forca: bruto.forca ?? '',
     tensao: bruto.tensao ?? '',
     conselho: bruto.conselho ?? '',
+    // As quatro áreas vinham da function, e morriam aqui: este objeto era
+    // montado campo por campo e não as copiava. A tela esconde bloco sem texto,
+    // então elas simplesmente não apareciam — sem erro, sem log, sem nada.
+    // Copiar campo por campo é o que deixou o defeito passar; é por isso que o
+    // teste em `services/__tests__/ia.test.ts` cobre cada campo declarado.
+    amor: bruto.amor,
+    trabalho: bruto.trabalho,
+    dinheiro: bruto.dinheiro,
+    caminho: bruto.caminho,
   };
 }
 

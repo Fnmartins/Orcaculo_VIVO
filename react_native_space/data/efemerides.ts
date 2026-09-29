@@ -44,6 +44,31 @@ export const NOME_CORPO: Record<Corpo, string> = {
   plutao: 'Plutão',
 };
 
+/** Acentos fora e tudo em minúscula: é só para comparar, nunca para mostrar. */
+function semAcento(texto: string): string {
+  return texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
+/**
+ * Do nome de volta para o identificador: "Mercúrio" → `mercurio`.
+ *
+ * Existe porque o regente de um signo é guardado pelo NOME, com acento
+ * (`data/astrologia.ts`), e as posições são guardadas pelo identificador, sem.
+ * Quem quiser saber onde está o regente de uma casa precisa atravessar essa
+ * ponte — e ela já vinha escrita solta dentro da tela. Se a travessia errasse,
+ * a resposta simplesmente não apareceria: sem erro, sem aviso, só uma linha a
+ * menos. Uma ponte só, com teste, é o que garante que os doze regentes achem o
+ * corpo deles.
+ */
+const CORPO_POR_NOME: Record<string, Corpo> = Object.fromEntries(
+  CORPOS.map((corpo) => [semAcento(NOME_CORPO[corpo]), corpo]),
+);
+
+/** O corpo com esse nome, ou nulo se não for um dos dez. */
+export function corpoPorNome(nome: string): Corpo | null {
+  return CORPO_POR_NOME[semAcento(nome)] ?? null;
+}
+
 const CORPO_NA_BIBLIOTECA: Record<Exclude<Corpo, 'sol' | 'lua'>, Body> = {
   mercurio: Body.Mercury,
   venus: Body.Venus,
