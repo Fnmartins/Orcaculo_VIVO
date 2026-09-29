@@ -25,6 +25,7 @@ import { dataConsultaValida, horarioConsultaValido, textoConsultaValido } from '
 import { Hapticos } from '../../utils/haptics';
 import { CASAS, PLANETAS, lerSigno, corElemento, type LeituraSignoSolar } from '../../data/astrologia';
 import { ROTULO_ASPECTO, SIMBOLO_ASPECTO } from '../../data/aspectos';
+import { assinaturaDoMapa } from '../../data/assinatura';
 import { signoDoGrau } from '../../data/efemerides';
 import {
   escreverGrau, montarMapaAstral, ordemDeLeitura, visivelNoGratuito, type MapaAstral,
@@ -240,6 +241,20 @@ export default function TelaMapaAstralResultado() {
   // Seis aspectos bastam: um mapa produz dezenas, e uma lista longa vira o
   // mesmo catálogo que a gente está tentando deixar de ser.
   const aspectosVisiveis = temMapaCompleto ? mapa.aspectos.slice(0, 6) : [];
+
+  // A assinatura lê o mapa inteiro. Sem hora de nascimento ela nasce mais
+  // curta — sem casa e sem regente — e isso é honesto: são fatores que
+  // dependem de um horizonte que não existe.
+  const assinatura = assinaturaDoMapa({
+    posicoes: mapa.posicoes,
+    aspectos: mapa.aspectos,
+    casaDoCorpo: mapa.casaDoCorpo,
+    elementoDominante: mapa.sintese.elementoDominante,
+    elementoAusente: mapa.sintese.elementoAusente,
+    qualidadeDominante: mapa.sintese.qualidadeDominante,
+    regenteDoMapa: mapa.sintese.regenteDoMapa,
+    nomeDoPonto,
+  });
 
   // Os marcadores da roda, no grau real — não mais no meio da fatia do signo.
   // No plano pago entram os dez corpos; no gratuito, os dois luminares. O que a
@@ -512,8 +527,18 @@ export default function TelaMapaAstralResultado() {
               style={estilos.resumoCard}
             >
               <MaterialCommunityIcons name="auto-fix" size={24} color={Cores.acento} />
-              <Text style={estilos.resumoTitulo}>Síntese do seu Sol</Text>
-              <Text style={estilos.resumoTexto}>{leitura.sintese}</Text>
+              {/* Era "Síntese do seu Sol", e explicava o signo solar — texto
+                  igual para todo mundo nascido no mesmo mês. Agora são os
+                  fatores que marcam ESTE mapa, do mais específico para o mais
+                  geral. */}
+              <Text style={estilos.resumoTitulo}>A sua assinatura</Text>
+              {assinatura.map((fator) => (
+                <View key={fator.rotulo} style={estilos.fatorLinha}>
+                  <Text style={estilos.fatorRotulo}>{fator.rotulo}</Text>
+                  <Text style={estilos.fatorValor}>{fator.valor}</Text>
+                  <Text style={estilos.fatorPorque}>{fator.porque}</Text>
+                </View>
+              ))}
             </LinearGradient>
           </Animated.View>
 
@@ -906,6 +931,15 @@ const estilos = StyleSheet.create({
   planetaPapel: {
     fontFamily: Fontes.corpo, fontSize: 13, lineHeight: 20,
     color: Cores.textoClaro,
+  },
+  fatorLinha: { width: '100%', marginTop: Espacamento.sm },
+  fatorRotulo: {
+    fontFamily: Fontes.corpoSemibold, fontSize: 11, letterSpacing: 1,
+    textTransform: 'uppercase', color: Cores.acento,
+  },
+  fatorValor: { fontFamily: Fontes.corpoNegrito, fontSize: 15, color: Cores.textoClaro },
+  fatorPorque: {
+    fontFamily: Fontes.corpo, fontSize: 13, lineHeight: 19, color: Cores.textoSecundario,
   },
   aspectoLinha: {
     flexDirection: 'row', alignItems: 'center', gap: Espacamento.sm,
