@@ -28,6 +28,53 @@ function resposta(body: unknown, status = 200) {
 const VOZ = 'pt-BR-Chirp3-HD-Sadaltager';
 const IDIOMA = 'pt-BR';
 const BUCKET = 'leituras-faladas';
+const SITE = 'https://app.arcanus.com.br';
+
+/**
+ * Um codigo curto para o link de compartilhar.
+ *
+ * Aleatorio, e nao derivado do hash nem do usuario: quem recebe um link nao
+ * deve conseguir deduzir outro, nem descobrir de quem e. Sem vogais e sem os
+ * pares que se confundem lidos em voz alta (0/O, 1/l), porque link de audio
+ * acaba sendo ditado.
+ */
+const ALFABETO = '23456789bcdfghjkmnpqrstvwxzBCDFGHJKMNPQRSTVWXZ';
+
+function codigoCurto(tamanho = 8): string {
+  const sorteio = new Uint32Array(tamanho);
+  crypto.getRandomValues(sorteio);
+  return Array.from(sorteio, (n) => ALFABETO[n % ALFABETO.length]).join('');
+}
+
+/**
+ * Cunha o codigo na primeira vez que a leitura e compartilhada, e reaproveita
+ * depois. Compartilhar duas vezes a mesma leitura tem de dar o mesmo link —
+ * senao o primeiro que a pessoa mandou continuaria por ai, sem ela saber por
+ * quanto tempo.
+ */
+async function linkCurto(
+  // deno-lint-ignore no-explicit-any
+  cliente: any,
+  hash: string,
+  codigoExistente: string | null,
+): Promise<string | null> {
+  if (codigoExistente) {
+    await cliente.from('voz_cache')
+      .update({ compartilhado_em: new Date().toISOString() }).eq('hash', hash);
+    return `${SITE}/ouvir/${codigoExistente}`;
+  }
+  for (let tentativa = 0; tentativa < 5; tentativa += 1) {
+    const codigo = codigoCurto();
+    const { error } = await cliente.from('voz_cache')
+      .update({ codigo, compartilhado_em: new Date().toISOString() })
+      .eq('hash', hash).is('codigo', null);
+    if (!error) return `${SITE}/ouvir/${codigo}`;
+    // Colisao do indice unico: sorteia outro. Cinco tentativas e folga larga
+    // para um alfabeto de 46 caracteres em oito posicoes.
+  }
+  console.error('nao consegui cunhar codigo para', hash);
+  return null;
+}
 
 /**
  * O teto por leitura.
@@ -146,7 +193,7 @@ Deno.serve(async (request) => {
   // não custa chamada paga, então não pode custar uma do dia. É o mesmo desenho
   // do cache de interpretação do mapa.
   const { data: guardado } = await supabaseAdmin
-    .from('voz_cache').select('arquivo, usos').eq('hash', hash).maybeSingle();
+    .from('voz_cache').select('arquivo, usos, codigo').eq('hash', hash).maybeSingle();
 
   if (guardado?.arquivo) {
     const { data: assinada, error: erroUrl } = await supabaseAdmin
@@ -156,7 +203,12 @@ Deno.serve(async (request) => {
         usos: (typeof guardado.usos === 'number' ? guardado.usos : 1) + 1,
         ultimo_uso: new Date().toISOString(),
       }).eq('hash', hash);
-      return resposta({ url: assinada.signedUrl, doCache: true, cortado });
+      const curto = body.compartilhar === true
+        ? await linkCurto(supabaseAdmin, hash, guardado.codigo ?? null)
+        : null;
+      // Sem codigo cunhado, devolve o endereco assinado: link comprido e pior
+      // que link nenhum, mas melhor que falhar o compartilhamento.
+      return resposta({ url: curto ?? assinada.signedUrl, doCache: true, cortado });
     }
     // Linha órfã: o registro existe, o arquivo não. Cai para gerar de novo em
     // vez de devolver erro — a pessoa não tem culpa da nossa inconsistência.
@@ -214,5 +266,8 @@ Deno.serve(async (request) => {
 
   await registrarUso(supabaseAdmin, usuarioId, 'voz', veredito.usadoHoje);
 
-  return resposta({ url: assinada.signedUrl, doCache: false, cortado });
+  const curto = body.compartilhar === true
+    ? await linkCurto(supabaseAdmin, hash, null)
+    : null;
+  return resposta({ url: curto ?? assinada.signedUrl, doCache: false, cortado });
 });
