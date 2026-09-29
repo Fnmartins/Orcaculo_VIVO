@@ -12,7 +12,8 @@
     "test:e2e": "playwright test",
     "test:e2e:report": "playwright show-report",
     "eas-build-pre-install": "corepack enable && yarn install --immutable",
-    "build:web": "expo export -p web && node scripts/head-web.js"
+    "build:web": "expo export -p web && node scripts/head-web.js",
+    "check:functions": "node scripts/conferir-functions.js"
   },
   "jest": {
     "preset": "jest-expo",
