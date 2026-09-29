@@ -167,8 +167,7 @@ function dadosDoMapa(body: Record<string, unknown>): string {
         : '';
       const area = texto(c.area, 60);
       return `Casa ${numero} (${area}): comeca em ${signo}${corpos ? ` — ${corpos}` : ''}`;
-    }).filter(Boolean).join('
-')
+    }).filter(Boolean).join('\n')
     : '';
 
   const aspectos = Array.isArray(mapa.aspectos)
