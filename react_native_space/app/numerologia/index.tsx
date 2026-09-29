@@ -21,16 +21,31 @@ import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
 import { Hapticos } from '../../utils/haptics';
+import { useAuth } from '../../contexts/AuthContext';
+import { camposDoPerfil, nascimentoParaSalvar } from '../../utils/nascimentoDoPerfil';
 
 export default function TelaNumerologiaForm() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
+
+  const { perfil, atualizarPerfil } = useAuth();
 
   const [nomeCompleto, setNomeCompleto] = useState('');
   const [dia, setDia] = useState('');
   const [mes, setMes] = useState('');
   const [ano, setAno] = useState('');
   const [erros, setErros] = useState<Record<string, string>>({});
+
+  // O perfil é a fonte: quem já preencheu no mapa astral não digita de novo aqui.
+  // Só entra no campo que está vazio — se a pessoa corrigiu algo nesta visita, o
+  // perfil chegando depois não pode apagar a correção dela.
+  useEffect(() => {
+    const doPerfil = camposDoPerfil(perfil);
+    setNomeCompleto((atual) => atual || doPerfil.nome);
+    setDia((atual) => atual || doPerfil.dia);
+    setMes((atual) => atual || doPerfil.mes);
+    setAno((atual) => atual || doPerfil.ano);
+  }, [perfil]);
 
   useEffect(() => {
     Animated.parallel([
@@ -58,6 +73,13 @@ export default function TelaNumerologiaForm() {
     Hapticos.impactoLeve();
     if (!validar()) return;
     Hapticos.impactoMedio();
+
+    // Guarda no perfil o que ainda não estava lá, para a próxima ferramenta já
+    // nascer preenchida. `void` de propósito: a leitura não espera a gravação, e
+    // falhar em salvar não pode impedir a pessoa de ver o resultado dela.
+    const mudou = nascimentoParaSalvar({ nome: nomeCompleto, dia, mes, ano }, perfil);
+    if (mudou) void atualizarPerfil(mudou);
+
     router.push({
       pathname: '/numerologia/calculando',
       params: { nome: nomeCompleto.trim(), dia, mes, ano },

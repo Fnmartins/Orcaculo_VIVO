@@ -26,6 +26,7 @@ import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
 import { Hapticos } from '../../utils/haptics';
 import { destinoDoAvatar } from '../../utils/avatar';
+import { dataEmPortugues } from '../../utils/nascimentoDoPerfil';
 import { useAuth } from '../../contexts/AuthContext';
 import { AuthServico } from '../../services/auth';
 import { confirmacaoValida, excluirConta, PALAVRA_CONFIRMACAO } from '../../services/conta';
@@ -74,6 +75,10 @@ export default function TelaPerfil() {
   const [editandoNome, setEditandoNome] = useState(false);
   const [nomeInput, setNomeInput] = useState('');
   const [salvandoNome, setSalvandoNome] = useState(false);
+  const [editandoNomeNascimento, setEditandoNomeNascimento] = useState(false);
+  const [nomeNascimentoInput, setNomeNascimentoInput] = useState('');
+  const [salvandoNomeNascimento, setSalvandoNomeNascimento] = useState(false);
+  const [erroNomeNascimento, setErroNomeNascimento] = useState('');
   const { sessao, perfil, carregando, recarregarPerfil, atualizarPerfil } = useAuth();
 
   useEffect(() => {
@@ -119,6 +124,37 @@ export default function TelaPerfil() {
       setSalvandoNome(false);
     }
   }, [nomeInput, atualizarPerfil]);
+
+  const abrirEditarNomeNascimento = useCallback(() => {
+    setNomeNascimentoInput(perfil?.nascimento_nome ?? '');
+    setErroNomeNascimento('');
+    setEditandoNomeNascimento(true);
+    Hapticos.impactoLeve();
+  }, [perfil]);
+
+  const salvarNomeNascimento = useCallback(async () => {
+    const nome = nomeNascimentoInput.trim().replace(/\s+/g, ' ');
+    // Duas palavras no mínimo: é a mesma exigência que os formulários de
+    // numerologia fazem, e um nome de registro tem sobrenome. Dizer isso aqui
+    // evita a pessoa salvar "Ana" e a numerologia sair sobre meio nome.
+    if (nome.split(' ').length < 2) {
+      setErroNomeNascimento('Escreva o nome e pelo menos um sobrenome, como no registro.');
+      return;
+    }
+    setSalvandoNomeNascimento(true);
+    try {
+      await atualizarPerfil({ nascimento_nome: nome });
+      setEditandoNomeNascimento(false);
+    } catch (e) {
+      // O `grant` desta coluna é por coluna: se ele faltar no banco, a gravação
+      // falha aqui em vez de a tela fingir que salvou.
+      setErroNomeNascimento(
+        e instanceof Error && e.message ? e.message : 'Não foi possível salvar. Tente de novo.',
+      );
+    } finally {
+      setSalvandoNomeNascimento(false);
+    }
+  }, [nomeNascimentoInput, atualizarPerfil]);
 
   const alterarFoto = useCallback(async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -364,6 +400,53 @@ export default function TelaPerfil() {
               </Pressable>
             </View>
 
+            {/* Dados de nascimento: num lugar só, e as ferramentas puxam daqui.
+                Item 18 do roadmap. Antes disso cada tela pedia nome e data de
+                novo, e o mesmo nascimento era digitado quatro vezes. */}
+            {sessao ? (
+              <View style={estilos.secao}>
+                <Text style={estilos.secaoTitulo}>Dados de nascimento</Text>
+                <Text style={estilos.secaoNota}>
+                  São a base das suas leituras. Quanto mais completos, mais o mapa
+                  astral, a numerologia e a matriz falam de você — e não de quem
+                  nasceu no mesmo mês.
+                </Text>
+                <View style={estilos.menuGrupo}>
+                  <MenuItem
+                    icone="person-outline"
+                    titulo="Nome de nascimento"
+                    subtitulo={perfil?.nascimento_nome ?? 'Toque para preencher'}
+                    onPress={abrirEditarNomeNascimento}
+                  />
+                  <MenuItem
+                    icone="calendar-outline"
+                    titulo="Data"
+                    subtitulo={dataEmPortugues(perfil?.data_nascimento) ?? 'Preenchida ao gerar um mapa'}
+                  />
+                  <MenuItem
+                    icone="time-outline"
+                    titulo="Hora"
+                    subtitulo={
+                      perfil?.nascimento_hora
+                      ?? (perfil?.nascimento_sem_hora
+                        ? 'Você respondeu que não sabe'
+                        : 'Sem ela não há casas nem ascendente')
+                    }
+                  />
+                  <MenuItem
+                    icone="location-outline"
+                    titulo="Cidade"
+                    subtitulo={perfil?.nascimento_cidade?.nome ?? 'Preenchida ao gerar um mapa'}
+                  />
+                </View>
+                <Text style={estilos.secaoNota}>
+                  O nome de nascimento é o do registro, com sobrenomes — é dele que a
+                  numerologia tira as letras. É diferente do nome lá em cima, que é
+                  só como a gente te chama.
+                </Text>
+              </View>
+            ) : null}
+
             {/* Preferências Espirituais */}
             <View style={estilos.secao}>
               <Text style={estilos.secaoTitulo}>Preferências Espirituais</Text>
@@ -572,6 +655,58 @@ export default function TelaPerfil() {
                 disabled={salvandoNome}
               >
                 {salvandoNome
+                  ? <ActivityIndicator size="small" color={Cores.fundoEscuro} />
+                  : <Text style={estilos.modalSalvarTexto}>Salvar</Text>
+                }
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Modal: nome de nascimento. Separado do "Editar Nome" de propósito: um é
+          como a pessoa quer ser chamada, o outro é o nome de registro de onde a
+          numerologia tira as letras. */}
+      <Modal
+        visible={editandoNomeNascimento}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditandoNomeNascimento(false)}
+      >
+        <Pressable style={estilos.modalOverlay} onPress={() => setEditandoNomeNascimento(false)}>
+          <Pressable style={estilos.modalCard} onPress={(e) => e.stopPropagation()}>
+            <Text style={estilos.modalTitulo}>Nome de nascimento</Text>
+            <Text style={estilos.modalSubtitulo}>
+              Como está na certidão, com sobrenomes. Não o nome de casado nem o
+              social: a numerologia se baseia no nome de registro.
+            </Text>
+            <TextInput
+              style={estilos.modalInput}
+              value={nomeNascimentoInput}
+              onChangeText={(t) => { setNomeNascimentoInput(t); setErroNomeNascimento(''); }}
+              placeholder="Nome e sobrenomes completos"
+              placeholderTextColor={Cores.textoSecundario}
+              autoFocus
+              maxLength={120}
+              returnKeyType="done"
+              onSubmitEditing={salvarNomeNascimento}
+            />
+            {erroNomeNascimento
+              ? <Text style={estilos.modalErro}>{erroNomeNascimento}</Text>
+              : null}
+            <View style={estilos.modalBotoes}>
+              <Pressable
+                style={estilos.modalCancelar}
+                onPress={() => setEditandoNomeNascimento(false)}
+              >
+                <Text style={estilos.modalCancelarTexto}>Cancelar</Text>
+              </Pressable>
+              <Pressable
+                style={[estilos.modalSalvar, salvandoNomeNascimento && { opacity: 0.6 }]}
+                onPress={salvarNomeNascimento}
+                disabled={salvandoNomeNascimento}
+              >
+                {salvandoNomeNascimento
                   ? <ActivityIndicator size="small" color={Cores.fundoEscuro} />
                   : <Text style={estilos.modalSalvarTexto}>Salvar</Text>
                 }
@@ -792,6 +927,13 @@ const estilos = StyleSheet.create({
     letterSpacing: 0.8,
     marginBottom: Espacamento.sm,
   },
+  secaoNota: {
+    fontFamily: Fontes.corpo,
+    fontSize: 12,
+    lineHeight: 18,
+    color: Cores.textoSecundario,
+    marginBottom: Espacamento.sm,
+  },
   planoCard: {
     borderRadius: RaioBorda.lg,
     borderWidth: 1,
@@ -973,6 +1115,14 @@ const estilos = StyleSheet.create({
     fontSize: 13,
     color: Cores.textoSecundario,
     marginBottom: Espacamento.md,
+  },
+  // O erro fica no modal, e não num alerta do sistema: o campo que precisa de
+  // correção está aqui, e mandar a pessoa fechar um aviso para voltar é ruído.
+  modalErro: {
+    fontFamily: Fontes.corpo,
+    fontSize: 12,
+    color: Cores.erro,
+    marginTop: Espacamento.xs,
   },
   modalInput: {
     backgroundColor: Cores.inputFundo,
