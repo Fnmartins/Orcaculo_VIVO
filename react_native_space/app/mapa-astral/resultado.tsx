@@ -45,6 +45,27 @@ import { SemaforoUso } from '../../components/SemaforoUso';
 
 const { width: W } = Dimensions.get('window');
 
+/**
+ * "Regida por Marte, que está na casa 7."
+ *
+ * O regente da cúspide é quem responde por aquela área do mapa. Saber ONDE ele
+ * está é o que dá conteúdo a uma casa vazia — e casa vazia é a maioria delas
+ * num mapa de dez corpos e doze casas.
+ *
+ * O dicionário de signos guarda o regente pelo nome com acento ("Mercúrio"),
+ * e as posições, pelo identificador sem acento ("mercurio"). A normalização
+ * abaixo é a ponte entre os dois.
+ */
+function textoDoRegente(
+  cuspide: number,
+  casaDoCorpo: Record<string, number> | null,
+): string {
+  const regente = signoDoGrau(cuspide).regente;
+  const id = regente.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const onde = casaDoCorpo?.[id];
+  return onde ? `Regida por ${regente}, que está na casa ${onde}` : `Regida por ${regente}`;
+}
+
 /** Quanto um aspecto se faz ouvir, em palavra em vez de número. */
 function forcaEmPalavra(forca: number): string {
   if (forca >= 0.8) return 'muito forte';
@@ -630,10 +651,23 @@ export default function TelaMapaAstralResultado() {
                           <Text style={estilos.casaNome}>{casa.descricao}</Text>
                           <Text style={estilos.casaSigno}>
                             {`Começa em ${escreverGrau(cuspide)}`}
-                            {dentro.length > 0
-                              ? ` · ${dentro.map((p) => TEXTO_CORPO[p.corpo].titulo).join(', ')}`
-                              : ''}
                           </Text>
+                          {/* O regente da cúspide é quem "cuida" desta área no
+                              seu mapa — e onde ELE está diz mais que a casa
+                              vazia. É a peça que faltava para a casa deixar de
+                              ser só um grau inicial. */}
+                          <Text style={estilos.casaRegente}>
+                            {textoDoRegente(cuspide, mapa.casaDoCorpo)}
+                          </Text>
+                          {dentro.length > 0 ? (
+                            <Text style={estilos.casaCorpos}>
+                              {dentro.map((p) => TEXTO_CORPO[p.corpo].titulo).join(', ')}
+                            </Text>
+                          ) : (
+                            // Casa vazia não é casa sem assunto: quem responde
+                            // por ela é o regente, que já está logo acima.
+                            <Text style={estilos.casaVazia}>Sem planeta dentro</Text>
+                          )}
                         </View>
                         <Text style={estilos.casaArea}>{casa.area}</Text>
                       </View>
@@ -1209,6 +1243,16 @@ const estilos = StyleSheet.create({
     fontFamily: Fontes.corpoSemibold,
     fontSize: 14,
     color: Cores.textoClaro,
+  },
+  casaRegente: {
+    fontFamily: Fontes.corpo, fontSize: 12, color: Cores.acento, marginTop: 1,
+  },
+  casaCorpos: {
+    fontFamily: Fontes.corpoSemibold, fontSize: 12, color: Cores.textoClaro, marginTop: 1,
+  },
+  casaVazia: {
+    fontFamily: Fontes.corpo, fontSize: 12, color: Cores.textoSecundario,
+    fontStyle: 'italic', marginTop: 1,
   },
   casaSigno: {
     fontFamily: Fontes.corpo,
