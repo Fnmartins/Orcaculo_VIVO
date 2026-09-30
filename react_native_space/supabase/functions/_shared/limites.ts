@@ -72,3 +72,44 @@ export function restanteHoje(veredito: Veredito): number | null {
   if (veredito.limiteDia === null) return null;
   return Math.max(0, veredito.limiteDia - veredito.usadoHoje);
 }
+
+export interface AcessoDoPlano {
+  liberado: boolean;
+  /** A data que venceu, para a tela dizer quando. Nula quando nunca houve validade. */
+  venceuEm: string | null;
+}
+
+/**
+ * O acesso vale hoje?
+ *
+ * Existe porque `perfis.plano_valido_ate` era gravada e nunca conferida: quem
+ * decidia acesso era `perfis.plano`, sozinho. Se um webhook da Stripe falhasse, a
+ * data passava e o acesso continuava — para sempre, sem erro em lugar nenhum.
+ *
+ * **Data ausente não é permissão.** Nulo significa sem validade, logo sem acesso.
+ * Isso acerta de graça o cancelamento: quem cancela fica com plano `gratuito` e
+ * data nula, e passa a ficar corretamente sem IA, sem código novo para isso.
+ *
+ * Não recebe o nome do plano de propósito: acesso depende da data, não do rótulo. O
+ * nome continua servindo para achar a linha de `configuracao_ia` — outra pergunta,
+ * outro parâmetro.
+ */
+export function acessoDoPlano(
+  validoAte: string | null | undefined,
+  agora: Date,
+  semLimite: boolean,
+): AcessoDoPlano {
+  if (semLimite) return { liberado: true, venceuEm: null };
+
+  const bruto = typeof validoAte === 'string' ? validoAte.trim() : '';
+  if (!bruto) return { liberado: false, venceuEm: null };
+
+  const quando = new Date(bruto).getTime();
+  // Data ilegível barra: `new Date('ontem')` devolve NaN, e NaN em comparação
+  // sempre dá falso — o que liberaria por acidente se a checagem fosse ao contrário.
+  if (!Number.isFinite(quando)) return { liberado: false, venceuEm: null };
+
+  return quando > agora.getTime()
+    ? { liberado: true, venceuEm: null }
+    : { liberado: false, venceuEm: bruto };
+}
