@@ -49,6 +49,11 @@ export function ligado(tipo: TipoUso, config: ConfiguracaoIA): boolean {
  * existe ou o plano não tem linha, a leitura por imagem e o aprofundamento —
  * que funcionavam antes deste controle existir — continuam funcionando. Um
  * controle novo não pode derrubar o que já estava no ar.
+ *
+ * **Mas só depois da validade.** Essa tolerância vale para falha NOSSA (tabela
+ * ausente, leitura com erro), e vencimento não é falha nossa: é um fato sobre a
+ * pessoa. Por isso `config` nulo nunca passa quem venceu — o acesso é conferido antes,
+ * e `motivo: 'vencido'` sai mesmo sem configuração nenhuma.
  */
 export function decidirUso(
   tipo: TipoUso,

@@ -192,6 +192,11 @@ Deno.serve(async (request) => {
   // O cache vem ANTES da cota, de propósito: ouvir de novo o que já foi gerado
   // não custa chamada paga, então não pode custar uma do dia. É o mesmo desenho
   // do cache de interpretação do mapa.
+  //
+  // Vem também antes da validade, e o motivo é o custo, não a posse: a chave é
+  // `sha256(VOZ + texto)`, global, não por pessoa. Quem venceu e manda um texto que
+  // QUALQUER conta já sintetizou recebe aquele áudio — já gerado, por qualquer pessoa.
+  // Não gasta chamada paga nem cota, então barrar aqui não protegeria nada.
   const { data: guardado } = await supabaseAdmin
     .from('voz_cache').select('arquivo, usos, codigo').eq('hash', hash).maybeSingle();
 

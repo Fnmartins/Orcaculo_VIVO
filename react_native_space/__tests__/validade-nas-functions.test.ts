@@ -33,6 +33,11 @@ describe('validade nas Edge Functions de IA', () => {
   it('quem confere cota são as quatro functions de IA', () => {
     // Se uma quinta entrar aqui, este teste falha de propósito: a pessoa que a criou
     // tem de olhar a lista e confirmar que a nova também repassa a validade.
+    //
+    // Mas só se a quinta CHAMAR `conferirUso(`: é isso que a põe em `comCota`. Uma
+    // function nova que faz chamada paga sem chamá-lo fica de fora da lista, e a suíte
+    // continua verde. Este guarda vigia quem confere cota, não quem gasta — não confie
+    // nele além disso.
     expect(comCota.map((f) => f.nome).sort())
       .toEqual(['ia-interpretacao', 'ia-oraculo', 'ia-pergunta', 'ia-voz']);
   });
