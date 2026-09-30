@@ -33,7 +33,11 @@ function resposta(body: unknown, status = 200) {
   });
 }
 
-const MODELO = 'claude-opus-5';
+// `claude-opus-5-5`: US$ 4 / US$ 20 por milhao contra US$ 5 / US$ 25 do
+// `claude-opus-5`, 20% menos. Raciocinio completo em `ia-interpretacao/index.ts`.
+// Esta function roda em `effort: 'low'`, declarado abaixo — entao a queda do padrao
+// do 5.5 (de `high` para `medium`) nao muda nada aqui.
+const MODELO = 'claude-opus-5-5';
 const ORACULOS = ['tarot', 'buzios'] as const;
 type Oraculo = (typeof ORACULOS)[number];
 

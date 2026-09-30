@@ -21,7 +21,11 @@ function resposta(body: unknown, status = 200) {
   });
 }
 
-const MODELO = 'claude-opus-5';
+// `claude-opus-5-5`: US$ 4 / US$ 20 por milhao contra US$ 5 / US$ 25 do
+// `claude-opus-5`, 20% menos. O raciocinio completo da troca esta em
+// `ia-interpretacao/index.ts`, junto da constante de la. Aqui vale o mesmo: o
+// esforco e declarado (por profundidade, logo abaixo) e a recusa ja tem caminho.
+const MODELO = 'claude-opus-5-5';
 const TIPOS = ['cafe', 'quiromancia'] as const;
 type Tipo = (typeof TIPOS)[number];
 
@@ -33,8 +37,14 @@ type Profundidade = (typeof PROFUNDIDADES)[number];
  * pensa e escreve. Por isso a completa sai ~4x mais cara para produzir e pode
  * ser vendida por ~2x — ela melhora a margem em valor absoluto, não piora.
  *
- * Estimativa por leitura em 24/09 (claude-opus-5, US$ 5/MTok de entrada e
- * US$ 25/MTok de saída): simples ~US$ 0,03, completa ~US$ 0,13.
+ * Estimativa por leitura em 24/09, quando o modelo era `claude-opus-5` a US$ 5 e
+ * US$ 25 por milhao: simples ~US$ 0,03, completa ~US$ 0,13. Com o 5.5 (US$ 4 e
+ * US$ 20) cai cerca de 20%: ~US$ 0,024 e ~US$ 0,10.
+ *
+ * Numero de comentario envelhece e ninguem percebe. Desde 29/09 o custo REAL desta
+ * function e medido — tokens gravados em `uso_ia`, preco em `precos_ia` — e aparece
+ * na aba Custo do Painel. Quando a estimativa acima divergir de la, a errada e
+ * esta.
  */
 // `max_tokens` inclui o raciocínio, que neste modelo vem ligado por padrão.
 // Com 2000 na simples, o modelo gastava o teto pensando e a resposta voltava
