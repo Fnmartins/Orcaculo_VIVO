@@ -50,6 +50,10 @@ const COLUNAS_CONFIG = 'imagem_ligada, interpretacao_ligada, pergunta_ligada, vo
  * Erro de leitura não barra ninguém: `decidirUso` com configuração nula deixa
  * passar. Tabela nova não pode derrubar recurso que já estava no ar — o que
  * sobra é o log, para a falha não ficar invisível.
+ *
+ * A validade é o contrário: `validoAte` nula, vazia ou ilegível **barra**. Erro nosso
+ * de leitura não pode derrubar recurso que já estava no ar, mas vencimento não é erro
+ * nosso — é um fato sobre a pessoa, e dado estragado não pode virar permissão.
  */
 export async function conferirUso(
   cliente: Cliente,
