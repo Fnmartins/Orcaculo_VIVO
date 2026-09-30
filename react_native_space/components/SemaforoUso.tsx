@@ -114,6 +114,10 @@ const estilos = StyleSheet.create({
   trancado: {
     flexDirection: 'row', alignItems: 'center', gap: Espacamento.xs,
     paddingVertical: Espacamento.xs,
+    // A mesma margem de `faixa`: o cadeado ocupa a vaga do semáforo, e os cinco lugares
+    // que o usam põem conteúdo logo abaixo. Sem ela, o estado trancado encosta no que
+    // vem depois e o liberado não.
+    marginBottom: Espacamento.sm,
   },
   trancadoTexto: {
     flex: 1, fontFamily: Fontes.corpo, fontSize: 13, color: Cores.textoSecundario,

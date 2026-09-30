@@ -52,7 +52,6 @@ describe('SemaforoUso quando o acesso venceu', () => {
     mockPerfil.is_super_admin = true;
     render(<SemaforoUso tipo="interpretacao" rotulo="Aprofundamentos" />);
     expect(screen.queryByLabelText('Acesso vencido')).toBeNull();
-    mockPerfil.is_super_admin = false;
   });
 
   it('quem saiu da conta não lê "seu acesso terminou", nunca teve acesso', () => {
