@@ -100,12 +100,15 @@ create table if not exists public.precos_ia (
 
 insert into public.precos_ia (chave, descricao, dolar_por_milhao, confirmado_em, fonte)
 values
-  ('modelo-entrada', 'Tokens de entrada do claude-opus-5, por milhao',
-   5.00, '2026-09-29', 'Tabela de precos da Anthropic'),
-  ('modelo-saida', 'Tokens de saida do claude-opus-5, por milhao',
-   25.00, '2026-09-29', 'Tabela de precos da Anthropic'),
+  ('modelo-entrada', 'Tokens de entrada do claude-opus-5-5, por milhao',
+   4.00, '2026-09-29', 'Tabela de precos da Anthropic'),
+  ('modelo-saida', 'Tokens de saida do claude-opus-5-5, por milhao',
+   20.00, '2026-09-29', 'Tabela de precos da Anthropic'),
   ('voz-caractere', 'Caracteres sintetizados no Chirp 3 HD, por milhao',
    10.00, '2026-09-29', 'https://cloud.google.com/text-to-speech/pricing — CONFERIR: a pagina veio truncada na leitura automatica')
+-- `do nothing` de proposito: se o dono corrigiu um preco a mao depois, rodar este
+-- arquivo de novo NAO pode desfazer a correcao dele. A consequencia e que trocar de
+-- modelo exige um `update` explicito — esta escrito no fim do arquivo.
 on conflict (chave) do nothing;
 
 alter table public.precos_ia enable row level security;
@@ -133,3 +136,26 @@ revoke all on public.precos_ia from anon, authenticated;
 -- fosse consumo zero.
 --   select tipo, sum(quantidade) as chamadas, sum(tokens_entrada) as entrada
 --     from public.uso_ia group by tipo order by 2 desc;
+
+-- ------------------------------------------------------------
+-- 5) Se este arquivo JA tinha sido rodado antes da troca de modelo
+-- ------------------------------------------------------------
+-- O `do nothing` acima protege correcao feita a mao, e por isso nao atualiza preco
+-- de linha que ja existe. Quem rodou a versao anterior (com os precos do
+-- `claude-opus-5`: US$ 5 e US$ 25) precisa deste update uma vez — senao a auditoria
+-- cobra 25% a mais do que a Anthropic cobra, e o erro passa por numero conferido:
+--
+--   update public.precos_ia
+--      set dolar_por_milhao = 4.00,
+--          descricao = 'Tokens de entrada do claude-opus-5-5, por milhao',
+--          confirmado_em = '2026-09-29'
+--    where chave = 'modelo-entrada';
+--
+--   update public.precos_ia
+--      set dolar_por_milhao = 20.00,
+--          descricao = 'Tokens de saida do claude-opus-5-5, por milhao',
+--          confirmado_em = '2026-09-29'
+--    where chave = 'modelo-saida';
+--
+--   select chave, dolar_por_milhao from public.precos_ia order by chave;
+--   -- esperado: modelo-entrada 4.00, modelo-saida 20.00, voz-caractere 10.00

@@ -7,10 +7,11 @@ import {
  * Esta é a conta que decide se um plano se paga. Errar aqui não quebra tela
  * nenhuma — faz o dono tomar decisão de preço sobre número errado, que é pior.
  *
- * Os preços abaixo são os reais de 29/09/2026 (US$ 5 e US$ 25 por milhão de tokens
- * do claude-opus-5; US$ 10 por milhão de caracteres no Chirp 3 HD), e os consumos
- * são inventados em números redondos, para a conta poder ser feita de cabeça e o
- * teste dizer alguma coisa.
+ * Os preços e consumos abaixo são escolhidos para a conta fechar de cabeça — US$ 5,
+ * US$ 25 e US$ 10 por milhão, com consumos redondos —, e NÃO são a tabela vigente:
+ * o modelo passou para `claude-opus-5-5` (US$ 4 e US$ 20) em 29/09. Isto aqui testa
+ * a aritmética, que não depende de qual preço está no ar; o preço de verdade mora em
+ * `precos_ia`, justamente para não precisar de deploy quando mudar.
  */
 
 const PRECOS: PrecosIA = { modeloEntrada: 5, modeloSaida: 25, vozCaractere: 10 };

@@ -28,7 +28,24 @@ function resposta(body: unknown, status = 200) {
   });
 }
 
-const MODELO = 'claude-opus-5';
+/**
+ * O modelo, e por que este.
+ *
+ * `claude-opus-5-5` custa US$ 4 / US$ 20 por milhao de tokens contra US$ 5 / US$ 25
+ * do `claude-opus-5` que estava aqui — 20% menos, no modelo mais novo. A auditoria
+ * de custo por plano (item 31) mostrou que o aprofundamento e a maior linha de
+ * gasto, e esta foi a economia mais barata que apareceu: uma constante.
+ *
+ * A troca e segura NESTE arquivo porque as tres mudancas do 5.5 nao o alcancam: o
+ * esforco e declarado abaixo (o 5.5 baixou o PADRAO de `high` para `medium`, e quem
+ * nao declara sente), nenhum `thinking: disabled` (que passou a dar 400) e nenhuma
+ * ferramenta forcada (idem). A recusa ja e tratada — o 5.5 tem classificadores mais
+ * amplos, e `stop_reason === 'refusal'` ja tem caminho proprio logo abaixo.
+ *
+ * O que NAO da para garantir por teste: o texto muda de voz. Modelo diferente
+ * escreve diferente, e isso e gosto, nao regressao. Voltar e esta linha de volta.
+ */
+const MODELO = 'claude-opus-5-5';
 const ORACULOS = ['tarot', 'buzios', 'mapa'] as const;
 type Oraculo = (typeof ORACULOS)[number];
 
