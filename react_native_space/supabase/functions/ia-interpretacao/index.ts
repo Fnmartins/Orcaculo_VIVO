@@ -361,9 +361,6 @@ Deno.serve(async (request) => {
   }
   const semLimite = perfil?.is_super_admin === true;
   const restantes = typeof perfil?.consultas_restantes === 'number' ? perfil.consultas_restantes : 0;
-  if (!semLimite && restantes <= 0) {
-    return resposta({ erro: 'Suas consultas deste período acabaram.', semConsultas: true }, 402);
-  }
 
   // Interruptor por plano e limite do dia, iguais aos da ia-oraculo.
   const plano = typeof perfil?.plano === 'string' ? perfil.plano : 'gratuito';
@@ -376,6 +373,16 @@ Deno.serve(async (request) => {
       erro: mensagemDoLimite(veredito, 'interpretacao'),
       motivo: veredito.motivo,
     }, 402);
+  }
+
+  // A cota do período fica DEPOIS do veredito, e a ordem importa pelo mesmo motivo de
+  // vencido vir antes de desligado em `decidirUso`. O webhook da Stripe zera
+  // `consultas_restantes` E `plano_valido_ate` no mesmo update do cancelamento: com esta
+  // checagem na frente, quem cancelou lia "suas consultas deste período acabaram" do
+  // servidor e "seu acesso terminou" no semáforo da mesma tela — duas explicações para
+  // uma pessoa, e a do servidor manda para o lugar errado. Vencimento responde primeiro.
+  if (!semLimite && restantes <= 0) {
+    return resposta({ erro: 'Suas consultas deste período acabaram.', semConsultas: true }, 402);
   }
 
   try {
