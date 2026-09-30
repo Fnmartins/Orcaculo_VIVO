@@ -107,11 +107,18 @@ export function HomeAurora({ mostrarConselho = false }: { mostrarConselho?: bool
                 const Icon = lib === 'material' ? MaterialCommunityIcons : Ionicons;
                 // Só o card inteiramente IA tranca. Nos outros o conteúdo local é
                 // grátis, e trancar esconderia o que faz a pessoa voltar.
-                const trancado = soIA && !acesso.liberado;
+                //
+                // E só tranca quando há perfil para julgar. Com `perfil` nulo — ainda
+                // carregando, ou deslogado — a validade vem indefinida e barraria todo
+                // mundo: um cadeado piscando na tela inicial acusa de vencido justamente
+                // quem está pagando.
+                const trancado = soIA && perfil != null && !acesso.liberado;
                 return <Pressable key={titulo}
                   onPress={() => router.push(trancado ? '/planos' : rota)}
                   accessibilityRole="button"
-                  accessibilityLabel={trancado ? `${titulo}, trancada` : titulo}
+                  // Rótulo só quando trancado: sem ele o leitor de tela lê os filhos (título
+                  // e apoio); com `titulo` ele leria só o título e perderia o apoio.
+                  accessibilityLabel={trancado ? `${titulo}, trancada` : undefined}
                   style={({ pressed }) => [s.card, { width: largo ? '48.7%' : '48%' }, trancado && s.cardTrancado, pressed && s.pressed]}>
                   <View style={[s.cardIcone, { backgroundColor: `${cor}18` }]}>
                     {trancado
