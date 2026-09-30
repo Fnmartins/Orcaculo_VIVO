@@ -6,6 +6,8 @@ import { router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { Fontes } from '../constants/typography';
+import { useAuth } from '../contexts/AuthContext';
+import { acessoDoPlano } from '../supabase/functions/_shared/limites';
 
 const P = {
   fundo: '#F7F3EA', superficie: '#FFFCF6', verdeSuave: '#E6EEE5',
@@ -27,12 +29,14 @@ const intencoes = [
 // Fica visível porque o caminho é construir a análise de verdade, não esconder
 // a porta; enquanto isso, a tela não deve afirmar que a IA analisou a imagem.
 const oraculos = [
-  ['Búzios', 'Tradição e caminhos', 'grain', P.verde, 'material', '/consulta/buzios-preparo'],
-  ['Tarot', 'Símbolos para refletir', 'cards-outline', P.terracota, 'material', '/consulta'],
-  ['Numerologia', 'Ciclos e significados', 'calculator-outline', P.azul, 'ion', '/numerologia'],
-  ['Mapa Astral', 'Leitura do seu céu', 'planet-outline', P.dourado, 'ion', '/mapa-astral'],
-  ['Leitura por imagem', 'Símbolos em uma foto', 'image-search-outline', P.verdeEscuro, 'material', '/ia'],
-  ['Lei da Atração', 'Desejos e rituais', 'magnet', P.terracota, 'material', '/lei-atracao'],
+  ['Búzios', 'Tradição e caminhos', 'grain', P.verde, 'material', '/consulta/buzios-preparo', false],
+  ['Tarot', 'Símbolos para refletir', 'cards-outline', P.terracota, 'material', '/consulta', false],
+  ['Numerologia', 'Ciclos e significados', 'calculator-outline', P.azul, 'ion', '/numerologia', false],
+  ['Mapa Astral', 'Leitura do seu céu', 'planet-outline', P.dourado, 'ion', '/mapa-astral', false],
+  // O único card inteiramente IA: aqui não existe versão livre, então o cadeado é do
+  // card. Nos outros, o conteúdo local é grátis e o cadeado mora no botão.
+  ['Leitura por imagem', 'Símbolos em uma foto', 'image-search-outline', P.verdeEscuro, 'material', '/ia', true],
+  ['Lei da Atração', 'Desejos e rituais', 'magnet', P.terracota, 'material', '/lei-atracao', false],
 ] as const;
 
 const decisoes = [
@@ -45,6 +49,10 @@ const decisoes = [
 export function HomeAurora({ mostrarConselho = false }: { mostrarConselho?: boolean }) {
   const [intencao, setIntencao] = useState('clareza');
   const largo = useWindowDimensions().width >= 720;
+  const { perfil } = useAuth();
+  const acesso = acessoDoPlano(
+    perfil?.plano_valido_ate, new Date(), perfil?.is_super_admin === true,
+  );
 
   return (
     <View style={s.pagina}>
@@ -95,12 +103,24 @@ export function HomeAurora({ mostrarConselho = false }: { mostrarConselho?: bool
     existe é pior que botão nenhum. */}
 <View style={s.secaoHeader}><View><Text style={s.secaoTitulo}>Escolha seu oráculo</Text><Text style={s.secaoApoio}>Cada método tem linguagem e propósito próprios.</Text></View></View>
             <View style={s.grid}>
-              {oraculos.map(([titulo, apoio, icon, cor, lib, rota]) => {
+              {oraculos.map(([titulo, apoio, icon, cor, lib, rota, soIA]) => {
                 const Icon = lib === 'material' ? MaterialCommunityIcons : Ionicons;
-                return <Pressable key={titulo} onPress={() => router.push(rota)} accessibilityRole="button" style={({ pressed }) => [s.card, { width: largo ? '48.7%' : '48%' }, pressed && s.pressed]}>
-                  <View style={[s.cardIcone, { backgroundColor: `${cor}18` }]}><Icon name={icon as never} size={27} color={cor} /></View>
-                  <Text style={s.cardTitulo}>{titulo}</Text><Text style={s.cardApoio}>{apoio}</Text>
-                  <Ionicons name="arrow-forward-circle-outline" size={21} color={cor} style={s.cardSeta} />
+                // Só o card inteiramente IA tranca. Nos outros o conteúdo local é
+                // grátis, e trancar esconderia o que faz a pessoa voltar.
+                const trancado = soIA && !acesso.liberado;
+                return <Pressable key={titulo}
+                  onPress={() => router.push(trancado ? '/planos' : rota)}
+                  accessibilityRole="button"
+                  accessibilityLabel={trancado ? `${titulo}, trancada` : titulo}
+                  style={({ pressed }) => [s.card, { width: largo ? '48.7%' : '48%' }, trancado && s.cardTrancado, pressed && s.pressed]}>
+                  <View style={[s.cardIcone, { backgroundColor: `${cor}18` }]}>
+                    {trancado
+                      ? <Ionicons name="lock-closed" size={25} color={cor} />
+                      : <Icon name={icon as never} size={27} color={cor} />}
+                  </View>
+                  <Text style={s.cardTitulo}>{titulo}</Text>
+                  <Text style={s.cardApoio}>{trancado ? 'Atualize seu plano' : apoio}</Text>
+                  <Ionicons name={trancado ? 'lock-closed-outline' : 'arrow-forward-circle-outline'} size={21} color={cor} style={s.cardSeta} />
                 </Pressable>;
               })}
             </View>
@@ -142,6 +162,9 @@ const s = StyleSheet.create({
   imagem: { minHeight: 230, flex: 0.9, justifyContent: 'flex-end' }, filtro: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(26,43,37,0.20)' }, legenda: { margin: 16, padding: 14, borderRadius: 15, backgroundColor: 'rgba(255,252,246,0.92)' }, legendaTitulo: { fontFamily: Fontes.corpoNegrito, fontSize: 13, color: P.tinta }, legendaTexto: { fontFamily: Fontes.corpo, fontSize: 11, color: P.texto, marginTop: 2 },
   secaoHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 16 }, secaoTitulo: { fontFamily: Fontes.titulo, fontSize: 22, color: P.tinta }, secaoApoio: { fontFamily: Fontes.corpo, fontSize: 12, color: P.texto, marginTop: 3 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 12 }, card: { minHeight: 166, padding: 16, borderRadius: 20, backgroundColor: P.superficie, borderWidth: 1, borderColor: P.borda }, cardIcone: { width: 46, height: 46, borderRadius: 15, alignItems: 'center', justifyContent: 'center', marginBottom: 16 }, cardTitulo: { fontFamily: Fontes.titulo, fontSize: 18, color: P.tinta }, cardApoio: { fontFamily: Fontes.corpo, fontSize: 11, color: P.texto, marginTop: 3 }, cardSeta: { position: 'absolute', right: 13, bottom: 13 },
+  // Opacidade e não cinza: o card trancado continua legível e reconhecível, para a
+  // pessoa saber o que está perdendo em vez de ver um bloco apagado.
+  cardTrancado: { opacity: 0.55 },
   ritual: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 24, padding: 18, borderRadius: 22, backgroundColor: P.verdeSuave }, ritualIcone: { width: 50, height: 50, borderRadius: 25, backgroundColor: P.superficie, alignItems: 'center', justifyContent: 'center' }, ritualTexto: { flex: 1 }, ritualEyebrow: { fontFamily: Fontes.corpoNegrito, fontSize: 8, letterSpacing: 1.1, color: P.verde }, ritualTitulo: { fontFamily: Fontes.corpoNegrito, fontSize: 14, color: P.tinta, marginTop: 3 }, ritualApoio: { fontFamily: Fontes.corpo, fontSize: 11, color: P.texto, marginTop: 2 },
   conselho: { marginTop: 32, padding: 22, borderRadius: 26, backgroundColor: '#F1E7DB' }, conselhoTitulo: { fontFamily: Fontes.titulo, fontSize: 22, color: P.tinta, marginBottom: 18 }, decisoes: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 14 }, decisao: { width: '100%', flexDirection: 'row', gap: 11 }, decisaoLarga: { width: '48%' }, decisaoTexto: { flex: 1 }, decisaoTitulo: { fontFamily: Fontes.corpoNegrito, fontSize: 13, color: P.tinta }, decisaoApoio: { fontFamily: Fontes.corpo, fontSize: 11, lineHeight: 16, color: P.texto, marginTop: 2 },
   paletaTitulo: { fontFamily: Fontes.corpoNegrito, fontSize: 9, letterSpacing: 1.2, color: P.texto, marginTop: 22, marginBottom: 9 }, paleta: { flexDirection: 'row', gap: 8 }, amostra: { width: 32, height: 32, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(36,49,45,0.12)' }, nota: { fontFamily: Fontes.corpo, fontSize: 9, lineHeight: 14, color: P.texto, marginTop: 16 },
