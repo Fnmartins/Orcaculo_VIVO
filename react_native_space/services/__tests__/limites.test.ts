@@ -24,7 +24,7 @@ const mestre: ConfiguracaoIA = {
 
 const semVoz: ConfiguracaoIA = { ...gratuito, voz_ligada: false };
 
-// Acesso válido — para os testes que já existem e que ainda não testam vencimento.
+// Acesso válido — plano em ordem, pronto para ser testado.
 const LIBERADO: AcessoDoPlano = { liberado: true, venceuEm: null };
 
 describe('decidirUso', () => {
@@ -121,6 +121,14 @@ describe('decidirUso com validade', () => {
   it('liberado se comporta como antes', () => {
     expect(decidirUso('interpretacao', CONFIG, 0, false, LIBERADO).permitido).toBe(true);
     expect(decidirUso('interpretacao', CONFIG, 3, false, LIBERADO).motivo).toBe('limite_dia');
+  });
+
+  it('configuração ausente NÃO cobre quem venceu', () => {
+    // A tolerância a `config` nula existe para tabela nova ou leitura com erro — falha
+    // nossa. Vencimento é fato sobre a pessoa, e não pode pegar carona nela.
+    expect(decidirUso('interpretacao', null, 0, false, VENCIDO)).toMatchObject({
+      permitido: false, motivo: 'vencido',
+    });
   });
 });
 

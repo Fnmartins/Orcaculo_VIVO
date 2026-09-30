@@ -25,7 +25,11 @@ export interface Veredito {
   usadoHoje: number;
   /** Nulo quer dizer sem limite: super-admin, ou plano com limite_dia = 0. */
   limiteDia: number | null;
-  /** Quando o acesso venceu, para a mensagem dizer a data. */
+  /**
+   * Quando o acesso venceu, para a mensagem dizer a data. **Nula mesmo com
+   * `motivo: 'vencido'`**: validade ausente ou ilegível barra sem ter data para
+   * mostrar, e é o caso comum de quem cancelou. Quem consome tem de tratar o nulo.
+   */
   venceuEm?: string | null;
 }
 
@@ -54,7 +58,7 @@ export function decidirUso(
   acesso: AcessoDoPlano,
 ): Veredito {
   const usado = Number.isFinite(usadoHoje) && usadoHoje > 0 ? Math.floor(usadoHoje) : 0;
-  if (semLimite || !config) {
+  if (semLimite) {
     return { permitido: true, usadoHoje: usado, limiteDia: null };
   }
   // Vencido vem ANTES de desligado: quem venceu e lê "não disponível no seu plano"
@@ -64,6 +68,13 @@ export function decidirUso(
       permitido: false, motivo: 'vencido', usadoHoje: usado,
       limiteDia: null, venceuEm: acesso.venceuEm,
     };
+  }
+  // Configuração ausente continua deixando passar — tabela nova ou leitura com erro
+  // não pode derrubar recurso que já estava no ar. Mas isso vale para falha NOSSA, e
+  // vencimento não é falha nossa: é um fato sobre a pessoa. Por isso esta tolerância
+  // fica depois da checagem de validade, e não junto dela.
+  if (!config) {
+    return { permitido: true, usadoHoje: usado, limiteDia: null };
   }
   if (!ligado(tipo, config)) {
     return { permitido: false, motivo: 'desligado', usadoHoje: usado, limiteDia: null };
