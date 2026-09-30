@@ -61,6 +61,24 @@ produção, não só no git (seção 6):
   (`/ouvir/<codigo>`) que expira em sete dias.
 - Quarto tipo no contador de uso (`uso_ia`) e no interruptor por plano.
 
+**Custo (madrugada de 30/09)**
+- **Consumo medido, não estimado.** As functions gravam tokens de entrada e saída
+  (Anthropic) e caracteres sintetizados (Google) em `uso_ia`, somados por
+  (usuário, dia, tipo). Antes elas recebiam esses números e só os logavam.
+- Aba **Custo** no Painel (`/manager?aba=custo`): custo por plano, por tipo de uso e
+  **por assinante** — dividido pelos assinantes, não pelos ativos, porque quem
+  assina e não usa também é receita.
+- Preços em `precos_ia`, com `confirmado_em` e fonte: corrigir é um `update`, não um
+  deploy. A tela mostra a confirmação mais ANTIGA (o elo fraco) e avisa em voz alta
+  quando falta preço, porque total subestimado em silêncio é pior que nenhum.
+- **Primeira medição real:** um aprofundamento de mapa custou US$ 0,12 — e 89% disso
+  é saída. Enxugar prompt não economiza; o que move dinheiro é quanto o modelo
+  escreve e pensa.
+- `claude-opus-5-5` no lugar do `claude-opus-5`: US$ 4 / US$ 20 contra US$ 5 / US$ 25,
+  20% menos. Seguro porque as três functions declaram o esforço e já tratam recusa.
+- A contagem de uso virou atômica (`contar_uso_ia`). Antes era ler-e-somar-um, e duas
+  chamadas simultâneas perdiam uma — o limite diário ficava mais frouxo que o plano.
+
 **Painel**
 - Interruptor de IA por plano, com quatro recursos e limite diário.
 - Aba Decisões com link clicável e prévia embutida.
@@ -74,7 +92,7 @@ produção, não só no git (seção 6):
 
 ## 3. O roadmap
 
-**34 feitos, 12 abertos, 46 no total** (conferido em 29/09, fim do dia).
+**35 feitos, 11 abertos, 46 no total** (conferido na madrugada de 30/09).
 
 Para ver o estado atual:
 
@@ -85,8 +103,8 @@ select fase, ordem, status, titulo
  order by fase, ordem;
 ```
 
-**Não sobrou nenhum item que se resolva só com código.** Os 12 abertos se separam
-em duas naturezas, e a diferença é o que decide o que fazer amanhã:
+**Não sobrou nenhum item que se resolva só com código.** Os 11 abertos se separam em
+duas naturezas, e a diferença é o que decide o que fazer amanhã:
 
 ### Dependem do dono, não de código
 | # | Item | O que falta chegar |
@@ -94,7 +112,11 @@ em duas naturezas, e a diferença é o que decide o que fazer amanhã:
 | 13 | E-mail de boas-vindas | conta no Resend: `RESEND_API_KEY` e `REMETENTE_EMAIL` verificado. **O código está inteiro** — function, trigger e roteiro em `supabase/welcome-email/README.md`, sem placeholder e sem segredo para copiar |
 | 14 | Receber `contato@arcanus.com.br` | registro de DNS |
 | 17 | Campanha de lançamento | decisão de oferta |
-| 31 | Auditoria de custo por plano | números de consumo real |
+
+O item **31 (auditoria de custo por plano) saiu desta lista** na madrugada de 30/09.
+Ele parecia depender do dono — "precisa dos números de consumo real" — e não
+dependia: as functions já recebiam os tokens da Anthropic e só não os guardavam.
+Agora guardam, e a aba **Custo** do Painel mede. Ver a seção 2.
 
 ### Produto novo
 | # | Item |
@@ -123,8 +145,16 @@ produto, e é por isso que a recomendação mudou de natureza:
    desistido, e qualquer contagem de compras mentia. Ver seção 6.
 3. **Item 17 — campanha**, depois que 13 e 14 estiverem de pé. Campanha que
    manda para um e-mail que não responde queima a primeira impressão.
-4. **Um dos oito produtos novos**, escolhido pelo dono. Cada um é projeto com
-   escopo próprio, não continuação do que existe.
+4. **Item 32, Mapa de Vocação**, se for para abrir produto novo. Dos sete que
+   sobraram, é o único que se apoia no motor já pronto: casa 10 e meio do céu, casa
+   6, o regente da 10 e onde ele mora, Saturno — tudo calculado e coberto pela
+   bateria de vinte mapas. Os outros custam mais: 25 e 30 dependem do tempo do dono
+   a cada venda, 28 e 36 são produção de conteúdo, 29 mexe em pagamento, 27 é
+   encanamento sem cara visível, e o 34 foi guardado como futuro a pedido.
+
+   **Começar pelo brainstorm, não pelo código.** O que o produto entrega, para quem,
+   se é parte do mapa astral ou ferramenta separada, se entra em plano ou é avulso —
+   são decisões do dono.
 
 Trânsitos, sinastria e astrocartografia **não estão no roadmap de propósito**:
 cada um é engine nova (exige um segundo momento no tempo ou um segundo mapa),
@@ -134,8 +164,25 @@ não extensão do que existe.
 
 ## 5. O que está aberto no código, sem estar no roadmap
 
-Nada ficou pela metade em 29/09. O que existe são três coisas conhecidas e
-decididas, que alguém retomando merece saber antes de tropeçar nelas.
+**A ÚNICA coisa sem confirmação, na madrugada de 30/09: a aba Custo abriu?** Ela
+falhou na primeira tentativa (encaixe inexistente do PostgREST — ver seção 6), foi
+corrigida, mergeada no PR #31 e a function foi deployada às 00:23. Ninguém abriu a
+aba depois disso. Primeira coisa a fazer: `/manager?aba=custo`. Deve mostrar o
+aprofundamento de US$ 0,12 que já está gravado.
+
+O resto são coisas conhecidas e decididas, que alguém retomando merece saber antes de
+tropeçar nelas.
+
+**A alavanca de custo que não foi usada.** `ia-interpretacao` roda em
+`effort: 'high'`, e raciocínio é cobrado como saída — onde está 89% do custo. Baixar
+para `medium` provavelmente cortaria um terço do preço por leitura. **Não foi feito de
+propósito:** é troca de qualidade por dinheiro, decisão do dono, e US$ 0,12 por mapa
+(gerado uma vez e cacheado para sempre) é barato. Se o volume crescer, é o primeiro
+lugar para olhar, e a aba Custo mostra quando isso acontecer.
+
+**O tom das leituras.** O dono avaliou em 30/09: "dá para melhorar, mas está adequado
+para o momento". Onde mexer é `INSTRUCOES_MAPA` na `ia-interpretacao` — texto, não
+código.
 
 **A rede das Edge Functions cobre sintaxe, não tipos.** `yarn check:functions`
 (`scripts/conferir-functions.js`) usa o parser do próprio TypeScript —
@@ -195,6 +242,23 @@ e já matou comando encadeado.
 policies.** Dado presente, SQL enxerga, app não vê, nenhum erro em lugar
 nenhum. Aconteceu com a tabela de cidades.
 
+**O PostgREST só encaixa tabelas ligadas por chave estrangeira.** `perfis!inner(plano)`
+a partir de `uso_ia` NÃO funciona: `uso_ia.usuario_id` referencia `auth.users(id)`, não
+`public.perfis(id)`. A function responde 502 e a tela mostra a mensagem genérica.
+Aconteceu na madrugada de 30/09. Nenhuma das redes pega isso — o `tsc` não alcança as
+functions, o `conferir-functions` vê sintaxe, e a sintaxe estava perfeita. **A proteção
+é tirar a conta de dentro da function** para um módulo puro em `_shared/`, testado pelo
+Jest do app, como `escritas.ts` e `agregarUso.ts`.
+
+**Empurrar para branch já mergeada: quatro vezes até agora.** A última na madrugada de
+30/09, e o commit perdido era justamente o conserto acima. A checagem tem de rodar
+ANTES do `push`, não depois do problema:
+
+```bash
+git fetch origin && git merge-base --is-ancestor HEAD origin/main \
+  && echo "ORFAO: nao empurre" || echo "OK: branch aberta"
+```
+
 **Suíte que não roda não aparece como falha.** Quando uma suíte morre no
 carregamento, o Jest conta "0 testes falharam" e o resumo parece verde — só a
 linha `Test Suites: 1 failed` denuncia. Aconteceu três vezes: com `expo-av`, com
@@ -252,8 +316,8 @@ git fetch origin main && git log --oneline origin/main -5
 yarn typecheck && yarn test && yarn check:functions
 ```
 
-Em 29/09, fim do dia, isso dava **56 suítes e 610 testes**, `tsc` limpo e 20
-functions com sintaxe ok. Confira a linha `Test Suites:` além da de testes: suíte
+Na madrugada de 30/09 isso dava **59 suítes e 654 testes**, `tsc` limpo e 22 functions
+com sintaxe ok. Confira a linha `Test Suites:` além da de testes: suíte
 que morre no carregamento não conta falha nenhuma (seção 6).
 
 E no banco, o roadmap de verdade (a consulta da seção 3).
