@@ -91,7 +91,7 @@ em duas naturezas, e a diferença é o que decide o que fazer amanhã:
 ### Dependem do dono, não de código
 | # | Item | O que falta chegar |
 |---|---|---|
-| 13 | E-mail de boas-vindas | `RESEND_API_KEY`, `WELCOME_HOOK_SECRET`, `REMETENTE_EMAIL` |
+| 13 | E-mail de boas-vindas | conta no Resend: `RESEND_API_KEY` e `REMETENTE_EMAIL` verificado. **O código está inteiro** — function, trigger e roteiro em `supabase/welcome-email/README.md`, sem placeholder e sem segredo para copiar |
 | 14 | Receber `contato@arcanus.com.br` | registro de DNS |
 | 17 | Campanha de lançamento | decisão de oferta |
 | 31 | Auditoria de custo por plano | números de consumo real |

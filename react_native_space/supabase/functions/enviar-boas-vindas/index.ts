@@ -4,20 +4,24 @@
 // supabase/welcome-email/setup.sql), que so dispara na transicao
 // email_confirmed_at NULL -> preenchido.
 //
-// Seguranca: aceita apenas chamadas com o header x-webhook-secret correto
-// (segredo compartilhado com o trigger). Deploy com --no-verify-jwt, pois o
-// trigger chama sem JWT de usuario.
+// Seguranca: aceita apenas chamadas com o header x-webhook-secret correto. O
+// valor esperado NAO e variavel de ambiente — vem do Vault, pela RPC
+// `segredo_boas_vindas`, que so a chave de servico pode executar. Existir em um
+// lugar so e o que torna impossivel o trigger e a function divergirem. Deploy com
+// --no-verify-jwt, pois o trigger chama sem JWT de usuario.
 //
 // Idempotencia: marca perfis.boas_vindas_enviada = true apos enviar; se ja
 // estiver true, nao reenvia.
 //
 // Secrets necessarios (supabase secrets set ...):
 //   RESEND_API_KEY          -> API key do Resend (re_...)
-//   WELCOME_HOOK_SECRET     -> mesmo segredo usado no trigger SQL
-//   REMETENTE_EMAIL         -> remetente verificado no Resend (ex.: contato@seudominio.com)
+//   REMETENTE_EMAIL         -> remetente verificado no Resend (ex.: contato@arcanus.com.br)
 //   REMETENTE_NOME          -> opcional (default "Arcanus")
-// SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY sao injetados automaticamente
-// pelo runtime das Edge Functions.
+// SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY sao injetados automaticamente pelo
+// runtime das Edge Functions.
+//
+// Nao ha mais WELCOME_HOOK_SECRET: se ele existir de uma configuracao antiga,
+// pode ser removido com `supabase secrets unset WELCOME_HOOK_SECRET`.
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
@@ -72,12 +76,49 @@ function corpoEmail(primeiroNome: string | null): string {
 </body></html>`;
 }
 
+/**
+ * Comparacao de tempo constante.
+ *
+ * `a !== b` sai no primeiro caractere diferente, e o tempo de resposta conta
+ * quantos bateram. Num webhook publico isso e caminho para adivinhar o segredo
+ * caractere por caractere. Aqui todo byte e sempre visitado.
+ */
+function iguaisEmTempoConstante(a: string, b: string): boolean {
+  const x = new TextEncoder().encode(a);
+  const y = new TextEncoder().encode(b);
+  if (x.length !== y.length) return false;
+  let diferenca = 0;
+  for (let i = 0; i < x.length; i += 1) diferenca |= x[i] ^ y[i];
+  return diferenca === 0;
+}
+
 Deno.serve(async (request) => {
   if (request.method !== 'POST') return json(405, { erro: 'metodo' });
 
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!supabaseUrl || !serviceRoleKey) {
+    console.error('boas-vindas: runtime sem SUPABASE_URL/SERVICE_ROLE_KEY');
+    return json(503, { erro: 'configuracao incompleta' });
+  }
+  const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+
   // Autenticacao por segredo compartilhado com o trigger.
-  const segredo = Deno.env.get('WELCOME_HOOK_SECRET');
-  if (!segredo || request.headers.get('x-webhook-secret') !== segredo) {
+  //
+  // O valor vem do Vault, por RPC, e NAO de variavel de ambiente. Antes o mesmo
+  // segredo tinha de existir em dois lugares — no `secrets` daqui e no trigger
+  // SQL — e duas copias que precisam ser iguais divergem um dia: a function
+  // responderia 401, ninguem receberia e-mail, e nao apareceria erro em lugar
+  // nenhum. Um valor, um lugar (ver supabase/welcome-email/setup.sql).
+  const { data: segredo, error: erroSegredo } = await supabaseAdmin
+    .rpc('segredo_boas_vindas');
+  if (erroSegredo || typeof segredo !== 'string' || !segredo) {
+    console.error('boas-vindas: segredo ausente no Vault', erroSegredo?.message ?? '');
+    // 503, e nao 401: o problema e configuracao daqui, nao credencial de quem
+    // chamou. Dizer "nao autorizado" mandaria procurar no lugar errado.
+    return json(503, { erro: 'configuracao incompleta' });
+  }
+  if (!iguaisEmTempoConstante(request.headers.get('x-webhook-secret') ?? '', segredo)) {
     return json(401, { erro: 'nao autorizado' });
   }
 
@@ -94,15 +135,11 @@ Deno.serve(async (request) => {
     const resendKey = Deno.env.get('RESEND_API_KEY');
     const remetenteEmail = Deno.env.get('REMETENTE_EMAIL');
     const remetenteNome = Deno.env.get('REMETENTE_NOME') ?? 'Arcanus';
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     // Inerte enquanto Resend/remetente nao estiverem configurados.
-    if (!resendKey || !remetenteEmail || !supabaseUrl || !serviceRoleKey) {
-      console.warn('boas-vindas: configuracao incompleta, nada enviado');
+    if (!resendKey || !remetenteEmail) {
+      console.warn('boas-vindas: Resend/remetente ausentes, nada enviado');
       return json(503, { erro: 'configuracao incompleta' });
     }
-
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
     // Idempotencia: so envia se ainda nao foi enviado.
     const { data: perfil, error: erroBusca } = await supabaseAdmin
