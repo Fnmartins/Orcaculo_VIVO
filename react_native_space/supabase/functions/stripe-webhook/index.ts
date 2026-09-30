@@ -43,7 +43,12 @@ async function ativarPlano(
       expira_em: fimPeriodo,
     })
     .eq('usuario_id', usuarioId)
-    .in('status', ['pendente', 'ativo']);
+    // `abandonado` entra na lista de proposito. O checkout marca assim as linhas
+    // pendentes que a pessoa deixou para tras ao comecar outra compra — mas a
+    // sessao antiga pode estar aberta noutra aba, e alguem pode pagar por ela
+    // depois. Sem este valor aqui, esse pagamento ativaria o perfil e nao acharia
+    // a linha, deixando o ledger sem historico da compra.
+    .in('status', ['pendente', 'abandonado', 'ativo']);
   atualizacao = checkoutSessionId
     ? atualizacao.eq('stripe_checkout_session_id', checkoutSessionId)
     : atualizacao.eq('stripe_subscription_id', sub.id);

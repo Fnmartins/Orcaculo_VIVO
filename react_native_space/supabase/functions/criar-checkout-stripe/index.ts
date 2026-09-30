@@ -49,18 +49,43 @@ Deno.serve(async (request) => {
 
     const stripe = new Stripe(secretKey, { apiVersion: '2024-09-30.acacia', httpClient: Stripe.createFetchHttpClient() });
 
-    // Customer: reutiliza o salvo em perfis, senão cria e persiste.
-    const { data: perfil } = await supabaseAdmin
+    // Customer: reutiliza o salvo em perfis, senao cria e persiste.
+    //
+    // Ler errado aqui custa caro: `perfil` nulo por FALHA de leitura e `perfil`
+    // nulo por ainda nao haver cliente sao indistinguiveis, e o segundo caminho
+    // cria um cliente novo na Stripe. Entao a falha de leitura para aqui.
+    const { data: perfil, error: erroPerfil } = await supabaseAdmin
       .from('perfis').select('stripe_customer_id').eq('id', usuario.id).maybeSingle();
+    if (erroPerfil) {
+      console.error('Falha ao ler o cliente Stripe do perfil', erroPerfil.message);
+      return resposta({ erro: 'Não foi possível iniciar o pagamento agora. Tente de novo.' }, 503);
+    }
+
     let customerId = perfil?.stripe_customer_id as string | undefined;
     if (!customerId) {
       const customer = await stripe.customers.create({
         email: usuario.email ?? undefined,
         metadata: { supabase_user_id: usuario.id },
-      });
+      // Chave de idempotencia amarrada a pessoa: se esta function falhar depois de
+      // criar o cliente e a pessoa tentar de novo, a Stripe devolve O MESMO
+      // cliente em vez de criar um segundo. E o que torna seguro abortar abaixo.
+      }, { idempotencyKey: `customer:${usuario.id}` });
       customerId = customer.id;
-      await supabaseAdmin.from('perfis')
-        .update({ stripe_customer_id: customerId }).eq('id', usuario.id);
+
+      // Esta escrita era ignorada, e o preco dela e concreto: `criar-portal-
+      // stripe` le `perfis.stripe_customer_id`, e sem ele o portal responde
+      // "Nenhuma assinatura encontrada". A pessoa pagava e depois nao conseguia
+      // gerenciar nem cancelar a propria assinatura — sem erro em lugar nenhum.
+      //
+      // Agora para ANTES de pagar. Nao ha perda: o cliente ja existe na Stripe, e a
+      // chave de idempotencia garante que a proxima tentativa reaproveita ele.
+      const gravado = await supabaseAdmin.from('perfis')
+        .update({ stripe_customer_id: customerId }).eq('id', usuario.id).select('id');
+      if (gravado.error) {
+        console.error('Falha ao guardar o cliente Stripe no perfil',
+          { usuario: usuario.id, customerId, erro: gravado.error.message });
+        return resposta({ erro: 'Não foi possível iniciar o pagamento agora. Tente de novo.' }, 503);
+      }
     }
 
     const session = await stripe.checkout.sessions.create({
@@ -76,7 +101,33 @@ Deno.serve(async (request) => {
       allow_promotion_codes: true,
     });
 
-    await supabaseAdmin.from('assinaturas').insert({
+    // Comecar uma compra nova abandona as pendentes anteriores desta pessoa.
+    //
+    // Sem isto, cada checkout desistido deixava uma linha `pendente` para sempre:
+    // ninguem le, ninguem limpa, e a auditoria de custo por plano conta compra que
+    // nunca houve. Marcar aqui mantem o limite em UMA pendente aberta por pessoa,
+    // sem varredura agendada e sem apagar historico.
+    //
+    // Nao bloqueia: e arrumacao, nao a transacao. Se falhar, registra e segue — e
+    // o pagamento por uma sessao antiga ainda encontra a linha, porque o webhook
+    // aceita `abandonado` ao ativar.
+    const arrumacao = await supabaseAdmin.from('assinaturas')
+      .update({ status: 'abandonado' })
+      .eq('usuario_id', usuario.id)
+      .eq('status', 'pendente')
+      .select('id');
+    if (arrumacao.error) {
+      console.error('Falha ao abandonar pendentes anteriores',
+        { usuario: usuario.id, erro: arrumacao.error.message });
+    }
+
+    // A linha pendente e o que o webhook procura pela sessao para virar "ativo".
+    // Sem ela o webhook registra "Assinatura sem linha para atualizar" e o ledger
+    // fica sem historico daquela compra. Tambem era ignorado aqui.
+    //
+    // Falhar agora e barato: a pessoa ainda NAO foi para a Stripe, e tentar de
+    // novo cria outra sessao. Falhar depois seria pagar sem registro.
+    const pendente = await supabaseAdmin.from('assinaturas').insert({
       id: crypto.randomUUID(),
       usuario_id: usuario.id,
       plano: planoId,
@@ -85,7 +136,12 @@ Deno.serve(async (request) => {
       moeda: moedaFinal,
       stripe_customer_id: customerId,
       stripe_checkout_session_id: session.id,
-    });
+    }).select('id');
+    if (pendente.error) {
+      console.error('Falha ao registrar a assinatura pendente',
+        { usuario: usuario.id, sessao: session.id, erro: pendente.error.message });
+      return resposta({ erro: 'Não foi possível iniciar o pagamento agora. Tente de novo.' }, 503);
+    }
 
     return resposta({ checkoutUrl: session.url });
   } catch (erro) {

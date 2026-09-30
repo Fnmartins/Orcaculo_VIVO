@@ -20,6 +20,15 @@ function resposta(body: unknown, status = 200) {
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const COLUNAS = 'id, nome, email, criado_em, plano, is_super_admin';
 
+/**
+ * Quantos usuarios por pagina.
+ *
+ * O numero e do SERVIDOR, e nao do cliente, de proposito: se o Painel pedisse
+ * quantos quisesse, um pedido de cem mil voltaria a ser a consulta sem faixa que
+ * este arquivo acabou de deixar de ser.
+ */
+const POR_PAGINA = 50;
+
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   if (request.method !== 'POST') return resposta({ erro: 'Método não permitido' }, 405);
@@ -54,13 +63,26 @@ Deno.serve(async (request) => {
   const { acao, usuarioId, admin } = body;
 
   if (acao === 'listar') {
-    const { data, error } = await supabaseAdmin
-      .from('perfis').select(COLUNAS).order('criado_em', { ascending: false });
+    // Sem faixa, esta consulta pedia a tabela inteira — e o Supabase corta em
+    // `db.max_rows` (mil, por padrao) SEM avisar. A lista chegaria incompleta e o
+    // Painel mostraria isso como se fosse tudo. Nao e lentidao: e numero errado.
+    const pagina = Number.isInteger(body.pagina) ? Math.max(0, body.pagina as number) : 0;
+    const inicio = pagina * POR_PAGINA;
+
+    const { data, error, count } = await supabaseAdmin
+      .from('perfis')
+      .select(COLUNAS, { count: 'exact' })
+      .order('criado_em', { ascending: false })
+      .range(inicio, inicio + POR_PAGINA - 1);
     if (error) {
       console.error('falha ao listar perfis', error.message);
       return resposta({ erro: 'Falha ao listar usuários' }, 502);
     }
-    return resposta({ usuarios: data ?? [] });
+    // `total` vai junto para o Painel poder dizer quantos faltam. Sem ele, "mostra
+    // cinquenta" e "existem cinquenta" ficam indistinguiveis na tela.
+    return resposta({
+      usuarios: data ?? [], total: count ?? (data?.length ?? 0), pagina, porPagina: POR_PAGINA,
+    });
   }
 
   if (acao === 'definir-admin') {

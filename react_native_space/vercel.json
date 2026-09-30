@@ -1,5 +1,5 @@
 {
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- . ':(exclude)docs'",
+  "ignoreCommand": "node scripts/decidir-deploy.js",
   "installCommand": "corepack enable && yarn install --immutable",
   "buildCommand": "npx expo export -p web && node scripts/head-web.js",
   "outputDirectory": "dist",
