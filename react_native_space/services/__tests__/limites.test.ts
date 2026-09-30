@@ -124,11 +124,20 @@ describe('acessoDoPlano', () => {
   });
 
   it('fuso não muda a decisão', () => {
-    // A comparação é entre INSTANTES, não entre dias — então a mesma hora escrita em
-    // fusos diferentes tem de decidir igual. A spec pedia um caso de virada; este é
-    // ele, e ele mostra por que o problema não existe aqui: quem conta DIA é o
-    // contador de uso, não a validade.
+    // O offset é respeitado: 09:00-03:00 é 12:00Z, o próprio instante de AGORA, e
+    // portanto vencido; 10:00-03:00 é 13:00Z, uma hora à frente, e portanto válido.
     expect(acessoDoPlano('2026-10-15T09:00:00-03:00', AGORA, false).liberado).toBe(false);
     expect(acessoDoPlano('2026-10-15T10:00:00-03:00', AGORA, false).liberado).toBe(true);
+  });
+
+  it('o mesmo instante escrito em dois fusos decide igual', () => {
+    // A de cima prova que o offset é lido. Esta prova a outra metade: duas grafias do
+    // MESMO instante não podem divergir. Juntas, mostram por que a virada de dia não é
+    // um problema aqui — a comparação é entre INSTANTES, não entre dias. Quem conta dia
+    // é o contador de uso, não a validade.
+    const comZ = acessoDoPlano('2026-10-20T00:00:00Z', AGORA, false);
+    const comOffset = acessoDoPlano('2026-10-19T21:00:00-03:00', AGORA, false);
+    expect(comZ.liberado).toBe(true);
+    expect(comOffset.liberado).toBe(comZ.liberado);
   });
 });
