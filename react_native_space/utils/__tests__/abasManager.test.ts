@@ -16,7 +16,9 @@ describe('resolverAba', () => {
   });
 
   it('tem rótulo para cada aba, na ordem de exibição', () => {
+    // A lista é fixada de propósito: aba nova sem rótulo apareceria em branco na
+    // barra do Painel, e este teste é o que obriga a pensar no nome dela.
     expect(ABAS_MANAGER.map((a) => ROTULO_ABA[a]))
-      .toEqual(['Planos', 'Roadmap', 'Decisões', 'Moderação', 'Acessos']);
+      .toEqual(['Planos', 'Roadmap', 'Decisões', 'Moderação', 'Acessos', 'Custo']);
   });
 });

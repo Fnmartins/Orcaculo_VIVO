@@ -274,7 +274,12 @@ Deno.serve(async (request) => {
       exigirEscrita('perfis.consultas_restantes', await supabaseAdmin
         .from('perfis').update({ consultas_restantes: restantes - 1 }).eq('id', usuarioId));
     }
-    await registrarUso(supabaseAdmin, usuarioId, 'imagem', veredito.usadoHoje);
+    // A imagem entra na conta pelos tokens dela, que sao muitos: uma foto custa
+    // bem mais que um mapa de palavras. Sem isto, as duas pesariam igual.
+    await registrarUso(supabaseAdmin, usuarioId, 'imagem', {
+      entrada: mensagem.usage?.input_tokens,
+      saida: mensagem.usage?.output_tokens,
+    });
 
     return resposta({
       ...analise,

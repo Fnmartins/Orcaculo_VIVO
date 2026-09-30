@@ -221,7 +221,10 @@ Deno.serve(async (request) => {
     }
 
     // Conta o uso só depois que a resposta existe.
-    await registrarUso(supabaseAdmin, usuarioId, 'pergunta', veredito.usadoHoje);
+    await registrarUso(supabaseAdmin, usuarioId, 'pergunta', {
+      entrada: mensagem.usage?.input_tokens,
+      saida: mensagem.usage?.output_tokens,
+    });
 
     // Guarda a pergunta só com as duas condições juntas: triagem comum e
     // consentimento no perfil. Falhar aqui não pode estragar a resposta que a

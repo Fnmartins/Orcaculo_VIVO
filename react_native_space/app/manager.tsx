@@ -10,6 +10,7 @@ import { AbaRoadmap } from '../components/manager/AbaRoadmap';
 import { AbaDecisoes } from '../components/manager/AbaDecisoes';
 import { AbaModeracao } from '../components/manager/AbaModeracao';
 import { AbaAcessos } from '../components/manager/AbaAcessos';
+import { AbaCusto } from '../components/manager/AbaCusto';
 import { Cores } from '../constants/colors';
 import { Fontes } from '../constants/typography';
 import { Espacamento, RaioBorda } from '../constants/spacing';
@@ -82,6 +83,7 @@ export default function Manager() {
               {aba === 'decisoes' && <AbaDecisoes aoPerderAcesso={aoPerderAcesso} />}
               {aba === 'moderacao' && <AbaModeracao aoPerderAcesso={aoPerderAcesso} />}
           {aba === 'acessos' && <AbaAcessos aoPerderAcesso={aoPerderAcesso} />}
+        {aba === 'custo' && <AbaCusto aoPerderAcesso={aoPerderAcesso} />}
             </View>
           </>
         )}
