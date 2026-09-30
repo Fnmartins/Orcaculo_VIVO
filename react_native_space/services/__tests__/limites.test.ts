@@ -2,6 +2,7 @@ import {
   acessoDoPlano,
   decidirUso,
   restanteHoje,
+  type AcessoDoPlano,
   type ConfiguracaoIA,
 } from '../../supabase/functions/_shared/limites';
 
@@ -23,52 +24,55 @@ const mestre: ConfiguracaoIA = {
 
 const semVoz: ConfiguracaoIA = { ...gratuito, voz_ligada: false };
 
+// Acesso válido — para os testes que já existem e que ainda não testam vencimento.
+const LIBERADO: AcessoDoPlano = { liberado: true, venceuEm: null };
+
 describe('decidirUso', () => {
   it('deixa passar quem ainda não bateu no limite do dia', () => {
-    expect(decidirUso('pergunta', gratuito, 1, false)).toEqual({
+    expect(decidirUso('pergunta', gratuito, 1, false, LIBERADO)).toEqual({
       permitido: true, usadoHoje: 1, limiteDia: 2,
     });
   });
 
   it('barra no limite, e diz que foi o limite', () => {
-    const v = decidirUso('pergunta', gratuito, 2, false);
+    const v = decidirUso('pergunta', gratuito, 2, false, LIBERADO);
     expect(v.permitido).toBe(false);
     expect(v.motivo).toBe('limite_dia');
     expect(restanteHoje(v)).toBe(0);
   });
 
   it('recurso desligado no plano nem chega a olhar o contador', () => {
-    const v = decidirUso('imagem', gratuito, 0, false);
+    const v = decidirUso('imagem', gratuito, 0, false, LIBERADO);
     expect(v.permitido).toBe(false);
     expect(v.motivo).toBe('desligado');
   });
 
   it('limite_dia zero quer dizer sem limite diário', () => {
-    const v = decidirUso('imagem', mestre, 900, false);
+    const v = decidirUso('imagem', mestre, 900, false, LIBERADO);
     expect(v.permitido).toBe(true);
     expect(v.limiteDia).toBeNull();
     expect(restanteHoje(v)).toBeNull();
   });
 
   it('super-admin passa mesmo com o recurso desligado no plano', () => {
-    const v = decidirUso('imagem', gratuito, 50, true);
+    const v = decidirUso('imagem', gratuito, 50, true, LIBERADO);
     expect(v.permitido).toBe(true);
     expect(v.limiteDia).toBeNull();
   });
 
   it('sem linha de configuração, deixa passar — controle novo não derruba o que já rodava', () => {
-    expect(decidirUso('interpretacao', null, 10, false).permitido).toBe(true);
+    expect(decidirUso('interpretacao', null, 10, false, LIBERADO).permitido).toBe(true);
   });
 
   it('a voz entra no mesmo controle dos outros recursos', () => {
     // Decidido em 28/09: em vez de contador proprio, a leitura falada usa o
     // caminho que ja existia. O interruptor do Painel passa a valer para ela.
-    expect(decidirUso('voz', gratuito, 1, false).permitido).toBe(true);
-    expect(decidirUso('voz', gratuito, 2, false).motivo).toBe('limite_dia');
+    expect(decidirUso('voz', gratuito, 1, false, LIBERADO).permitido).toBe(true);
+    expect(decidirUso('voz', gratuito, 2, false, LIBERADO).motivo).toBe('limite_dia');
   });
 
   it('voz desligada no plano barra antes de olhar o contador', () => {
-    const v = decidirUso('voz', semVoz, 0, false);
+    const v = decidirUso('voz', semVoz, 0, false, LIBERADO);
     expect(v.permitido).toBe(false);
     expect(v.motivo).toBe('desligado');
   });
@@ -76,13 +80,47 @@ describe('decidirUso', () => {
   it('cada tipo tem contador proprio: voz no teto nao barra pergunta', () => {
     // `limite_dia` e um numero so, mas `uso_ia` conta por tipo. Sem este teste,
     // alguem poderia "simplificar" o contador para um so e ninguem veria.
-    expect(decidirUso('voz', gratuito, 2, false).permitido).toBe(false);
-    expect(decidirUso('pergunta', gratuito, 0, false).permitido).toBe(true);
+    expect(decidirUso('voz', gratuito, 2, false, LIBERADO).permitido).toBe(false);
+    expect(decidirUso('pergunta', gratuito, 0, false, LIBERADO).permitido).toBe(true);
   });
 
   it('contador sujo (negativo, NaN) conta como zero', () => {
-    expect(decidirUso('pergunta', gratuito, -5, false).usadoHoje).toBe(0);
-    expect(decidirUso('pergunta', gratuito, Number.NaN, false).usadoHoje).toBe(0);
+    expect(decidirUso('pergunta', gratuito, -5, false, LIBERADO).usadoHoje).toBe(0);
+    expect(decidirUso('pergunta', gratuito, Number.NaN, false, LIBERADO).usadoHoje).toBe(0);
+  });
+});
+
+describe('decidirUso com validade', () => {
+  const VENCIDO: AcessoDoPlano = { liberado: false, venceuEm: '2026-10-10T00:00:00Z' };
+  const CONFIG = {
+    imagem_ligada: true, interpretacao_ligada: true,
+    pergunta_ligada: true, voz_ligada: true, limite_dia: 3,
+  };
+
+  it('vencido barra, com o motivo e a data', () => {
+    expect(decidirUso('interpretacao', CONFIG, 0, false, VENCIDO)).toMatchObject({
+      permitido: false, motivo: 'vencido', venceuEm: '2026-10-10T00:00:00Z',
+    });
+  });
+
+  it('vencido vence sobre DESLIGADO', () => {
+    // Dizer "não disponível no seu plano" a quem venceu manda a pessoa procurar um
+    // plano que ela já tinha.
+    const desligado = { ...CONFIG, interpretacao_ligada: false };
+    expect(decidirUso('interpretacao', desligado, 0, false, VENCIDO).motivo).toBe('vencido');
+  });
+
+  it('vencido vence sobre o limite do dia', () => {
+    expect(decidirUso('interpretacao', CONFIG, 99, false, VENCIDO).motivo).toBe('vencido');
+  });
+
+  it('super-admin passa por cima de vencido', () => {
+    expect(decidirUso('interpretacao', CONFIG, 99, true, VENCIDO).permitido).toBe(true);
+  });
+
+  it('liberado se comporta como antes', () => {
+    expect(decidirUso('interpretacao', CONFIG, 0, false, LIBERADO).permitido).toBe(true);
+    expect(decidirUso('interpretacao', CONFIG, 3, false, LIBERADO).motivo).toBe('limite_dia');
   });
 });
 

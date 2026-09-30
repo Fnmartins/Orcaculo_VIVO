@@ -21,10 +21,12 @@ export interface ConfiguracaoIA {
 export interface Veredito {
   permitido: boolean;
   /** Por que não passou — a tela diz coisas diferentes para cada caso. */
-  motivo?: 'desligado' | 'limite_dia';
+  motivo?: 'desligado' | 'limite_dia' | 'vencido';
   usadoHoje: number;
   /** Nulo quer dizer sem limite: super-admin, ou plano com limite_dia = 0. */
   limiteDia: number | null;
+  /** Quando o acesso venceu, para a mensagem dizer a data. */
+  venceuEm?: string | null;
 }
 
 const CAMPO: Record<TipoUso, keyof ConfiguracaoIA> = {
@@ -49,10 +51,19 @@ export function decidirUso(
   config: ConfiguracaoIA | null,
   usadoHoje: number,
   semLimite: boolean,
+  acesso: AcessoDoPlano,
 ): Veredito {
   const usado = Number.isFinite(usadoHoje) && usadoHoje > 0 ? Math.floor(usadoHoje) : 0;
   if (semLimite || !config) {
     return { permitido: true, usadoHoje: usado, limiteDia: null };
+  }
+  // Vencido vem ANTES de desligado: quem venceu e lê "não disponível no seu plano"
+  // vai procurar um plano que ela já tinha.
+  if (!acesso.liberado) {
+    return {
+      permitido: false, motivo: 'vencido', usadoHoje: usado,
+      limiteDia: null, venceuEm: acesso.venceuEm,
+    };
   }
   if (!ligado(tipo, config)) {
     return { permitido: false, motivo: 'desligado', usadoHoje: usado, limiteDia: null };
