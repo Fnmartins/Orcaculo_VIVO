@@ -99,6 +99,13 @@ pessoa para o lugar errado — ela vai procurar um plano que já tinha.
 O cache do mapa continua **antes** da checagem, como já está: leitura já escrita não custa nada, não desconta
 cota e não deveria ser barrada por validade — a pessoa está relendo o que já era dela.
 
+> **Correção, 30/09, durante a implementação.** A frase acima vale para o cache do mapa, cuja chave inclui as
+> posições do mapa daquela pessoa. Ela **não** vale para o `voz_cache`, cuja chave é `sha256(VOZ + texto)` —
+> global, não por usuário. Ali a justificativa correta é "já gerado, por qualquer pessoa": quem venceu pode
+> receber um áudio que outra conta sintetizou, se o texto for idêntico. A decisão de manter o cache antes da
+> checagem continua certa, porque não gasta chamada paga nem desconta cota; o que estava errado era o motivo.
+> Fica registrado em vez de reescrito: motivo corrigido em silêncio é decisão que ninguém pode auditar.
+
 ### Tela — cadeado onde custa, e só onde custa
 
 Dos seis cards da home (`app/prototipo-conselho.tsx`, `HomeAurora`), **um** é inteiramente IA:

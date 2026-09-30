@@ -48,6 +48,26 @@ describe('validade nas Edge Functions de IA', () => {
     expect(comCota.length).toBe(4);
   });
 
+  it('onde existe guarda de cota do período, o vencimento responde primeiro', () => {
+    // O cancelamento grava `consultas_restantes: 0` E `plano_valido_ate: null` na MESMA
+    // operação, então quem cancelou dispara as duas guardas. Se a cota responder antes, a
+    // pessoa lê "Suas consultas deste período acabaram" do servidor enquanto o semáforo na
+    // mesma tela diz "Seu acesso terminou" — duas explicações contraditórias, e a que o
+    // servidor manda é justamente a que a regra de ordem da spec existe para evitar.
+    //
+    // Fica aqui e não num teste de comportamento porque nada executa estas functions: é a
+    // ordem no TEXTO que precisa ser prendida.
+    const comGuardaDeCota = comCota.filter((f) => f.fonte.includes('restantes <= 0'));
+    expect(comGuardaDeCota.map((f) => f.nome).sort())
+      .toEqual(['ia-interpretacao', 'ia-oraculo']);
+    for (const { nome, fonte } of comGuardaDeCota) {
+      // O nome entra na asserção para a falha dizer QUAL function inverteu a ordem.
+      const vencimentoAntesDaCota = fonte.indexOf('conferirUso(') < fonte.indexOf('restantes <= 0');
+      expect({ function: nome, vencimentoAntesDaCota })
+        .toEqual({ function: nome, vencimentoAntesDaCota: true });
+    }
+  });
+
   describe.each(comCota.map((f) => [f.nome, f.fonte]))('%s', (nome, fonte) => {
     it('lê plano_valido_ate no select de perfis', () => {
       const select = /\.from\('perfis'\)\s*\.select\('([^']*)'\)/.exec(fonte as string);
