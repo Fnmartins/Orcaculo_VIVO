@@ -119,6 +119,9 @@ export function HomeAurora({ mostrarConselho = false }: { mostrarConselho?: bool
                   // Rótulo só quando trancado: sem ele o leitor de tela lê os filhos (título
                   // e apoio); com `titulo` ele leria só o título e perderia o apoio.
                   accessibilityLabel={trancado ? `${titulo}, trancada` : undefined}
+                  // O rótulo troca os filhos, então o leitor de tela não ouviria o que o
+                  // toque faz. A dica é aditiva e deixa o texto do rótulo intacto.
+                  accessibilityHint={trancado ? 'Abre os planos' : undefined}
                   style={({ pressed }) => [s.card, { width: largo ? '48.7%' : '48%' }, trancado && s.cardTrancado, pressed && s.pressed]}>
                   <View style={[s.cardIcone, { backgroundColor: `${cor}18` }]}>
                     {trancado
@@ -169,9 +172,13 @@ const s = StyleSheet.create({
   imagem: { minHeight: 230, flex: 0.9, justifyContent: 'flex-end' }, filtro: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(26,43,37,0.20)' }, legenda: { margin: 16, padding: 14, borderRadius: 15, backgroundColor: 'rgba(255,252,246,0.92)' }, legendaTitulo: { fontFamily: Fontes.corpoNegrito, fontSize: 13, color: P.tinta }, legendaTexto: { fontFamily: Fontes.corpo, fontSize: 11, color: P.texto, marginTop: 2 },
   secaoHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 16 }, secaoTitulo: { fontFamily: Fontes.titulo, fontSize: 22, color: P.tinta }, secaoApoio: { fontFamily: Fontes.corpo, fontSize: 12, color: P.texto, marginTop: 3 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 12 }, card: { minHeight: 166, padding: 16, borderRadius: 20, backgroundColor: P.superficie, borderWidth: 1, borderColor: P.borda }, cardIcone: { width: 46, height: 46, borderRadius: 15, alignItems: 'center', justifyContent: 'center', marginBottom: 16 }, cardTitulo: { fontFamily: Fontes.titulo, fontSize: 18, color: P.tinta }, cardApoio: { fontFamily: Fontes.corpo, fontSize: 11, color: P.texto, marginTop: 3 }, cardSeta: { position: 'absolute', right: 13, bottom: 13 },
-  // Opacidade e não cinza: o card trancado continua legível e reconhecível, para a
-  // pessoa saber o que está perdendo em vez de ver um bloco apagado.
-  cardTrancado: { opacity: 0.55 },
+  // Borda tracejada, e NADA de opacidade. Baixar a opacidade do card apagava justamente
+  // "Atualize seu plano" — 2,36:1 de contraste, contra os 4,5:1 que texto pequeno exige —
+  // e esse é o único texto que explica o cadeado. Aviso ilegível não é aviso.
+  // Tracejado e não cor: é sinal de FORMA, que serve também a quem não distingue cores, e
+  // soma ao cadeado no lugar do ícone, à seta de cadeado e ao texto trocado. Quatro sinais,
+  // zero custo de leitura.
+  cardTrancado: { borderStyle: 'dashed' },
   ritual: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 24, padding: 18, borderRadius: 22, backgroundColor: P.verdeSuave }, ritualIcone: { width: 50, height: 50, borderRadius: 25, backgroundColor: P.superficie, alignItems: 'center', justifyContent: 'center' }, ritualTexto: { flex: 1 }, ritualEyebrow: { fontFamily: Fontes.corpoNegrito, fontSize: 8, letterSpacing: 1.1, color: P.verde }, ritualTitulo: { fontFamily: Fontes.corpoNegrito, fontSize: 14, color: P.tinta, marginTop: 3 }, ritualApoio: { fontFamily: Fontes.corpo, fontSize: 11, color: P.texto, marginTop: 2 },
   conselho: { marginTop: 32, padding: 22, borderRadius: 26, backgroundColor: '#F1E7DB' }, conselhoTitulo: { fontFamily: Fontes.titulo, fontSize: 22, color: P.tinta, marginBottom: 18 }, decisoes: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 14 }, decisao: { width: '100%', flexDirection: 'row', gap: 11 }, decisaoLarga: { width: '48%' }, decisaoTexto: { flex: 1 }, decisaoTitulo: { fontFamily: Fontes.corpoNegrito, fontSize: 13, color: P.tinta }, decisaoApoio: { fontFamily: Fontes.corpo, fontSize: 11, lineHeight: 16, color: P.texto, marginTop: 2 },
   paletaTitulo: { fontFamily: Fontes.corpoNegrito, fontSize: 9, letterSpacing: 1.2, color: P.texto, marginTop: 22, marginBottom: 9 }, paleta: { flexDirection: 'row', gap: 8 }, amostra: { width: 32, height: 32, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(36,49,45,0.12)' }, nota: { fontFamily: Fontes.corpo, fontSize: 9, lineHeight: 14, color: P.texto, marginTop: 16 },
