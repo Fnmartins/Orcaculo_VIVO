@@ -13,7 +13,32 @@ import { decidirUso, type ConfiguracaoIA, type TipoUso, type Veredito } from './
  * trabalho sem ganhar nada.
  */
 // deno-lint-ignore no-explicit-any
-type Cliente = { from: (tabela: string) => any };
+type Cliente = { from: (tabela: string) => any; rpc: (nome: string, args: unknown) => any };
+
+/**
+ * O que uma chamada consumiu de verdade.
+ *
+ * Contar chamadas nao e medir custo: uma interpretacao de mapa gasta muito mais
+ * que uma pergunta curta. Estes numeros vem da resposta do fornecedor — `usage`
+ * da Anthropic, tamanho do texto na voz — e sao o que torna a auditoria do item 31
+ * medida em vez de estimada.
+ *
+ * Todos opcionais: um tipo de uso que nao gaste token nao precisa fingir que
+ * gasta.
+ */
+export interface ConsumoIA {
+  entrada?: number | null;
+  saida?: number | null;
+  /** Caracteres sintetizados. A Google cobra a voz por caractere, nao por token. */
+  caracteres?: number | null;
+}
+
+/** Inteiro nao-negativo, ou zero. Protege o banco de `null`, de NaN e de fracao. */
+function inteiroSeguro(valor: number | null | undefined): number {
+  return typeof valor === 'number' && Number.isFinite(valor) && valor > 0
+    ? Math.round(valor)
+    : 0;
+}
 
 export function hojeISO(hoje: Date = new Date()): string {
   return hoje.toISOString().slice(0, 10);
@@ -48,16 +73,34 @@ export async function conferirUso(
   return decidirUso(tipo, config, usado, semLimite);
 }
 
-/** Chamar só depois que a leitura existe: ninguém paga por falha nossa. */
+/**
+ * Conta a chamada e guarda o que ela consumiu.
+ *
+ * Chamar só depois que a leitura existe: ninguém paga por falha nossa.
+ *
+ * A soma acontece no banco (`contar_uso_ia`), e não aqui. Antes isto lia quanto a
+ * pessoa havia usado e gravava esse número mais um — duas chamadas ao mesmo tempo
+ * liam 3 e gravavam 4, e uma chamada desaparecia da conta. Com ela, o limite
+ * diário do plano ficava mais frouxo do que o plano diz, o que é dinheiro.
+ *
+ * O dia vai de `hojeISO()`, a mesma fonte que `conferirUso` usa para LER o
+ * contador: se o banco escolhesse o dia por conta dele, a leitura e a gravação
+ * poderiam cair em linhas diferentes na virada.
+ */
 export async function registrarUso(
   cliente: Cliente,
   usuarioId: string,
   tipo: TipoUso,
-  usadoHoje: number,
+  consumo: ConsumoIA = {},
 ): Promise<void> {
-  const { error } = await cliente.from('uso_ia').upsert({
-    usuario_id: usuarioId, dia: hojeISO(), tipo, quantidade: usadoHoje + 1,
-  }, { onConflict: 'usuario_id,dia,tipo' });
+  const { error } = await cliente.rpc('contar_uso_ia', {
+    p_usuario: usuarioId,
+    p_dia: hojeISO(),
+    p_tipo: tipo,
+    p_entrada: inteiroSeguro(consumo.entrada),
+    p_saida: inteiroSeguro(consumo.saida),
+    p_caracteres: inteiroSeguro(consumo.caracteres),
+  });
   if (error) console.error('falha ao contar uso', error.message);
 }
 

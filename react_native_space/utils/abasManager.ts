@@ -1,4 +1,4 @@
-export const ABAS_MANAGER = ['planos', 'roadmap', 'decisoes', 'moderacao', 'acessos'] as const;
+export const ABAS_MANAGER = ['planos', 'roadmap', 'decisoes', 'moderacao', 'acessos', 'custo'] as const;
 export type AbaManager = (typeof ABAS_MANAGER)[number];
 
 export const ROTULO_ABA: Record<AbaManager, string> = {
@@ -7,6 +7,7 @@ export const ROTULO_ABA: Record<AbaManager, string> = {
   decisoes: 'Decisões',
   moderacao: 'Moderação',
   acessos: 'Acessos',
+  custo: 'Custo',
 };
 
 /** Lê o ?aba= da URL. Valor ausente ou inválido abre Planos. */

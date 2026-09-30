@@ -410,7 +410,12 @@ Deno.serve(async (request) => {
       exigirEscrita('perfis.consultas_restantes', await supabaseAdmin
         .from('perfis').update({ consultas_restantes: restantes - 1 }).eq('id', usuarioId));
     }
-    await registrarUso(supabaseAdmin, usuarioId, 'interpretacao', veredito.usadoHoje);
+    // Os tokens da resposta vao para o contador: e o que faz a auditoria de custo
+    // por plano (item 31) ser medida, em vez de estimada sobre media inventada.
+    await registrarUso(supabaseAdmin, usuarioId, 'interpretacao', {
+      entrada: mensagem.usage?.input_tokens,
+      saida: mensagem.usage?.output_tokens,
+    });
 
     return resposta({
       ...interpretacao,

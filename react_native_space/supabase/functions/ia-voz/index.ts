@@ -264,7 +264,10 @@ Deno.serve(async (request) => {
   }, { onConflict: 'hash' });
   if (erroCache) console.error('falha ao gravar cache', erroCache.message);
 
-  await registrarUso(supabaseAdmin, usuarioId, 'voz', veredito.usadoHoje);
+  // A voz nao gasta token: a Google cobra por caractere sintetizado. E `texto` e o
+  // que FOI sintetizado — depois do teto de 3000 e do corte no fim da frase —, nao
+  // o que a pessoa pediu, senao a conta cobraria o que nunca foi gerado.
+  await registrarUso(supabaseAdmin, usuarioId, 'voz', { caracteres: texto.length });
 
   const curto = body.compartilhar === true
     ? await linkCurto(supabaseAdmin, hash, null)
