@@ -8,6 +8,7 @@
 //
 // Esta function SO LE. Nenhuma escrita, nenhuma chamada a modelo, nenhum custo.
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { agregarConsumo, type LinhaUso } from '../_shared/agregarUso.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -71,57 +72,55 @@ Deno.serve(async (request) => {
   const dias = Math.min(Math.max(pedido, 1), DIAS_MAXIMO);
   const desde = diasAtras(dias);
 
-  // 3) O consumo medido no periodo, com o plano de cada pessoa.
+  // 3) O consumo medido no periodo.
   //
   // Traz `usuario_id` porque "quantas pessoas usaram" precisa de distintos, e isso
   // nao sai de uma soma. A janela limita o tamanho.
+  //
+  // O plano vem numa segunda consulta, e NAO por encaixe do PostgREST. A primeira
+  // versao pedia `perfis!inner(plano)` e falhava: `uso_ia.usuario_id` referencia
+  // `auth.users(id)`, nao `public.perfis(id)`, e sem chave estrangeira entre as duas
+  // tabelas nao existe encaixe. O resultado era 502 e a tela dizendo "nao foi
+  // possivel carregar o custo".
   const { data: linhas, error: erroUso } = await supabaseAdmin
     .from('uso_ia')
-    .select('usuario_id, dia, tipo, quantidade, tokens_entrada, tokens_saida, caracteres, perfis!inner(plano)')
+    .select('usuario_id, dia, tipo, quantidade, tokens_entrada, tokens_saida, caracteres')
     .gte('dia', desde);
   if (erroUso) {
     console.error('falha ao ler uso_ia', erroUso.message);
     return resposta({ erro: 'Falha ao ler o consumo' }, 502);
   }
 
-  // Agrega por (plano, tipo) e conta pessoas distintas por plano.
-  const porChave = new Map<string, {
-    plano: string; tipo: string; chamadas: number;
-    tokensEntrada: number; tokensSaida: number; caracteres: number;
-  }>();
-  const pessoasPorPlano = new Map<string, Set<string>>();
-  // O consumo MEDIDO comeca no dia em que as colunas passaram a ser gravadas. Antes
-  // disso ha chamada com token zero, e mostrar isso como custo zero seria mentira —
-  // entao a tela recebe a data e diz de quando a medicao vale.
-  let medidoDesde: string | null = null;
-
-  for (const bruta of linhas ?? []) {
-    const l = bruta as Record<string, unknown>;
-    const plano = ((l.perfis as { plano?: string } | null)?.plano ?? 'sem plano').toString();
-    const tipo = String(l.tipo ?? '');
-    const chave = `${plano}|${tipo}`;
-    const atual = porChave.get(chave)
-      ?? { plano, tipo, chamadas: 0, tokensEntrada: 0, tokensSaida: 0, caracteres: 0 };
-
-    const entrada = Number(l.tokens_entrada ?? 0) || 0;
-    const saida = Number(l.tokens_saida ?? 0) || 0;
-    const caracteres = Number(l.caracteres ?? 0) || 0;
-
-    atual.chamadas += Number(l.quantidade ?? 0) || 0;
-    atual.tokensEntrada += entrada;
-    atual.tokensSaida += saida;
-    atual.caracteres += caracteres;
-    porChave.set(chave, atual);
-
-    const pessoas = pessoasPorPlano.get(plano) ?? new Set<string>();
-    pessoas.add(String(l.usuario_id ?? ''));
-    pessoasPorPlano.set(plano, pessoas);
-
-    const dia = String(l.dia ?? '');
-    if (entrada + saida + caracteres > 0 && dia && (medidoDesde === null || dia < medidoDesde)) {
-      medidoDesde = dia;
+  // O plano de quem aparece no periodo, em blocos.
+  //
+  // Em blocos porque `in(...)` monta a lista dentro da URL, e uma janela de um ano
+  // com muita gente estouraria o tamanho — falha que apareceria so quando a base
+  // crescesse, que e o pior momento para descobrir.
+  const usuarios = [...new Set((linhas ?? [])
+    .map((l) => String((l as { usuario_id?: string }).usuario_id ?? ''))
+    .filter(Boolean))];
+  const planoPorUsuario: Record<string, string> = {};
+  const BLOCO = 200;
+  for (let i = 0; i < usuarios.length; i += BLOCO) {
+    const { data: perfis, error } = await supabaseAdmin
+      .from('perfis').select('id, plano').in('id', usuarios.slice(i, i + BLOCO));
+    if (error) {
+      console.error('falha ao ler plano dos perfis', error.message);
+      return resposta({ erro: 'Falha ao ler os planos' }, 502);
+    }
+    for (const p of perfis ?? []) {
+      const linha = p as { id?: string; plano?: string };
+      if (linha.id) planoPorUsuario[linha.id] = String(linha.plano ?? '');
     }
   }
+
+  // A agregacao mora em `_shared/agregarUso.ts`, pura e com teste no Jest do app.
+  // Aqui dentro ela seria intestavel: esta function roda no Deno, fora do tsc e fora
+  // da suite — foi assim que o encaixe inexistente do PostgREST passou.
+  const { consumo, pessoasAtivas, medidoDesde } = agregarConsumo(
+    (linhas ?? []) as LinhaUso[],
+    planoPorUsuario,
+  );
 
   // 4) Assinantes de cada plano, usem IA ou nao — o denominador que responde "o
   //    plano se paga?". Contagem por cabeca, sem trazer linha de ninguem.
@@ -148,10 +147,8 @@ Deno.serve(async (request) => {
     desde,
     dias,
     medidoDesde,
-    consumo: [...porChave.values()],
-    pessoasAtivas: Object.fromEntries(
-      [...pessoasPorPlano.entries()].map(([plano, pessoas]) => [plano, pessoas.size]),
-    ),
+    consumo,
+    pessoasAtivas,
     assinantes,
     precos: precos ?? [],
   });
