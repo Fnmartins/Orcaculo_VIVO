@@ -24,9 +24,10 @@ import { Espacamento, RaioBorda } from '../../constants/spacing';
 import { dataConsultaValida, horarioConsultaValido, textoConsultaValido } from '../../utils/validacaoConsulta';
 import { Hapticos } from '../../utils/haptics';
 import { CASAS, PLANETAS, lerSigno, corElemento, type LeituraSignoSolar } from '../../data/astrologia';
+import { areasDaVida } from '../../data/areas';
 import { ROTULO_ASPECTO, SIMBOLO_ASPECTO } from '../../data/aspectos';
 import { assinaturaDoMapa } from '../../data/assinatura';
-import { signoDoGrau } from '../../data/efemerides';
+import { corpoPorNome, signoDoGrau } from '../../data/efemerides';
 import {
   escreverGrau, montarMapaAstral, ordemDeLeitura, visivelNoGratuito, type MapaAstral,
 } from '../../data/mapaAstral';
@@ -61,8 +62,11 @@ function textoDoRegente(
   casaDoCorpo: Record<string, number> | null,
 ): string {
   const regente = signoDoGrau(cuspide).regente;
-  const id = regente.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-  const onde = casaDoCorpo?.[id];
+  // A ponte do nome com acento para o identificador sem acento mora em
+  // `data/efemerides.ts`, com teste: duas cópias de normalização divergem, e a
+  // que erra faz o regente desaparecer sem avisar.
+  const id = corpoPorNome(regente);
+  const onde = id ? casaDoCorpo?.[id] : undefined;
   return onde ? `Regida por ${regente}, que está na casa ${onde}` : `Regida por ${regente}`;
 }
 
@@ -204,6 +208,17 @@ export default function TelaMapaAstralResultado() {
   const solIdx = idxSigno(signo.id);
   const posicoes = ordemDeLeitura(mapa.posicoes);
 
+  // As quatro áreas com as peças de mapa de cada uma. As mesmas peças vão para
+  // quem escreve o texto e para a tela: a leitura fica conferível, em vez de sair
+  // de um lugar que a pessoa não pode ver.
+  const areas = areasDaVida({
+    posicoes: mapa.posicoes,
+    cuspides: mapa.casas?.cuspides ?? null,
+    casaDoCorpo: mapa.casaDoCorpo,
+    aspectos: mapa.aspectos,
+    nomeDoPonto,
+  });
+
   const aprofundar = async () => {
     if (carregandoIA || interpretacao || !mapa) return;
     setCarregandoIA(true);
@@ -243,6 +258,14 @@ export default function TelaMapaAstralResultado() {
         aspectos: mapa.aspectos.slice(0, 8).map((a) => ({
           texto: `${nomeDoPonto(a.a)} em ${ROTULO_ASPECTO[a.tipo]} com ${nomeDoPonto(a.b)}`,
           natureza: a.natureza,
+        })),
+        // Cada área com as casas, o regente e os planetas que respondem por ela.
+        // Sem isto o texto de amor saía do mesmo lugar que o de dinheiro.
+        areas: areas.map((a) => ({
+          id: a.id,
+          titulo: a.titulo,
+          comCasas: a.comCasas,
+          pecas: a.pecas.map((p) => `${p.rotulo}: ${p.valor}`),
         })),
         elementoDominante: mapa.sintese.elementoDominante,
         qualidadeDominante: mapa.sintese.qualidadeDominante,
@@ -743,20 +766,42 @@ export default function TelaMapaAstralResultado() {
                   { rotulo: 'O que essa combinação faz bem', texto: interpretacao.forca },
                   { rotulo: 'Onde ela puxa para dois lados', texto: interpretacao.tensao },
                   { rotulo: 'Uma prática', texto: interpretacao.conselho },
-                  // As quatro áreas da vida. Entram na mesma resposta da IA, e
-                  // não numa chamada nova: mesma leitura, mais recortes. Leitura
-                  // guardada de antes não tem estes campos, e o filtro abaixo
-                  // faz ela continuar abrindo sem eles.
-                  { rotulo: 'Amor', texto: interpretacao.amor },
-                  { rotulo: 'Trabalho', texto: interpretacao.trabalho },
-                  { rotulo: 'Dinheiro', texto: interpretacao.dinheiro },
-                  { rotulo: 'Caminho', texto: interpretacao.caminho },
                 ].filter((b) => b.texto).map((bloco) => (
                   <View key={bloco.rotulo}>
                     <Text style={estilos.iaRotulo}>{bloco.rotulo}</Text>
                     <Text style={estilos.equilibrioTexto}>{bloco.texto}</Text>
                   </View>
                 ))}
+
+                {/* As quatro áreas da vida, cada uma com as peças de mapa de onde
+                    ela saiu. Entram na mesma resposta da IA, e não numa chamada
+                    nova: mesma leitura, mais recortes. Leitura guardada de antes
+                    do formato atual não tem estes campos, e o `null` abaixo faz
+                    ela continuar abrindo sem eles. */}
+                {areas.map((area) => {
+                  const texto = interpretacao[area.id];
+                  if (!texto) return null;
+                  return (
+                    <View key={area.id}>
+                      <Text style={estilos.iaRotulo}>{area.titulo}</Text>
+                      <Text style={estilos.equilibrioTexto}>{texto}</Text>
+                      {temMapaCompleto && area.pecas.length > 0 ? (
+                        <View style={estilos.areaPecas}>
+                          <Text style={estilos.areaPecasTitulo}>
+                            {area.comCasas ? 'Lido a partir de' : 'Lido a partir de, sem a hora'}
+                          </Text>
+                          {area.pecas.map((peca) => (
+                            <Text key={peca.rotulo} style={estilos.areaPeca}>
+                              <Text style={estilos.areaPecaRotulo}>{peca.rotulo}</Text>
+                              {`: ${peca.valor}`}
+                            </Text>
+                          ))}
+                          <Text style={estilos.areaPorque}>{area.porque}</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  );
+                })}
                 {interpretacao.caminho ? (
                   <Text style={estilos.notaRodape}>
                     Caminho é a direção que o seu mapa aponta, não uma previsão:
@@ -1246,6 +1291,29 @@ const estilos = StyleSheet.create({
   },
   casaRegente: {
     fontFamily: Fontes.corpo, fontSize: 12, color: Cores.acento, marginTop: 1,
+  },
+  // As peças de onde cada área saiu. Menores que o texto de propósito: são a
+  // conta à vista, não a leitura.
+  areaPecas: {
+    marginTop: Espacamento.xs,
+    paddingLeft: Espacamento.sm,
+    borderLeftWidth: 2,
+    borderLeftColor: Cores.acento + '40',
+  },
+  areaPecasTitulo: {
+    fontFamily: Fontes.corpoSemibold, fontSize: 11, color: Cores.textoSecundario,
+    textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 2,
+  },
+  areaPeca: {
+    fontFamily: Fontes.corpo, fontSize: 12, lineHeight: 17,
+    color: Cores.textoSecundario,
+  },
+  areaPecaRotulo: {
+    fontFamily: Fontes.corpoSemibold, color: Cores.textoClaro,
+  },
+  areaPorque: {
+    fontFamily: Fontes.corpo, fontSize: 11, lineHeight: 16,
+    color: Cores.textoSecundario, fontStyle: 'italic', marginTop: 3,
   },
   casaCorpos: {
     fontFamily: Fontes.corpoSemibold, fontSize: 12, color: Cores.textoClaro, marginTop: 1,

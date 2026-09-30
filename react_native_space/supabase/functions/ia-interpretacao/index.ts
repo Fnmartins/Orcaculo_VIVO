@@ -63,13 +63,21 @@ Mais regras, para esta leitura:
 - A tensão é para ser dita com franqueza e sem susto: é onde a pessoa puxa para dois lados, não é defeito nem destino.
 - Nada de idade, ano, doença, dinheiro, processo, gravidez ou morte.
 
-Depois da leitura geral, escreva quatro areas da vida. Cada uma sai do mapa, nao de generalidade:
+Depois da leitura geral, escreva quatro areas da vida. **Cada area vem com as pecas de mapa dela dentro de <dados>: a casa que responde por ela, o signo em que essa casa comeca, quem mora dentro, onde esta o regente e os planetas do assunto.** Escreva cada area A PARTIR DESSAS PECAS:
+- Cite pelo menos uma peca concreta da area (a casa, o signo da cuspide, o regente e onde ele esta, ou um planeta com a casa dele). Sem citar peca, o texto serve para qualquer pessoa — e e isso que estamos deixando de fazer.
+- Nao use a peca de uma area para escrever outra: a casa 7 e amor, a 10 e trabalho, a 2 e dinheiro. Se uma peca aparece nas duas, diga o que ela faz em cada uma.
+- Casa vazia nao e area vazia: quando a casa nao tem planeta dentro, o assunto dela esta onde mora o regente, e e de la que voce escreve.
+- Quando a area vier marcada "(sem hora de nascimento: sem casas)", escreva com os planetas que ha e diga numa frase que essa parte fica mais firme com a hora. Nunca invente a casa que nao veio.
+
+O que cada area e:
 - **amor**: como esta pessoa se vincula — o que procura, o que oferece, onde costuma travar.
 - **trabalho**: como ela funciona trabalhando — ambiente, ritmo, relacao com reconhecimento e com autoridade.
 - **dinheiro**: a RELACAO dela com recursos — seguranca, valor proprio, atitude diante de ter e de gastar. Nunca indique aplicacao, nunca diga se compra ou vende, nunca fale de valor futuro.
 - **caminho**: a direcao que este mapa aponta — o tema que se repete, o que esta em desenvolvimento. NAO e previsao: nao diga quando, nao diga que vai acontecer, nao prometa desfecho. E tendencia simbolica, e a frase precisa deixar isso claro por si.
 
 Se os dados nao trouxerem o suficiente para uma area, escreva o que der com o que ha e diga numa frase que essa parte fica mais firme com a hora de nascimento. Nunca preencha com invencao.
+
+As pecas de cada area vao aparecer na tela ao lado do seu texto, para a pessoa conferir de onde ele saiu. Escreva sabendo que a conta esta a vista.
 
 Responda SOMENTE com um objeto JSON, sem cercas de código e sem texto antes ou depois:
 {"titulo": "3 a 5 palavras", "narrativa": "5 a 7 frases ligando Sol, Lua e Ascendente nesta pessoa", "forca": "2 a 3 frases sobre o que essa combinação faz bem", "tensao": "2 a 3 frases sobre onde ela puxa para dois lados", "conselho": "2 frases, uma prática concreta", "amor": "3 a 4 frases", "trabalho": "3 a 4 frases", "dinheiro": "3 a 4 frases", "caminho": "3 a 4 frases"}`;
@@ -181,6 +189,24 @@ function dadosDoMapa(body: Record<string, unknown>): string {
     }).filter(Boolean).join('; ')
     : '';
 
+  // Cada area com as pecas de mapa que respondem por ela (`data/areas.ts`).
+  // Sem isto o modelo recebia o mapa inteiro e quatro titulos, e o texto de amor
+  // saia do mesmo lugar que o de dinheiro: as quatro areas ficavam parecidas
+  // entre si, e parecidas com as de qualquer pessoa.
+  const areas = Array.isArray(mapa.areas)
+    ? mapa.areas.slice(0, 4).map((item) => {
+      const a = item as Record<string, unknown>;
+      const titulo = texto(a.titulo, 30);
+      const pecas = Array.isArray(a.pecas)
+        ? a.pecas.map((p) => texto(p, 180)).filter(Boolean).slice(0, 8)
+        : [];
+      if (!titulo || pecas.length === 0) return '';
+      const semCasas = a.comCasas === false ? ' (sem hora de nascimento: sem casas)' : '';
+      const linhas = pecas.map((p) => `  - ${p}`).join('\n');
+      return `${titulo}${semCasas}:\n${linhas}`;
+    }).filter(Boolean).join('\n')
+    : '';
+
   return [
     '<dados>',
     sol,
@@ -196,6 +222,8 @@ function dadosDoMapa(body: Record<string, unknown>): string {
     casas ? `As casas:
 ${casas}` : '',
     aspectos ? `Aspectos mais exatos: ${aspectos}` : '',
+    areas ? `As quatro areas da vida, cada uma com as pecas do mapa que respondem por ela:
+${areas}` : '',
     '</dados>',
   ].filter(Boolean).join('\n');
 }
@@ -217,7 +245,17 @@ ${casas}` : '',
  * quem gerou depois, sem erro nenhum aparecendo. Mudou o formato, sobe o
  * número, e as leituras antigas simplesmente deixam de ser encontradas.
  */
-const VERSAO_FORMATO = 'v2-areas';
+/**
+ * Em 29/09 as areas passaram a sair das casas e dos planetas de cada assunto
+ * (`data/areas.ts`), e as pecas de cada area passaram a aparecer na tela ao lado
+ * do texto. Uma leitura guardada antes disso foi escrita sem ver esse dossie: a
+ * tela mostraria as pecas como se fossem a base de um texto que nunca as
+ * conheceu. Sobe o numero, e as antigas deixam de ser encontradas.
+ *
+ * O preco disso e uma geracao nova por pessoa que ja tinha leitura. E o preco de
+ * nao mostrar uma conta que nao foi feita.
+ */
+const VERSAO_FORMATO = 'v3-areas-casas';
 
 async function chaveDoMapa(dados: string): Promise<string> {
   const bytes = new TextEncoder().encode(`${VERSAO_FORMATO}\n${dados}`);
