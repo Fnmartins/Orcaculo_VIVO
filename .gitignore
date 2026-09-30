@@ -8,3 +8,11 @@ site/.vercel/
 
 # Worktrees locais (desenvolvimento isolado por feature)
 .worktrees/
+
+# Cache do CLI do Supabase criado por rodar `functions deploy` da pasta ERRADA.
+# O app ja ignora o dele (react_native_space/.gitignore), mas aquele padrao nao
+# alcanca a raiz — e em 29/09 um deploy rodado daqui deixou `supabase/.temp/`
+# solto, pronto para entrar num `git add -A` sem ninguem notar. A barra inicial
+# limita a regra a raiz: `react_native_space/supabase/` continua versionado, e e
+# onde as functions e os SQL de verdade moram.
+/supabase/
