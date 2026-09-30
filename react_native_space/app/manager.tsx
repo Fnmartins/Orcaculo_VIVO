@@ -131,18 +131,37 @@ const estilos = StyleSheet.create({
     paddingHorizontal: Espacamento.xl,
   },
   botaoEntrarTexto: { fontFamily: Fontes.corpoNegrito, fontSize: 15, color: '#fff' },
+  // `flexWrap` porque a barra cresce com o Painel. Com cinco abas a linha única
+  // couberam apertadas; a sexta (Custo) saiu da tela e ficou INVISÍVEL — não
+  // cortada pela metade, simplesmente ausente, o que se lê como "não foi
+  // publicado" em vez de "não caber".
+  //
+  // Quebrar linha, e não rolar na horizontal: barra que rola esconde aba atrás de
+  // um gesto que ninguém adivinha, que é o mesmo defeito com outra roupa. Em duas
+  // linhas tudo aparece de uma vez.
   abas: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     marginHorizontal: Espacamento.lg,
     marginBottom: Espacamento.md,
     padding: Espacamento.xs,
     gap: Espacamento.xs,
     backgroundColor: Cores.cardFundo,
-    borderRadius: RaioBorda.full,
+    // Cantos menos redondos que a pílula original: com duas linhas, o `full`
+    // deixava a caixa com cara de erro de layout.
+    borderRadius: RaioBorda.lg,
     borderWidth: 1,
     borderColor: Cores.cardBorda,
   },
-  aba: { flex: 1, paddingVertical: Espacamento.sm, borderRadius: RaioBorda.full, alignItems: 'center' },
+  // `minWidth` em vez de só `flex: 1`: com quebra de linha, `flex: 1` sozinho
+  // deixaria uma aba órfã esticada na segunda linha.
+  aba: {
+    flexGrow: 1,
+    flexBasis: '28%',
+    paddingVertical: Espacamento.sm,
+    borderRadius: RaioBorda.full,
+    alignItems: 'center',
+  },
   abaAtiva: { backgroundColor: Cores.acento },
   abaTexto: { fontFamily: Fontes.corpoSemibold, fontSize: 14, color: Cores.textoSecundario },
   abaTextoAtivo: { color: '#fff' },
