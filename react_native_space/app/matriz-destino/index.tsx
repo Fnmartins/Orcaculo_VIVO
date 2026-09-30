@@ -21,16 +21,30 @@ import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
 import { Hapticos } from '../../utils/haptics';
+import { useAuth } from '../../contexts/AuthContext';
+import { camposDoPerfil, nascimentoParaSalvar } from '../../utils/nascimentoDoPerfil';
 
 export default function TelaMatrizForm() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
+
+  const { perfil, atualizarPerfil } = useAuth();
 
   const [nome, setNome] = useState('');
   const [dia, setDia] = useState('');
   const [mes, setMes] = useState('');
   const [ano, setAno] = useState('');
   const [erros, setErros] = useState<Record<string, string>>({});
+
+  // O perfil é a fonte: quem já preencheu numa ferramenta não digita de novo na
+  // outra. Só entra no campo vazio, para não apagar correção feita nesta visita.
+  useEffect(() => {
+    const doPerfil = camposDoPerfil(perfil);
+    setNome((atual) => atual || doPerfil.nome);
+    setDia((atual) => atual || doPerfil.dia);
+    setMes((atual) => atual || doPerfil.mes);
+    setAno((atual) => atual || doPerfil.ano);
+  }, [perfil]);
 
   useEffect(() => {
     Animated.parallel([
@@ -57,6 +71,12 @@ export default function TelaMatrizForm() {
     Hapticos.impactoLeve();
     if (!validar()) return;
     Hapticos.impactoMedio();
+
+    // Guarda no perfil o que faltava, para a próxima ferramenta já nascer
+    // preenchida. Sem esperar: falhar em salvar não pode barrar o resultado.
+    const mudou = nascimentoParaSalvar({ nome, dia, mes, ano }, perfil);
+    if (mudou) void atualizarPerfil(mudou);
+
     router.push({
       pathname: '/matriz-destino/calculando',
       params: { nome: nome.trim(), dia, mes, ano },

@@ -29,6 +29,15 @@ export interface Perfil {
   nascimento_hora?: string | null;
   nascimento_sem_hora?: boolean;
   /**
+   * O nome de nascimento, o de registro, com sobrenomes.
+   *
+   * Separado de `nome` de propósito: `nome` é como a pessoa quer ser chamada na
+   * tela — apelido, primeiro nome, nome social. A numerologia trabalha letra por
+   * letra sobre o nome de registro. Juntar os dois obrigaria a pessoa a escolher
+   * entre ser chamada pelo nome que usa e receber um mapa numerológico correto.
+   */
+  nascimento_nome?: string | null;
+  /**
    * A cidade inteira, congelada: a base tem 36 mil linhas e cresce, e guardar
    * só o identificador faria a leitura depender de aquela linha continuar
    * existindo com as mesmas coordenadas.

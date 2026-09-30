@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -20,14 +20,28 @@ import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
 import { Hapticos } from '../../utils/haptics';
 import { dataConsultaValida, textoConsultaValido } from '../../utils/validacaoConsulta';
+import { useAuth } from '../../contexts/AuthContext';
+import { camposDoPerfil, nascimentoParaSalvar } from '../../utils/nascimentoDoPerfil';
 
 export default function TelaFormularioMapa() {
+  const { perfil, atualizarPerfil } = useAuth();
+
   const [nome, setNome] = useState('');
   const [nomeAtual, setNomeAtual] = useState('');
   const [dia, setDia] = useState('');
   const [mes, setMes] = useState('');
   const [ano, setAno] = useState('');
   const [erro, setErro] = useState('');
+
+  // O perfil é a fonte. O campo de nome ATUAL fica de fora de propósito: é o nome
+  // de casada ou profissional, não o de registro, e não mora no perfil.
+  useEffect(() => {
+    const doPerfil = camposDoPerfil(perfil);
+    setNome((atual) => atual || doPerfil.nome);
+    setDia((atual) => atual || doPerfil.dia);
+    setMes((atual) => atual || doPerfil.mes);
+    setAno((atual) => atual || doPerfil.ano);
+  }, [perfil]);
 
   const validarEProsseguir = () => {
     const nomeTrimmed = nome.trim();
@@ -50,6 +64,12 @@ export default function TelaFormularioMapa() {
 
     setErro('');
     Hapticos.impactoMedio();
+
+    // Guarda no perfil o que faltava, para a próxima ferramenta já nascer
+    // preenchida. Sem esperar: falhar em salvar não pode barrar o resultado.
+    const mudou = nascimentoParaSalvar({ nome: nomeTrimmed, dia, mes, ano }, perfil);
+    if (mudou) void atualizarPerfil(mudou);
+
     router.push({
       pathname: '/mapa-numerologico/calculando',
       params: {
