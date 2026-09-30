@@ -143,10 +143,27 @@ const NOME: Record<TipoUso, string> = {
   voz: 'A leitura falada',
 };
 
-/** 'YYYY-MM-DD...' → '10/10'. Vazio quando a data não serve. */
+/** Três horas a menos que UTC: o horário de Brasília, sem horário de verão desde 2019. */
+const FUSO_BRASILIA_MS = 3 * 60 * 60 * 1000;
+
+/**
+ * '2026-10-10T02:00:00+00:00' → '09/10'. Vazio quando a data não serve.
+ *
+ * Converte para o horário de Brasília antes de escolher o dia, em vez de ler o dia
+ * direto da string. O PostgREST devolve `timestamptz` em UTC, e as três primeiras horas
+ * do dia UTC ainda são o dia anterior aqui — sem isso, quem perdeu o acesso às 23h do
+ * dia 9 leria "terminou em 10/10", uma data que ainda não chegou.
+ *
+ * Brasília, e não o fuso do aparelho: a frase tem de dizer a mesma data para todo mundo,
+ * e `Intl` com fuso nomeado não é confiável no Hermes do React Native. O país não tem
+ * horário de verão desde 2019, então o deslocamento é constante.
+ */
 function diaEMes(iso: string | null | undefined): string {
-  const partes = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso ?? '');
-  return partes ? `${partes[3]}/${partes[2]}` : '';
+  if (typeof iso !== 'string' || !iso.trim()) return '';
+  const instante = new Date(iso.trim()).getTime();
+  if (!Number.isFinite(instante)) return '';
+  const local = new Date(instante - FUSO_BRASILIA_MS).toISOString();
+  return `${local.slice(8, 10)}/${local.slice(5, 7)}`;
 }
 
 export function mensagemDoLimite(veredito: Veredito, tipo: TipoUso): string {

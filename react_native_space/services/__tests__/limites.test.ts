@@ -197,7 +197,8 @@ describe('mensagemDoLimite', () => {
       { ...base, motivo: 'vencido' as const, venceuEm: '2026-10-10T00:00:00Z' },
       'interpretacao',
     );
-    expect(texto).toContain('10/10');
+    // 2026-10-10T00:00:00Z é 21:00 do dia 09 em Brasília, então escreve 09/10
+    expect(texto).toContain('09/10');
     expect(texto).toContain('plano');
   });
 
@@ -215,13 +216,45 @@ describe('mensagemDoLimite', () => {
     const texto = mensagemDoLimite(
       { ...base, motivo: 'vencido' as const, venceuEm: 'ontem' }, 'voz',
     );
-    expect(texto).not.toContain('Invalid');
+    expect(texto).toBe('Seu acesso terminou. Atualize seu plano para continuar.');
   });
 
-  it('desligado e limite continuam como eram', () => {
-    expect(mensagemDoLimite({ ...base, motivo: 'desligado' as const }, 'imagem'))
-      .toContain('não está disponível');
+  it('escreve o dia de Brasília, não o dia UTC', () => {
+    // 02:00Z do dia 10 é 23h do dia 9 aqui. Dizer "terminou em 10/10" a quem perdeu o
+    // acesso no dia 9 é dizer uma data que ainda não chegou.
+    const texto = mensagemDoLimite(
+      { ...base, motivo: 'vencido' as const, venceuEm: '2026-10-10T02:00:00+00:00' },
+      'interpretacao',
+    );
+    expect(texto).toBe('Seu acesso terminou em 09/10. Atualize seu plano para continuar.');
+  });
+
+  it('a grafia que o PostgREST devolve funciona', () => {
+    // `timestamptz` chega como '+00:00', não como 'Z'.
+    expect(mensagemDoLimite(
+      { ...base, motivo: 'vencido' as const, venceuEm: '2026-10-10T12:00:00+00:00' }, 'voz',
+    )).toContain('10/10');
+  });
+
+  it('string vazia cai no texto sem data', () => {
+    expect(mensagemDoLimite(
+      { ...base, motivo: 'vencido' as const, venceuEm: '' }, 'voz',
+    )).toBe('Seu acesso terminou. Atualize seu plano para continuar.');
+  });
+
+  it('desligado e limite continuam como eram, nos quatro tipos', () => {
+    // Os quatro chamadores não foram tocados nesta entrega: se o texto derivar, ninguém
+    // reclama e a frase errada vai para a tela. Por isso os quatro vão fixados inteiros.
+    const desligado = { ...base, motivo: 'desligado' as const };
+    expect(mensagemDoLimite(desligado, 'imagem'))
+      .toBe('A leitura por imagem não está disponível no seu plano.');
+    expect(mensagemDoLimite(desligado, 'interpretacao'))
+      .toBe('O aprofundamento com IA não está disponível no seu plano.');
+    expect(mensagemDoLimite(desligado, 'pergunta'))
+      .toBe('As perguntas não está disponível no seu plano.');
+    expect(mensagemDoLimite(desligado, 'voz'))
+      .toBe('A leitura falada não está disponível no seu plano.');
     expect(mensagemDoLimite({ ...base, motivo: 'limite_dia' as const }, 'pergunta'))
-      .toContain('limite de hoje');
+      .toBe('Você já usou o limite de hoje. Amanhã tem mais.');
   });
 });
