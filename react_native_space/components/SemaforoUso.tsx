@@ -53,11 +53,15 @@ export function SemaforoUso({ tipo, rotulo }: Props) {
   }, [usuarioId, plano, tipo, semLimite, acesso.liberado]);
 
   // Fica ANTES do `!uso`: quem venceu não tem contador para mostrar, e este retorno
-  // precisa ser alcançado justamente quando `uso` está nulo. O `usuarioId` é o que
-  // separa o vencido de quem saiu da conta — sem perfil, `acessoDoPlano` também barra,
-  // e essa pessoa leria "seu acesso terminou" sem nunca ter tido acesso. O super-admin
-  // não precisa de checagem aqui: `acessoDoPlano` já o libera.
-  if (usuarioId && !acesso.liberado) {
+  // precisa ser alcançado justamente quando `uso` está nulo. Dois guardas, e cada um
+  // existe por um motivo. `usuarioId` separa o vencido de quem saiu da conta: sem
+  // sessão não há ninguém para acusar. `perfil != null` separa o vencido de quem o app
+  // ainda não conhece: o AuthContext define a sessão e só DEPOIS busca o perfil, então
+  // esse intervalo existe em todo cold start (e dura a sessão inteira se a leitura
+  // falhar, porque `buscarPerfil` devolve nulo em vez de lançar). Nos dois casos
+  // `acessoDoPlano` também barra, e a pessoa leria "seu acesso terminou" sem ter
+  // perdido nada. O super-admin não precisa de checagem aqui: `acessoDoPlano` já o libera.
+  if (usuarioId && perfil != null && !acesso.liberado) {
     return (
       <View style={estilos.trancado} accessibilityLabel="Acesso vencido">
         <Ionicons name="lock-closed" size={16} color={Cores.textoSecundario} />
