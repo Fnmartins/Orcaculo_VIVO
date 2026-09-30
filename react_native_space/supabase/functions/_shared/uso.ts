@@ -104,16 +104,7 @@ export async function registrarUso(
   if (error) console.error('falha ao contar uso', error.message);
 }
 
-const NOME: Record<TipoUso, string> = {
-  imagem: 'A leitura por imagem',
-  interpretacao: 'O aprofundamento com IA',
-  pergunta: 'As perguntas',
-  voz: 'A leitura falada',
-};
-
-export function mensagemDoLimite(veredito: Veredito, tipo: TipoUso): string {
-  if (veredito.motivo === 'desligado') {
-    return `${NOME[tipo]} não está disponível no seu plano.`;
-  }
-  return 'Você já usou o limite de hoje. Amanhã tem mais.';
-}
+// `mensagemDoLimite` mudou para `limites.ts`: ela é decisão pura sobre um veredito,
+// e aqui ficava num módulo que toca banco, fora do alcance do Jest. A
+// re-exportação evita mexer nos quatro importadores só por causa do caminho.
+export { mensagemDoLimite } from './limites.ts';

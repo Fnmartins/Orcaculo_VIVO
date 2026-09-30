@@ -1,6 +1,7 @@
 import {
   acessoDoPlano,
   decidirUso,
+  mensagemDoLimite,
   restanteHoje,
   type AcessoDoPlano,
   type ConfiguracaoIA,
@@ -185,5 +186,42 @@ describe('acessoDoPlano', () => {
     const comOffset = acessoDoPlano('2026-10-19T21:00:00-03:00', AGORA, false);
     expect(comZ.liberado).toBe(true);
     expect(comOffset.liberado).toBe(comZ.liberado);
+  });
+});
+
+describe('mensagemDoLimite', () => {
+  const base = { permitido: false, usadoHoje: 0, limiteDia: null };
+
+  it('vencido com data escreve a data', () => {
+    const texto = mensagemDoLimite(
+      { ...base, motivo: 'vencido' as const, venceuEm: '2026-10-10T00:00:00Z' },
+      'interpretacao',
+    );
+    expect(texto).toContain('10/10');
+    expect(texto).toContain('plano');
+  });
+
+  it('vencido SEM data não escreve "null"', () => {
+    // Acontece com quem cancelou: plano gratuito e validade nula.
+    const texto = mensagemDoLimite(
+      { ...base, motivo: 'vencido' as const, venceuEm: null }, 'voz',
+    );
+    expect(texto).not.toContain('null');
+    expect(texto).not.toContain('NaN');
+    expect(texto.length).toBeGreaterThan(10);
+  });
+
+  it('data ilegível não vira "Invalid Date" na tela', () => {
+    const texto = mensagemDoLimite(
+      { ...base, motivo: 'vencido' as const, venceuEm: 'ontem' }, 'voz',
+    );
+    expect(texto).not.toContain('Invalid');
+  });
+
+  it('desligado e limite continuam como eram', () => {
+    expect(mensagemDoLimite({ ...base, motivo: 'desligado' as const }, 'imagem'))
+      .toContain('não está disponível');
+    expect(mensagemDoLimite({ ...base, motivo: 'limite_dia' as const }, 'pergunta'))
+      .toContain('limite de hoje');
   });
 });

@@ -135,3 +135,31 @@ export function acessoDoPlano(
     ? { liberado: true, venceuEm: null }
     : { liberado: false, venceuEm: bruto };
 }
+
+const NOME: Record<TipoUso, string> = {
+  imagem: 'A leitura por imagem',
+  interpretacao: 'O aprofundamento com IA',
+  pergunta: 'As perguntas',
+  voz: 'A leitura falada',
+};
+
+/** 'YYYY-MM-DD...' → '10/10'. Vazio quando a data não serve. */
+function diaEMes(iso: string | null | undefined): string {
+  const partes = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso ?? '');
+  return partes ? `${partes[3]}/${partes[2]}` : '';
+}
+
+export function mensagemDoLimite(veredito: Veredito, tipo: TipoUso): string {
+  if (veredito.motivo === 'vencido') {
+    const quando = diaEMes(veredito.venceuEm);
+    // Sem data legível, a frase omite o quando em vez de escrever "null" ou
+    // "Invalid Date" na tela de alguém.
+    return quando
+      ? `Seu acesso terminou em ${quando}. Atualize seu plano para continuar.`
+      : 'Seu acesso terminou. Atualize seu plano para continuar.';
+  }
+  if (veredito.motivo === 'desligado') {
+    return `${NOME[tipo]} não está disponível no seu plano.`;
+  }
+  return 'Você já usou o limite de hoje. Amanhã tem mais.';
+}
