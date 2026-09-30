@@ -27,7 +27,8 @@ Não é o Arcanus. Ver a seção 6.
 
 ## 2. O que está no ar
 
-Entregue em 28/09, tudo mergeado e publicado:
+Entregue em 28 e 29/09, tudo mergeado e publicado — conferido no bundle de
+produção, não só no git (seção 6):
 
 **Mapa astral**
 - Motor real de efemérides (`astronomy-engine`), rodando no aparelho — as
@@ -40,8 +41,13 @@ Entregue em 28/09, tudo mergeado e publicado:
   tabela só, para um astrólogo revisar.
 - **Roda profissional**: ascendente à esquerda, zodíaco anti-horário, doze
   cúspides desenhadas, quatro eixos em destaque, dez corpos no grau real.
-- **Quatro áreas da vida** na leitura: amor, trabalho, dinheiro e caminho.
-  Versão básica (Sol/Lua/Ascendente); a completa está no roadmap.
+- **Quatro áreas da vida** na leitura: amor, trabalho, dinheiro e caminho, cada
+  uma escrita a partir das casas e dos planetas do assunto (`data/areas.ts`), com
+  **as peças aparecendo na tela ao lado do texto** — a leitura fica conferível.
+  As atribuições de casa e planeta estão numa tabela só, declaradas como
+  convenção, para um astrólogo revisar.
+- **Nome de nascimento no perfil**, separado do nome de tela: a numerologia usa o
+  de registro, e as três telas que pediam nome e data passam a ler do perfil.
 - **Dados de nascimento no perfil** — o mapa é da conta, não formulário livre.
 - **Cache da interpretação**: mesma posição, mesma leitura, sem pagar de novo.
 
@@ -68,7 +74,7 @@ Entregue em 28/09, tudo mergeado e publicado:
 
 ## 3. O roadmap
 
-**25 feitos, 21 abertos, 46 no total** (conferido em 28/09).
+**34 feitos, 12 abertos, 46 no total** (conferido em 29/09, fim do dia).
 
 Para ver o estado atual:
 
@@ -79,29 +85,16 @@ select fase, ordem, status, titulo
  order by fase, ordem;
 ```
 
-Os 21 abertos se separam em três naturezas, e a diferença importa mais que o
-número:
+**Não sobrou nenhum item que se resolva só com código.** Os 12 abertos se separam
+em duas naturezas, e a diferença é o que decide o que fazer amanhã:
 
 ### Dependem do dono, não de código
-| # | Item |
-|---|---|
-| 13 | E-mail de boas-vindas — precisa de `RESEND_API_KEY`, `WELCOME_HOOK_SECRET`, `REMETENTE_EMAIL` |
-| 14 | Receber `contato@arcanus.com.br` — DNS |
-| 17 | Campanha de lançamento |
-| 31 | Auditoria de custo por plano |
-
-### Polimento do que já existe
-| # | Item |
-|---|---|
-| 18 | Perfil rico (spec em `docs/superpowers/specs/2026-09-09-perfil-rico-design.md`) |
-| 33 | Dívida técnica do pagamento e do painel |
-| 38 | **Conferência das Edge Functions** — ver seção 5 |
-| 39 | Conexões do mapa na tela (aspectos já calculados, só a IA os vê) |
-| 40 | Áreas da vida na versão completa, usando as casas |
-| 41 | Assinatura astrológica no lugar da "Síntese do seu Sol" |
-| 42 | Casas expansíveis com regente e planetas |
-| 43 | Tirar repetição no card do Sol; tirar "sistema mais usado no Brasil" |
-| 44 | Bateria de validação de 20 mapas contra referência profissional |
+| # | Item | O que falta chegar |
+|---|---|---|
+| 13 | E-mail de boas-vindas | `RESEND_API_KEY`, `WELCOME_HOOK_SECRET`, `REMETENTE_EMAIL` |
+| 14 | Receber `contato@arcanus.com.br` | registro de DNS |
+| 17 | Campanha de lançamento | decisão de oferta |
+| 31 | Auditoria de custo por plano | números de consumo real |
 
 ### Produto novo
 | # | Item |
@@ -119,16 +112,19 @@ número:
 
 ## 4. A ordem que eu recomendo
 
-1. **Item 38 — conferência das functions.** Não é o mais valioso; é o que
-   protege todos os outros. Hoje qualquer erro numa Edge Function passa pelo
-   `tsc` verde e só aparece no deploy. Aconteceu em 28/09.
-2. **Item 44 — bateria de 20 mapas.** Antes de chamar auditor. Um astrólogo
-   abre o produto e a primeira coisa que confere é se as cúspides batem; se
-   houver erro ali, ele para no primeiro mapa e nada mais é avaliado.
-3. **Item 39 — conexões na tela.** Melhor retorno por esforço: os aspectos já
-   estão calculados e já vão para a IA, falta só mostrá-los.
-4. Depois os itens 41, 42 e 43 — polimento da leitura.
-5. Itens 13 e 14 quando o dono tiver os secrets e o DNS.
+A fila de código acabou em 29/09. O que resta exige decisão de quem é dono do
+produto, e é por isso que a recomendação mudou de natureza:
+
+1. **Itens 13 e 14**, assim que houver os secrets e o DNS. São os mais baratos
+   dos quatro e os únicos que travam coisa que já existe: hoje o endereço
+   `contato@arcanus.com.br` aparece nos Termos e não recebe nada.
+2. **Item 31 — auditoria de custo por plano.** Agora ela é possível de verdade:
+   até 29/09 a tabela `assinaturas` acumulava linhas `pendente` de checkout
+   desistido, e qualquer contagem de compras mentia. Ver seção 6.
+3. **Item 17 — campanha**, depois que 13 e 14 estiverem de pé. Campanha que
+   manda para um e-mail que não responde queima a primeira impressão.
+4. **Um dos oito produtos novos**, escolhido pelo dono. Cada um é projeto com
+   escopo próprio, não continuação do que existe.
 
 Trânsitos, sinastria e astrocartografia **não estão no roadmap de propósito**:
 cada um é engine nova (exige um segundo momento no tempo ou um segundo mapa),
@@ -136,35 +132,33 @@ não extensão do que existe.
 
 ---
 
-## 5. O trabalho que ficou pela metade
+## 5. O que está aberto no código, sem estar no roadmap
 
-**Item 38, conferência das Edge Functions.** Começado em 29/09, não terminado.
+Nada ficou pela metade em 29/09. O que existe são três coisas conhecidas e
+decididas, que alguém retomando merece saber antes de tropeçar nelas.
 
-O problema: `tsc --noEmit` do app **não cobre** `supabase/functions/` — elas
-rodam no Deno e ficam fora do `tsconfig`. Em 28/09 um erro de sintaxe passou
-pelo verde e só apareceu no deploy:
+**A rede das Edge Functions cobre sintaxe, não tipos.** `yarn check:functions`
+(`scripts/conferir-functions.js`) usa o parser do próprio TypeScript —
+`ts.createSourceFile` e `parseDiagnostics` — e acha erro de sintaxe em menos de
+um segundo, sem resolver import. Foi a rota escolhida contra `deno check`, que
+cobriria tipos mas exige Deno no PATH (`npx deno` baixa o runtime e levou mais
+de cinco minutos) e um `deno.json` com `"nodeModulesDir": "auto"`. **O `tsc` do
+app não alcança `supabase/functions/`**, e em 28/09 um erro de sintaxe passou
+pelo verde e só apareceu no deploy. Cobertura de tipos nas functions continua
+sem rede.
 
-```
-Failed to bundle the function (reason: The module's source code could not be
-parsed: Expected ',', got 'string literal' at index.ts:171)
-```
+**O plano gratuito recebe casas no prompt e não vê casas na tela.** O payload
+da leitura manda as casas sempre que elas existem, independente de plano, mas a
+tela esconde a seção de casas, os aspectos e as peças das áreas de quem não tem
+`mapa_completo`. Resultado: a leitura de um gratuito pode citar "sua casa 7 em
+Libra" sobre algo que ele não consegue conferir. Não é defeito de código — é
+uma escolha de produto que ninguém tomou explicitamente. Vale decidir: ou o
+prompt respeita o plano, ou a tela mostra o que a leitura cita.
 
-Duas rotas avaliadas:
-
-- **`deno check`** — cobertura completa, inclusive tipos. Exige Deno instalado
-  (não está no PATH; `npx deno` baixa o runtime e levou mais de cinco minutos)
-  e um `deno.json` com `"nodeModulesDir": "auto"` para resolver os `npm:`.
-- **Parse pelo TypeScript já instalado** — `ts.createSourceFile` e
-  `parseDiagnostics` acham erro de sintaxe sem resolver import, em menos de um
-  segundo, sem toolchain nova. **Cobre sintaxe, não tipos.**
-
-A segunda rota estava sendo construída. **O teste que provaria que ela
-distingue código quebrado de código bom não passou** — o escape do shell
-quebrou os dois arquivos de amostra, então a comparação não valeu. Quem
-retomar precisa refazer essa prova antes de confiar na rede.
-
-Seja qual for a rota, ela tem de entrar no `package.json` como script e rodar
-junto de `yarn test`, senão ninguém lembra de chamá-la.
+**O passo 3 de `supabase/assinaturas-abandonadas.sql` supõe `criado_em`.**
+Conferido em 29/09 e correto hoje. Se a tabela mudar de nome de coluna, o
+comando falha dizendo qual — de propósito: melhor falhar que marcar linha
+errada.
 
 ---
 
@@ -201,6 +195,25 @@ e já matou comando encadeado.
 policies.** Dado presente, SQL enxerga, app não vê, nenhum erro em lugar
 nenhum. Aconteceu com a tabela de cidades.
 
+**Suíte que não roda não aparece como falha.** Quando uma suíte morre no
+carregamento, o Jest conta "0 testes falharam" e o resumo parece verde — só a
+linha `Test Suites: 1 failed` denuncia. Aconteceu três vezes: com `expo-av`, com
+AsyncStorage e com o cliente Supabase (que recusa URL vazia). As três causas
+moram em `jest.setup.ts`, porque são fato do ambiente. **Confira sempre a linha
+`Test Suites:`, não só a de testes.**
+
+**O CLI do Supabase publica o que está no SEU DISCO, não o que está no GitHub.**
+Duas consequências: rodar `functions deploy` de dentro da pasta errada falha com
+`Entrypoint path does not exist` (a pasta certa é `react_native_space`, não a
+raiz do repositório), e deployar com a branch errada em checkout publica a versão
+velha **sem erro nenhum**. Antes de deployar, confira em que branch você está.
+
+**Regra de deploy do app (`vercel.json`) compara contra o último deploy que deu
+certo**, não contra o último commit — `scripts/decidir-deploy.js`. Ela depende de
+"Automatically Expose System Environment Variables" ligado no projeto; sem isso
+ela não vê `VERCEL_GIT_PREVIOUS_SHA` e constrói sempre, que é o lado seguro. O
+código de saída é invertido do costume: **0 pula, 1 constrói**.
+
 **"Está no ar" ≠ "está no aparelho".** O iPhone serve bundle em cache. Para
 provar o que está publicado, baixe o bundle e procure uma string da versão:
 
@@ -236,7 +249,11 @@ Antes de qualquer coisa, conferir o estado real:
 ```bash
 cd react_native_space
 git fetch origin main && git log --oneline origin/main -5
-yarn typecheck && yarn test
+yarn typecheck && yarn test && yarn check:functions
 ```
+
+Em 29/09, fim do dia, isso dava **56 suítes e 610 testes**, `tsc` limpo e 20
+functions com sintaxe ok. Confira a linha `Test Suites:` além da de testes: suíte
+que morre no carregamento não conta falha nenhuma (seção 6).
 
 E no banco, o roadmap de verdade (a consulta da seção 3).
