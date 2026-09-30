@@ -5,7 +5,7 @@
 //
 // Separado de limites.ts porque este toca banco. Lá ficou só a decisão, pura,
 // para o Jest do app poder testá-la sem subir nada.
-import { decidirUso, type ConfiguracaoIA, type TipoUso, type Veredito } from './limites.ts';
+import { acessoDoPlano, decidirUso, type ConfiguracaoIA, type TipoUso, type Veredito } from './limites.ts';
 
 /**
  * O cliente do supabase-js tipado de leve: este arquivo roda no Deno e não
@@ -57,6 +57,7 @@ export async function conferirUso(
   plano: string,
   semLimite: boolean,
   tipo: TipoUso,
+  validoAte: string | null | undefined,
 ): Promise<Veredito> {
   let config: ConfiguracaoIA | null = null;
   const { data: linha, error } = await cliente
@@ -70,7 +71,10 @@ export async function conferirUso(
   if (erroUso) console.error('falha ao ler uso_ia', erroUso.message);
   const usado = typeof uso?.quantidade === 'number' ? uso.quantidade : 0;
 
-  return decidirUso(tipo, config, usado, semLimite);
+  return decidirUso(
+    tipo, config, usado, semLimite,
+    acessoDoPlano(validoAte, new Date(), semLimite),
+  );
 }
 
 /**

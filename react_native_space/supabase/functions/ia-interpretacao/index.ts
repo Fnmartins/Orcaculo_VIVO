@@ -353,7 +353,7 @@ Deno.serve(async (request) => {
   }
 
   const { data: perfil, error: erroPerfil } = await supabaseAdmin
-    .from('perfis').select('consultas_restantes, is_super_admin, plano')
+    .from('perfis').select('consultas_restantes, is_super_admin, plano, plano_valido_ate')
     .eq('id', usuarioId).maybeSingle();
   if (erroPerfil) {
     console.error('falha ao ler perfil', erroPerfil.message);
@@ -367,7 +367,10 @@ Deno.serve(async (request) => {
 
   // Interruptor por plano e limite do dia, iguais aos da ia-oraculo.
   const plano = typeof perfil?.plano === 'string' ? perfil.plano : 'gratuito';
-  const veredito = await conferirUso(supabaseAdmin, usuarioId, plano, semLimite, 'interpretacao');
+  const veredito = await conferirUso(
+    supabaseAdmin, usuarioId, plano, semLimite, 'interpretacao',
+    perfil?.plano_valido_ate as string | null,
+  );
   if (!veredito.permitido) {
     return resposta({
       erro: mensagemDoLimite(veredito, 'interpretacao'),

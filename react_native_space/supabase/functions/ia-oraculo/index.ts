@@ -208,7 +208,7 @@ Deno.serve(async (request) => {
   // Cota: a mesma coluna que o stripe-webhook preenche na compra e na renovação.
   // Sem isto, uma conta gratuita poderia gastar chamadas pagas sem limite.
   const { data: perfil, error: erroPerfil } = await supabaseAdmin
-    .from('perfis').select('consultas_restantes, is_super_admin, plano')
+    .from('perfis').select('consultas_restantes, is_super_admin, plano, plano_valido_ate')
     .eq('id', usuarioId).maybeSingle();
   if (erroPerfil) {
     console.error('falha ao ler perfil', erroPerfil.message);
@@ -225,7 +225,10 @@ Deno.serve(async (request) => {
   // este diz quantas cabem hoje, e é o que segura custo quando alguém
   // descobre que a leitura por imagem é divertida.
   const plano = typeof perfil?.plano === 'string' ? perfil.plano : 'gratuito';
-  const veredito = await conferirUso(supabaseAdmin, usuarioId, plano, semLimite, 'imagem');
+  const veredito = await conferirUso(
+    supabaseAdmin, usuarioId, plano, semLimite, 'imagem',
+    perfil?.plano_valido_ate as string | null,
+  );
   if (!veredito.permitido) {
     return resposta({ erro: mensagemDoLimite(veredito, 'imagem'), motivo: veredito.motivo }, 402);
   }

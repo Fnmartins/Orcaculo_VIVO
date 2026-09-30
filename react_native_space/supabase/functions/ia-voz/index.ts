@@ -216,7 +216,7 @@ Deno.serve(async (request) => {
   }
 
   const { data: perfil, error: erroPerfil } = await supabaseAdmin
-    .from('perfis').select('is_super_admin, plano').eq('id', usuarioId).maybeSingle();
+    .from('perfis').select('is_super_admin, plano, plano_valido_ate').eq('id', usuarioId).maybeSingle();
   if (erroPerfil) {
     console.error('falha ao ler perfil', erroPerfil.message);
     return resposta({ erro: 'Falha ao conferir seu plano' }, 502);
@@ -224,7 +224,10 @@ Deno.serve(async (request) => {
   const semLimite = perfil?.is_super_admin === true;
   const plano = typeof perfil?.plano === 'string' ? perfil.plano : 'gratuito';
 
-  const veredito = await conferirUso(supabaseAdmin, usuarioId, plano, semLimite, 'voz');
+  const veredito = await conferirUso(
+    supabaseAdmin, usuarioId, plano, semLimite, 'voz',
+    perfil?.plano_valido_ate as string | null,
+  );
   if (!veredito.permitido) {
     return resposta({ erro: mensagemDoLimite(veredito, 'voz'), motivo: veredito.motivo }, 402);
   }
