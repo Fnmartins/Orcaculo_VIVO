@@ -586,6 +586,95 @@ export default function TelaMapaAstralResultado() {
             </LinearGradient>
           </Animated.View>
 
+          {/* A leitura da combinação, escrita na hora.
+
+              Fica AQUI, logo depois da assinatura, e não no fim da página. Antes
+              vinha depois das doze casas e das conexões, e o efeito era duplo: a
+              síntese aparecia depois do catálogo — ao contrário de como se lê um
+              mapa — e o botão do recurso pago ficava embaixo de sete seções, onde
+              ninguém achava.
+
+              A ordem agora é: Sol, Lua e Ascendente (o que todo mundo procura
+              primeiro), a assinatura (o que marca este céu), esta leitura (o que
+              isso forma junto) e só então o detalhe peça por peça, para quem quiser
+              conferir. O que cada peça significa continua em texto revisável —
+              abaixo, não acima. */}
+          <Animated.View style={[estilos.secao, { opacity: fadeAnim }]}>
+            <Text style={estilos.secaoTitulo}>O que isso forma junto</Text>
+            {interpretacao ? (
+              <View style={estilos.equilibrioCaixa}>
+                <Text style={estilos.iaTituloResultado}>{interpretacao.titulo}</Text>
+                <Text style={estilos.equilibrioTexto}>{interpretacao.narrativa}</Text>
+                {[
+                  { rotulo: 'O que essa combinação faz bem', texto: interpretacao.forca },
+                  { rotulo: 'Onde ela puxa para dois lados', texto: interpretacao.tensao },
+                  { rotulo: 'Uma prática', texto: interpretacao.conselho },
+                ].filter((b) => b.texto).map((bloco) => (
+                  <View key={bloco.rotulo}>
+                    <Text style={estilos.iaRotulo}>{bloco.rotulo}</Text>
+                    <Text style={estilos.equilibrioTexto}>{bloco.texto}</Text>
+                  </View>
+                ))}
+
+                {/* As quatro áreas da vida, cada uma com as peças de mapa de onde
+                    ela saiu. Entram na mesma resposta da IA, e não numa chamada
+                    nova: mesma leitura, mais recortes. Leitura guardada de antes
+                    do formato atual não tem estes campos, e o `null` abaixo faz
+                    ela continuar abrindo sem eles. */}
+                {areas.map((area) => {
+                  const texto = interpretacao[area.id];
+                  if (!texto) return null;
+                  return (
+                    <View key={area.id}>
+                      <Text style={estilos.iaRotulo}>{area.titulo}</Text>
+                      <Text style={estilos.equilibrioTexto}>{texto}</Text>
+                      {temMapaCompleto && area.pecas.length > 0 ? (
+                        <View style={estilos.areaPecas}>
+                          <Text style={estilos.areaPecasTitulo}>
+                            {area.comCasas ? 'Lido a partir de' : 'Lido a partir de, sem a hora'}
+                          </Text>
+                          {area.pecas.map((peca) => (
+                            <Text key={peca.rotulo} style={estilos.areaPeca}>
+                              <Text style={estilos.areaPecaRotulo}>{peca.rotulo}</Text>
+                              {`: ${peca.valor}`}
+                            </Text>
+                          ))}
+                          <Text style={estilos.areaPorque}>{area.porque}</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  );
+                })}
+                {interpretacao.caminho ? (
+                  <Text style={estilos.notaRodape}>
+                    Caminho é a direção que o seu mapa aponta, não uma previsão:
+                    o mapa natal não diz quando nem garante desfecho.
+                  </Text>
+                ) : null}
+              </View>
+            ) : (
+              <>
+                <SemaforoUso tipo="interpretacao" rotulo="Aprofundamentos" />
+                <Text style={estilos.secaoSubtitulo}>
+                  Acima está o que cada peça do mapa significa. Isto aqui é a leitura da sua
+                  combinação — o que Sol, Lua e Ascendente fazem juntos em você.
+                </Text>
+                {erroIA && <Text style={estilos.avisoHonesto}>{erroIA}</Text>}
+                <Pressable
+                  onPress={aprofundar}
+                  disabled={carregandoIA}
+                  accessibilityRole="button"
+                  accessibilityLabel="Ler a combinação do meu mapa com IA"
+                  style={[estilos.botaoPlanos, carregandoIA && { opacity: 0.6 }]}
+                >
+                  <Text style={estilos.botaoPlanosTexto}>
+                    {carregandoIA ? 'Lendo o seu mapa…' : 'Ler a minha combinação ✨'}
+                  </Text>
+                </Pressable>
+              </>
+            )}
+          </Animated.View>
+
           {/* O resto do céu: planos pagos (decisão M7) */}
           <Animated.View style={[estilos.secao, { opacity: fadeAnim }]}>
             <Text style={estilos.secaoTitulo}>Os outros planetas</Text>
@@ -754,83 +843,6 @@ export default function TelaMapaAstralResultado() {
             )}
           </Animated.View>
 
-          {/* A leitura da combinação, escrita na hora. O que cada peça significa
-              já está acima, em texto revisável; aqui a IA só liga as peças. */}
-          <Animated.View style={[estilos.secao, { opacity: fadeAnim }]}>
-            <Text style={estilos.secaoTitulo}>O que isso forma junto</Text>
-            {interpretacao ? (
-              <View style={estilos.equilibrioCaixa}>
-                <Text style={estilos.iaTituloResultado}>{interpretacao.titulo}</Text>
-                <Text style={estilos.equilibrioTexto}>{interpretacao.narrativa}</Text>
-                {[
-                  { rotulo: 'O que essa combinação faz bem', texto: interpretacao.forca },
-                  { rotulo: 'Onde ela puxa para dois lados', texto: interpretacao.tensao },
-                  { rotulo: 'Uma prática', texto: interpretacao.conselho },
-                ].filter((b) => b.texto).map((bloco) => (
-                  <View key={bloco.rotulo}>
-                    <Text style={estilos.iaRotulo}>{bloco.rotulo}</Text>
-                    <Text style={estilos.equilibrioTexto}>{bloco.texto}</Text>
-                  </View>
-                ))}
-
-                {/* As quatro áreas da vida, cada uma com as peças de mapa de onde
-                    ela saiu. Entram na mesma resposta da IA, e não numa chamada
-                    nova: mesma leitura, mais recortes. Leitura guardada de antes
-                    do formato atual não tem estes campos, e o `null` abaixo faz
-                    ela continuar abrindo sem eles. */}
-                {areas.map((area) => {
-                  const texto = interpretacao[area.id];
-                  if (!texto) return null;
-                  return (
-                    <View key={area.id}>
-                      <Text style={estilos.iaRotulo}>{area.titulo}</Text>
-                      <Text style={estilos.equilibrioTexto}>{texto}</Text>
-                      {temMapaCompleto && area.pecas.length > 0 ? (
-                        <View style={estilos.areaPecas}>
-                          <Text style={estilos.areaPecasTitulo}>
-                            {area.comCasas ? 'Lido a partir de' : 'Lido a partir de, sem a hora'}
-                          </Text>
-                          {area.pecas.map((peca) => (
-                            <Text key={peca.rotulo} style={estilos.areaPeca}>
-                              <Text style={estilos.areaPecaRotulo}>{peca.rotulo}</Text>
-                              {`: ${peca.valor}`}
-                            </Text>
-                          ))}
-                          <Text style={estilos.areaPorque}>{area.porque}</Text>
-                        </View>
-                      ) : null}
-                    </View>
-                  );
-                })}
-                {interpretacao.caminho ? (
-                  <Text style={estilos.notaRodape}>
-                    Caminho é a direção que o seu mapa aponta, não uma previsão:
-                    o mapa natal não diz quando nem garante desfecho.
-                  </Text>
-                ) : null}
-              </View>
-            ) : (
-              <>
-                <SemaforoUso tipo="interpretacao" rotulo="Aprofundamentos" />
-                <Text style={estilos.secaoSubtitulo}>
-                  Acima está o que cada peça do mapa significa. Isto aqui é a leitura da sua
-                  combinação — o que Sol, Lua e Ascendente fazem juntos em você.
-                </Text>
-                {erroIA && <Text style={estilos.avisoHonesto}>{erroIA}</Text>}
-                <Pressable
-                  onPress={aprofundar}
-                  disabled={carregandoIA}
-                  accessibilityRole="button"
-                  accessibilityLabel="Ler a combinação do meu mapa com IA"
-                  style={[estilos.botaoPlanos, carregandoIA && { opacity: 0.6 }]}
-                >
-                  <Text style={estilos.botaoPlanosTexto}>
-                    {carregandoIA ? 'Lendo o seu mapa…' : 'Ler a minha combinação ✨'}
-                  </Text>
-                </Pressable>
-              </>
-            )}
-          </Animated.View>
 
           {/* Equilíbrio de elementos e qualidades: a leitura do mapa como um todo */}
           <Animated.View style={[estilos.secao, { opacity: fadeAnim }]}>
