@@ -24,7 +24,12 @@ interface Props {
 
 export function AvisoDeFalhaIA({ falha, aoTentarDeNovo }: Props) {
   const conteudo = (
-    <View style={estilos.caixa}>
+    // `alert` e região viva porque este texto aparece DEPOIS de um toque: sem isso o
+    // foco fica no botão e quem usa leitor de tela não ouve o motivo — o mesmo defeito
+    // que esta tela acabou de corrigir, só para outra pessoa. `accessibilityLiveRegion`
+    // é do Android; no iOS o VoiceOver não garante o anúncio, e resolver isso pediria
+    // `announceForAccessibility` com controle de repetição. Fica como limite anotado.
+    <View style={estilos.caixa} accessibilityRole="alert" accessibilityLiveRegion="polite">
       <Ionicons
         name={falha.tentarDeNovo ? 'refresh-outline' : 'lock-closed-outline'}
         size={16}
