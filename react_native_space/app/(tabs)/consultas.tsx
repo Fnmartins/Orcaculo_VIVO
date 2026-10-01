@@ -144,13 +144,16 @@ export default function TelaConsultas() {
             <Text style={estilos.subtitulo}>Agende uma leitura ao vivo</Text>
           </View>
 
-          {/* Abas */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={estilos.abasScroll}
-            contentContainerStyle={estilos.abasContainer}
-          >
+          {/* Abas.
+              `View`, e não `ScrollView` horizontal: no React Native Web a ScrollView
+              horizontal vira um `div` com `overflow-y: hidden`, então toda altura que
+              ela calcule menor que o conteúdo CORTA o texto — foi o que aconteceu com
+              a fonte do sistema aumentada, e tirar o `maxHeight` não resolveu porque o
+              que corta é o overflow, não o teto.
+              São três abas que cabem na largura de um celular; o scroll horizontal não
+              servia a ninguém. Com `flexWrap`, se um dia não couberem, elas descem para
+              a linha de baixo em vez de sumir pela borda. */}
+          <View style={estilos.abasContainer}>
             <Pressable
               onPress={() => { Hapticos.selecao(); setAbaAtiva('oraculistas'); }}
               style={[estilos.aba, abaAtiva === 'oraculistas' && estilos.abaAtiva]}
@@ -182,7 +185,7 @@ export default function TelaConsultas() {
                 </View>
               )}
             </Pressable>
-          </ScrollView>
+          </View>
 
           {/* Conteúdo */}
           {abaAtiva === 'oraculistas' && (
@@ -1334,16 +1337,6 @@ const estilos = StyleSheet.create({
   },
 
   // Abas scroll horizontal
-  abasScroll: {
-    // `flexGrow: 0` no lugar de `maxHeight: 52`: a altura das abas depende do tamanho
-    // de fonte do sistema, e com a letra aumentada o conteúdo passava de 52 e era
-    // cortado ao meio — justamente para quem aumentou a letra por precisar dela.
-    // O teto existia só para a ScrollView não esticar, e `flexGrow: 0` faz isso sem
-    // impor altura.
-    flexGrow: 0,
-    marginHorizontal: Espacamento.md,
-    marginTop: Espacamento.md,
-  },
   abasContainer: {
     backgroundColor: Cores.cardFundo,
     borderRadius: RaioBorda.md,
@@ -1351,7 +1344,13 @@ const estilos = StyleSheet.create({
     borderWidth: 1,
     borderColor: Cores.cardBorda,
     flexDirection: 'row',
+    // Quebra de linha no lugar do scroll horizontal: se as abas não couberem — fonte
+    // do sistema aumentada, tela estreita — elas descem, em vez de sumir pela borda.
+    flexWrap: 'wrap',
     gap: 4,
+    // As margens vieram da ScrollView que esta View substituiu.
+    marginHorizontal: Espacamento.md,
+    marginTop: Espacamento.md,
   },
 
   // Filtros do histórico
