@@ -172,6 +172,42 @@ function diaEMes(iso: string | null | undefined): string {
 }
 
 /**
+ * Dias de acesso depois do fim do período pago.
+ *
+ * O webhook da Stripe grava a validade como `current_period_end` exato, e
+ * `acessoDoPlano` trata "igual a agora" como vencido. Sem carência, o assinante fica
+ * trancado entre o fim do período e o `invoice.paid` da renovação: cerca de uma hora
+ * em cartão, **dias** em pix ou boleto, onde a compensação não é instantânea.
+ *
+ * Três dias cobrem a retentativa de cartão com folga. **É decisão de negócio, não de
+ * código:** errar para mais custa alguns dias de IA de graça a quem talvez não pague;
+ * errar para menos é um cliente pagante vendo cadeado. Com o preço medido em 01/10 —
+ * US$ 0,06 por aprofundamento, teto de US$ 0,14 por dia — três dias de folga custam no
+ * máximo US$ 0,42 por pessoa. Quem vende por pix ou boleto deve subir para 7.
+ */
+export const CARENCIA_DIAS = 3;
+
+/**
+ * O fim do período pago mais a carência — o que vai para `perfis.plano_valido_ate`.
+ *
+ * Só para a trava de acesso. `assinaturas.expira_em` continua gravando o fim exato,
+ * porque ali é livro-caixa: misturar a folga na data registrada faria o histórico
+ * mentir sobre o que foi comprado.
+ *
+ * Lança em data ilegível em vez de devolver algo: o webhook já lança quando o período
+ * vem ausente, e a Stripe reentrega. Gravar "Invalid Date" no lugar daria acesso
+ * indefinido a quem `acessoDoPlano` barraria — o contrário do que esta função existe
+ * para fazer.
+ */
+export function validadeComCarencia(fimDoPeriodo: string): string {
+  const instante = new Date(fimDoPeriodo).getTime();
+  if (!Number.isFinite(instante)) {
+    throw new Error(`Fim de período ilegível: ${JSON.stringify(fimDoPeriodo)}`);
+  }
+  return new Date(instante + CARENCIA_DIAS * 24 * 60 * 60 * 1000).toISOString();
+}
+
+/**
  * 'Seu acesso terminou em 28/09.' — a constatação, sem o convite.
  *
  * Separada de `mensagemDoLimite` porque há lugar que dá o caminho de volta de outro

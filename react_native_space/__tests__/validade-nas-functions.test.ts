@@ -92,3 +92,31 @@ describe('validade nas Edge Functions de IA', () => {
     });
   });
 });
+
+/**
+ * O webhook da Stripe grava a MESMA data em dois lugares com significados opostos:
+ * `assinaturas.expira_em` é livro-caixa e tem de registrar o fim exato do período;
+ * `perfis.plano_valido_ate` é a trava de acesso e precisa da carência, senão o
+ * assinante fica trancado entre o fim do período e o `invoice.paid` da renovação.
+ *
+ * Nada mais vê isso: o `tsc` não cobre `supabase/functions/`, e trocar as duas não
+ * quebra sintaxe. O erro mais provável é aplicar a carência nos dois — fazendo o
+ * histórico mentir — ou em nenhum, voltando o defeito.
+ */
+describe('carência na renovação', () => {
+  const webhook = readFileSync(join(RAIZ, 'stripe-webhook', 'index.ts'), 'utf8');
+
+  it('a trava de acesso recebe a carência', () => {
+    expect(webhook).toMatch(/plano_valido_ate:\s*validadeComCarencia\(fimPeriodo\)/);
+  });
+
+  it('o livro-caixa continua com o fim exato do período', () => {
+    expect(webhook).toMatch(/expira_em:\s*fimPeriodo\b/);
+    expect(webhook).not.toMatch(/expira_em:\s*validadeComCarencia/);
+  });
+
+  it('a carência vem do módulo que decide o acesso, não de um número solto aqui', () => {
+    // Duas fontes para a mesma regra é como a tela e o servidor passam a discordar.
+    expect(webhook).toMatch(/import \{ validadeComCarencia \} from '\.\.\/_shared\/limites\.ts'/);
+  });
+});

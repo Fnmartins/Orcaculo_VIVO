@@ -4,6 +4,7 @@ import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import { ehPlanoValido, type PlanoId } from '../_shared/planos.ts';
 import { lerConfigPlano } from '../_shared/config-planos.ts';
 import { exigirEscrita, exigirLinhaAtualizada } from '../_shared/escritas.ts';
+import { validadeComCarencia } from '../_shared/limites.ts';
 
 function resposta(status = 200) {
   return new Response(JSON.stringify({ recebido: true }), {
@@ -70,7 +71,11 @@ async function ativarPlano(
   exigirLinhaAtualizada('perfis.update (ativar plano)', await supabaseAdmin.from('perfis')
     .update({
       plano: planoId,
-      plano_valido_ate: fimPeriodo,
+      // Com carência, e `assinaturas.expira_em` acima sem ela, de propósito: aqui é a
+      // trava de acesso, lá é livro-caixa. `acessoDoPlano` trata "igual a agora" como
+      // vencido, então gravar o fim exato trancaria o assinante entre o fim do período
+      // e o `invoice.paid` da renovação — horas em cartão, dias em pix ou boleto.
+      plano_valido_ate: validadeComCarencia(fimPeriodo),
       consultas_restantes: cfg.cota_consultas,
     })
     .eq('id', usuarioId)
