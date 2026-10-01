@@ -2,6 +2,7 @@ import type { TipoAnalise, AnaliseIA } from '../data/ia-analise';
 import { obterImagem } from './imagemCache';
 import { supabase } from './supabase';
 import { erroDaFuncao } from './erroFuncao';
+import { NOME_SEM_CONSULTAS } from './falhaDaIA';
 
 /**
  * Liga o bloco "Aprofundar com IA" nas telas de tarô e búzios.
@@ -44,10 +45,10 @@ function detectarMimeType(uri: string): string {
 
 export type ProfundidadeAnalise = 'simples' | 'completa';
 
-/** A cota do período acabou — é recusa de plano, não falha de serviço. */
-export function ehSemConsultas(e: unknown): boolean {
-  return (e as { name?: unknown } | null)?.name === 'SemConsultasError';
-}
+// A implementação mora em `falhaDaIA`, que não importa o Supabase e por isso é
+// alcançável por teste puro. Reexportado daqui para quem já importava — hoje
+// `app/ia/processando.tsx` — não ter de mudar.
+export { ehSemConsultas } from './falhaDaIA';
 
 const COR_POR_TIPO: Record<TipoAnalise, string> = {
   cafe: '#8B4513',
@@ -81,7 +82,7 @@ export async function analisarImagemIA(
     const traduzido = await erroDaFuncao(error);
     if (status === 402) {
       const semConsultas = new Error(traduzido.message);
-      semConsultas.name = 'SemConsultasError';
+      semConsultas.name = NOME_SEM_CONSULTAS;
       throw semConsultas;
     }
     throw traduzido;
@@ -109,7 +110,7 @@ async function erroDeInterpretacao(error: unknown): Promise<Error> {
   const traduzido = await erroDaFuncao(error);
   if (status === 402) {
     const semConsultas = new Error(traduzido.message);
-    semConsultas.name = 'SemConsultasError';
+    semConsultas.name = NOME_SEM_CONSULTAS;
     return semConsultas;
   }
   return traduzido;

@@ -31,6 +31,8 @@ import { CartaTarotVisual } from '../../components/CartaTarotVisual';
 import { NotaReflexiva } from '../../components/NotaReflexiva';
 import { CaixaDePergunta } from '../../components/CaixaDePergunta';
 import { SemaforoUso } from '../../components/SemaforoUso';
+import { AvisoDeFalhaIA } from '../../components/AvisoDeFalhaIA';
+import { falhaDaIA, type FalhaDaIA } from '../../services/falhaDaIA';
 
 const POSICOES = ['Passado', 'Presente', 'Futuro'];
 
@@ -47,7 +49,9 @@ export default function TelaResultado() {
   const slideAnim = useRef(new Animated.Value(30)).current;
   const [interpretacaoIA, setInterpretacaoIA] = useState<InterpretacaoTarot | null>(null);
   const [carregandoIA, setCarregandoIA] = useState(false);
-  const [erroIA, setErroIA] = useState(false);
+  // Guarda o motivo, não só o fato: o servidor manda a frase, e um booleano a jogava
+  // fora para escrever "falha ao conectar" sobre uma recusa de plano.
+  const [erroIA, setErroIA] = useState<FalhaDaIA | null>(null);
 
   let cartas: CartaTarot[] = [];
   try {
@@ -66,7 +70,7 @@ export default function TelaResultado() {
   async function aprofundarComIA() {
     if (carregandoIA || interpretacaoIA) return;
     setCarregandoIA(true);
-    setErroIA(false);
+    setErroIA(null);
     try {
       const resultado = await gerarInterpretacaoTarot(
         cartas.map((c, i) => ({
@@ -76,8 +80,8 @@ export default function TelaResultado() {
         }))
       );
       setInterpretacaoIA(resultado);
-    } catch {
-      setErroIA(true);
+    } catch (e) {
+      setErroIA(falhaDaIA(e));
     } finally {
       setCarregandoIA(false);
     }
@@ -257,16 +261,7 @@ export default function TelaResultado() {
             )}
 
             {erroIA && !carregandoIA && (
-              <Pressable
-                onPress={aprofundarComIA}
-                accessibilityRole="button"
-                accessibilityLabel="Tentar gerar a interpretação novamente"
-              >
-                <View style={estilos.iaErro}>
-                  <Ionicons name="refresh-outline" size={16} color={Cores.textoSecundario} />
-                  <Text style={estilos.iaErroTexto}>Falha ao conectar. Tocar para tentar novamente.</Text>
-                </View>
-              </Pressable>
+              <AvisoDeFalhaIA falha={erroIA} aoTentarDeNovo={aprofundarComIA} />
             )}
 
             {interpretacaoIA && (
@@ -612,17 +607,6 @@ const estilos = StyleSheet.create({
   iaCarregandoTexto: {
     fontFamily: Fontes.corpo,
     fontSize: 13,
-    color: Cores.textoSecundario,
-  },
-  iaErro: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Espacamento.xs,
-    padding: Espacamento.sm,
-  },
-  iaErroTexto: {
-    fontFamily: Fontes.corpo,
-    fontSize: 12,
     color: Cores.textoSecundario,
   },
   iaResultado: {
