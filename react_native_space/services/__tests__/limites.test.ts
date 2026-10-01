@@ -1,6 +1,7 @@
 import {
   acessoDoPlano,
   decidirUso,
+  fraseDoVencimento,
   mensagemDoLimite,
   restanteHoje,
   type AcessoDoPlano,
@@ -256,5 +257,33 @@ describe('mensagemDoLimite', () => {
       .toBe('A leitura falada não está disponível no seu plano.');
     expect(mensagemDoLimite({ ...base, motivo: 'limite_dia' as const }, 'pergunta'))
       .toBe('Você já usou o limite de hoje. Amanhã tem mais.');
+  });
+});
+
+describe('fraseDoVencimento', () => {
+  it('escreve o dia de Brasilia, nao o de UTC', () => {
+    // 00:05 UTC do dia 29 ainda e o dia 28 aqui. Ler o dia direto do prefixo da string
+    // faria a tela anunciar uma data que ainda nao chegou.
+    expect(fraseDoVencimento('2026-09-29T00:05:12+00:00'))
+      .toBe('Seu acesso terminou em 28/09.');
+  });
+
+  it('sem data legivel, omite o quando em vez de escrever "null"', () => {
+    for (const entrada of [null, undefined, '', '   ', 'ontem']) {
+      expect(fraseDoVencimento(entrada)).toBe('Seu acesso terminou.');
+    }
+  });
+
+  it('a mensagem completa continua sendo a frase mais o convite', () => {
+    // Prende a composicao: `mensagemDoLimite` passou a montar a partir daqui, e as duas
+    // strings de producao nao podem mudar por causa dessa refatoracao.
+    const veredito = {
+      permitido: false, motivo: 'vencido' as const, usadoHoje: 0,
+      limiteDia: null, venceuEm: '2026-09-29T00:05:12+00:00',
+    };
+    expect(mensagemDoLimite(veredito, 'interpretacao'))
+      .toBe('Seu acesso terminou em 28/09. Atualize seu plano para continuar.');
+    expect(mensagemDoLimite({ ...veredito, venceuEm: null }, 'interpretacao'))
+      .toBe('Seu acesso terminou. Atualize seu plano para continuar.');
   });
 });

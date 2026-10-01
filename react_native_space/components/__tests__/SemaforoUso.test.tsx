@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 interface PerfilFalso {
   plano: string;
@@ -14,6 +14,8 @@ let mockSessao: { user: { id: string } } | null = { user: { id: 'u1' } };
 jest.mock('../../contexts/AuthContext', () => ({
   useAuth: () => ({ perfil: mockPerfil, sessao: mockSessao }),
 }));
+const mockPush = jest.fn();
+jest.mock('expo-router', () => ({ router: { push: (...a: unknown[]) => mockPush(...a) } }));
 const mockLerUso = jest.fn().mockResolvedValue(null);
 jest.mock('../../services/usoIA', () => ({
   lerUsoDoDia: (...a: unknown[]) => mockLerUso(...a),
@@ -27,6 +29,7 @@ beforeEach(() => {
   mockPerfil = { plano: 'gratuito', is_super_admin: false, plano_valido_ate: null };
   mockSessao = { user: { id: 'u1' } };
   mockLerUso.mockClear();
+  mockPush.mockClear();
 });
 
 // Os testes só mexem no perfil depois de ele existir; `!` aqui diz isso ao tsc sem
@@ -93,5 +96,23 @@ describe('SemaforoUso quando o acesso venceu', () => {
     render(<SemaforoUso tipo="interpretacao" rotulo="Aprofundamentos" />);
     await waitFor(() => expect(mockLerUso)
       .toHaveBeenCalledWith('u1', 'gratuito', 'interpretacao'));
+  });
+});
+
+describe('o cadeado leva a algum lugar', () => {
+  it('tocar abre os planos', () => {
+    // Ate 01/10 este aviso pedia "atualize seu plano" e era texto morto: o app mandava
+    // agir e nao oferecia caminho nenhum. O card da home ja levava aos planos.
+    perfil().plano_valido_ate = null;
+    render(<SemaforoUso tipo="interpretacao" rotulo="Aprofundamentos" />);
+    fireEvent.press(screen.getByLabelText('Acesso vencido'));
+    expect(mockPush).toHaveBeenCalledWith('/planos');
+  });
+
+  it('o semaforo com numero nao leva a lugar nenhum', () => {
+    // O contrapeso: o desvio e do cadeado, nao de todo semaforo.
+    perfil().plano_valido_ate = '2099-01-01T00:00:00Z';
+    render(<SemaforoUso tipo="interpretacao" rotulo="Aprofundamentos" />);
+    expect(mockPush).not.toHaveBeenCalled();
   });
 });

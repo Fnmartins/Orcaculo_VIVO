@@ -8,6 +8,7 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { Fontes } from '../constants/typography';
 import { useAuth } from '../contexts/AuthContext';
 import { acessoDoPlano } from '../supabase/functions/_shared/limites';
+import { AvisoAcessoParcial } from '../components/AvisoAcessoParcial';
 
 const P = {
   fundo: '#F7F3EA', superficie: '#FFFCF6', verdeSuave: '#E6EEE5',
@@ -28,16 +29,47 @@ const intencoes = [
 // (`data/ia-analise.ts`, com o envio externo desligado em `services/ia.ts`).
 // Fica visível porque o caminho é construir a análise de verdade, não esconder
 // a porta; enquanto isso, a tela não deve afirmar que a IA analisou a imagem.
-const oraculos = [
-  ['Búzios', 'Tradição e caminhos', 'grain', P.verde, 'material', '/consulta/buzios-preparo', false],
-  ['Tarot', 'Símbolos para refletir', 'cards-outline', P.terracota, 'material', '/consulta', false],
-  ['Numerologia', 'Ciclos e significados', 'calculator-outline', P.azul, 'ion', '/numerologia', false],
-  ['Mapa Astral', 'Leitura do seu céu', 'planet-outline', P.dourado, 'ion', '/mapa-astral', false],
+interface Oraculo {
+  titulo: string;
+  apoio: string;
+  icon: string;
+  cor: string;
+  lib: 'material' | 'ion';
+  rota: string;
+  /** Sem versão livre: o cadeado é do card inteiro e vai direto aos planos. */
+  soIA?: true;
+  /**
+   * O que continua aberto depois do vencimento. Presente só onde há parte grátis — é
+   * este campo que separa o cadeado "você não entra" do cadeado "parte disto é sua".
+   * Ausente nos dois oráculos grátis por inteiro, que nunca trancam.
+   */
+  parteGratis?: string;
+}
+
+// Objetos, e não tuplas: a lista já carregava sete campos posicionais, e `soIA` era um
+// booleano solto no fim que ninguém lia sem contar vírgulas.
+const oraculos: Oraculo[] = [
+  {
+    titulo: 'Búzios', apoio: 'Tradição e caminhos', icon: 'grain', cor: P.verde,
+    lib: 'material', rota: '/consulta/buzios-preparo',
+    parteGratis: 'O jogo e a leitura do odu seguem abertos; o aprofundamento com IA precisa de um plano ativo.',
+  },
+  {
+    titulo: 'Tarot', apoio: 'Símbolos para refletir', icon: 'cards-outline', cor: P.terracota,
+    lib: 'material', rota: '/consulta',
+    parteGratis: 'A tiragem e a leitura base seguem abertas; o aprofundamento com IA precisa de um plano ativo.',
+  },
+  { titulo: 'Numerologia', apoio: 'Ciclos e significados', icon: 'calculator-outline', cor: P.azul, lib: 'ion', rota: '/numerologia' },
+  {
+    titulo: 'Mapa Astral', apoio: 'Leitura do seu céu', icon: 'planet-outline', cor: P.dourado,
+    lib: 'ion', rota: '/mapa-astral',
+    parteGratis: 'O mapa com Sol, Lua e Ascendente segue aberto; a leitura da sua combinação precisa de um plano ativo.',
+  },
   // O único card inteiramente IA: aqui não existe versão livre, então o cadeado é do
-  // card. Nos outros, o conteúdo local é grátis e o cadeado mora no botão.
-  ['Leitura por imagem', 'Símbolos em uma foto', 'image-search-outline', P.verdeEscuro, 'material', '/ia', true],
-  ['Lei da Atração', 'Desejos e rituais', 'magnet', P.terracota, 'material', '/lei-atracao', false],
-] as const;
+  // card. Nos outros, o conteúdo local é grátis e o cadeado explica em vez de barrar.
+  { titulo: 'Leitura por imagem', apoio: 'Símbolos em uma foto', icon: 'image-search-outline', cor: P.verdeEscuro, lib: 'material', rota: '/ia', soIA: true },
+  { titulo: 'Lei da Atração', apoio: 'Desejos e rituais', icon: 'magnet', cor: P.terracota, lib: 'material', rota: '/lei-atracao' },
+];
 
 const decisoes = [
   ['eye-outline', 'Menos peso visual', 'Fundo claro e superfícies opacas substituem o excesso de gradientes escuros.'],
@@ -48,6 +80,10 @@ const decisoes = [
 
 export function HomeAurora({ mostrarConselho = false }: { mostrarConselho?: boolean }) {
   const [intencao, setIntencao] = useState('clareza');
+  // Qual oráculo está explicando o acesso parcial. Guarda o objeto e não um booleano:
+  // a folha precisa do nome e da frase daquele oráculo, e os três dizem coisas
+  // diferentes sobre o que continua aberto.
+  const [avisoDe, setAvisoDe] = useState<Oraculo | null>(null);
   const largo = useWindowDimensions().width >= 720;
   const { perfil } = useAuth();
   const acesso = acessoDoPlano(
@@ -103,34 +139,52 @@ export function HomeAurora({ mostrarConselho = false }: { mostrarConselho?: bool
     existe é pior que botão nenhum. */}
 <View style={s.secaoHeader}><View><Text style={s.secaoTitulo}>Escolha seu oráculo</Text><Text style={s.secaoApoio}>Cada método tem linguagem e propósito próprios.</Text></View></View>
             <View style={s.grid}>
-              {oraculos.map(([titulo, apoio, icon, cor, lib, rota, soIA]) => {
+              {oraculos.map((oraculo) => {
+                const { titulo, apoio, icon, cor, lib, rota, soIA, parteGratis } = oraculo;
                 const Icon = lib === 'material' ? MaterialCommunityIcons : Ionicons;
-                // Só o card inteiramente IA tranca. Nos outros o conteúdo local é
-                // grátis, e trancar esconderia o que faz a pessoa voltar.
-                //
-                // E só tranca quando há perfil para julgar. Com `perfil` nulo — ainda
+                // Só tranca quando há perfil para julgar. Com `perfil` nulo — ainda
                 // carregando, ou deslogado — a validade vem indefinida e barraria todo
                 // mundo: um cadeado piscando na tela inicial acusa de vencido justamente
                 // quem está pagando.
-                const trancado = soIA && perfil != null && !acesso.liberado;
+                const vencido = perfil != null && !acesso.liberado;
+                // Dois cadeados, dois significados. Trancado: não há versão livre, o
+                // toque vai aos planos. Parcial: o conteúdo local continua grátis, e o
+                // toque abre a folha que explica o que sobrou — trancar aqui esconderia
+                // justamente o que faz a pessoa voltar.
+                const trancado = soIA === true && vencido;
+                const parcial = parteGratis != null && vencido;
                 return <Pressable key={titulo}
-                  onPress={() => router.push(trancado ? '/planos' : rota)}
+                  onPress={() => {
+                    if (parcial) return setAvisoDe(oraculo);
+                    router.push(trancado ? '/planos' : rota);
+                  }}
                   accessibilityRole="button"
                   // Rótulo só quando trancado: sem ele o leitor de tela lê os filhos (título
-                  // e apoio); com `titulo` ele leria só o título e perderia o apoio.
+                  // e apoio); com `titulo` ele leria só o título e perderia o apoio. No
+                  // parcial não há rótulo porque o apoio já diz o que mudou, e trocá-lo
+                  // custaria essa informação.
                   accessibilityLabel={trancado ? `${titulo}, trancada` : undefined}
                   // O rótulo troca os filhos, então o leitor de tela não ouviria o que o
                   // toque faz. A dica é aditiva e deixa o texto do rótulo intacto.
-                  accessibilityHint={trancado ? 'Abre os planos' : undefined}
+                  accessibilityHint={
+                    trancado ? 'Abre os planos'
+                      : parcial ? 'Abre as opções do seu acesso'
+                        : undefined}
                   style={({ pressed }) => [s.card, { width: largo ? '48.7%' : '48%' }, trancado && s.cardTrancado, pressed && s.pressed]}>
                   <View style={[s.cardIcone, { backgroundColor: `${cor}18` }]}>
-                    {trancado
-                      ? <Ionicons name="lock-closed" size={25} color={cor} />
-                      : <Icon name={icon as never} size={27} color={cor} />}
+                    {trancado ? <Ionicons name="lock-closed" size={25} color={cor} />
+                      : parcial ? <Ionicons name="lock-open" size={25} color={cor} />
+                        : <Icon name={icon as never} size={27} color={cor} />}
                   </View>
                   <Text style={s.cardTitulo}>{titulo}</Text>
-                  <Text style={s.cardApoio}>{trancado ? 'Atualize seu plano' : apoio}</Text>
-                  <Ionicons name={trancado ? 'lock-closed-outline' : 'arrow-forward-circle-outline'} size={21} color={cor} style={s.cardSeta} />
+                  <Text style={s.cardApoio}>
+                    {trancado ? 'Atualize seu plano' : parcial ? 'Parte grátis segue aberta' : apoio}
+                  </Text>
+                  <Ionicons
+                    name={trancado ? 'lock-closed-outline'
+                      : parcial ? 'lock-open-outline'
+                        : 'arrow-forward-circle-outline'}
+                    size={21} color={cor} style={s.cardSeta} />
                 </Pressable>;
               })}
             </View>
@@ -152,6 +206,27 @@ export function HomeAurora({ mostrarConselho = false }: { mostrarConselho?: bool
           </View>
         </ScrollView>
       </SafeAreaView>
+
+      {avisoDe && (
+        <AvisoAcessoParcial
+          visivel
+          titulo={avisoDe.titulo}
+          explicacao={avisoDe.parteGratis ?? ''}
+          venceuEm={acesso.venceuEm}
+          aoFechar={() => setAvisoDe(null)}
+          aoEscolher={(destino) => {
+            const destinos: Record<typeof destino, string> = {
+              gratis: avisoDe.rota,
+              anteriores: '/consultas',
+              planos: '/planos',
+            };
+            // Fecha antes de navegar: deixar a folha montada por cima da tela nova
+            // prende o toque seguinte no fundo que fecha, e a pessoa volta sem querer.
+            setAvisoDe(null);
+            router.push(destinos[destino]);
+          }}
+        />
+      )}
     </View>
   );
 }
