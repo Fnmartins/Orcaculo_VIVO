@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Cores } from '../constants/colors';
 import { Fontes } from '../constants/typography';
@@ -63,7 +64,16 @@ export function SemaforoUso({ tipo, rotulo }: Props) {
   // perdido nada. O super-admin não precisa de checagem aqui: `acessoDoPlano` já o libera.
   if (usuarioId && perfil != null && !acesso.liberado) {
     return (
-      <View style={estilos.trancado} accessibilityLabel="Acesso vencido">
+      // Tocável, e não só texto: até 01/10 este aviso pedia "atualize seu plano" e não
+      // oferecia caminho nenhum — o app mandava agir e escondia a porta. O card da home
+      // já levava aos planos; este não levava a lugar nenhum.
+      <Pressable
+        onPress={() => router.push('/planos')}
+        accessibilityRole="button"
+        accessibilityLabel="Acesso vencido"
+        accessibilityHint="Abre os planos"
+        style={({ pressed }) => [estilos.trancado, pressed && estilos.pressionado]}
+      >
         <Ionicons name="lock-closed" size={16} color={Cores.textoSecundario} />
         <Text style={estilos.trancadoTexto}>
           {mensagemDoLimite({
@@ -71,7 +81,8 @@ export function SemaforoUso({ tipo, rotulo }: Props) {
             limiteDia: null, venceuEm: acesso.venceuEm,
           }, tipo)}
         </Text>
-      </View>
+        <Ionicons name="chevron-forward" size={14} color={Cores.textoSecundario} />
+      </Pressable>
     );
   }
 
@@ -126,4 +137,5 @@ const estilos = StyleSheet.create({
   trancadoTexto: {
     flex: 1, fontFamily: Fontes.corpo, fontSize: 13, color: Cores.textoSecundario,
   },
+  pressionado: { opacity: 0.7 },
 });

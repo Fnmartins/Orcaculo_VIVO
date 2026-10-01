@@ -79,7 +79,9 @@ describe('cadeado na home', () => {
   it('os outros cinco NUNCA trancam', () => {
     // A regressão mais provável desta entrega é o cadeado no card errado.
     // Numerologia e Lei da Atração não custam nada; Búzios, Tarot e Mapa Astral têm
-    // conteúdo local grátis, e o cadeado deles mora no botão (Task 5).
+    // conteúdo local grátis e, desde 01/10, ganham o cadeado PARCIAL — que marca o card
+    // e abre a folha de escolhas, sem trancar. "Trancada" continua sendo só da leitura
+    // por imagem, e é isso que este teste prende. O parcial tem describe próprio abaixo.
     comValidade(VENCIDO);
     render(<HomeAurora />);
     for (const titulo of ['Búzios', 'Tarot', 'Numerologia', 'Mapa Astral', 'Lei da Atração']) {
@@ -153,5 +155,97 @@ describe('cadeado na home', () => {
     render(<HomeAurora />);
     fireEvent.press(screen.getByText('Leitura por imagem'));
     expect(mockPush).toHaveBeenCalledWith('/ia');
+  });
+});
+
+/**
+ * O cadeado parcial, desde 01/10.
+ *
+ * O app tinha UM cadeado para DOIS significados. Na leitura por imagem ele quer dizer
+ * "você não entra" — não há versão livre ali. No tarô, nos búzios e no mapa astral quer
+ * dizer "parte disto continua sua", e mandar essas pessoas direto aos planos esconderia
+ * o que elas ainda podem usar. Por isso o parcial marca o card e abre uma escolha.
+ */
+describe('acesso parcial nos oráculos com parte grátis', () => {
+  it('os três marcam o card sem trancá-lo', () => {
+    comValidade(VENCIDO);
+    render(<HomeAurora />);
+    // Três, e não um: tratar só o tarô deixaria a home incoerente, e é o erro mais
+    // provável de quem mexer nisto depois.
+    expect(screen.getAllByText('Parte grátis segue aberta')).toHaveLength(3);
+    expect(screen.getAllByHintText('Abre as opções do seu acesso')).toHaveLength(3);
+  });
+
+  it('os dois grátis por inteiro ficam de fora', () => {
+    // Pelo apoio original: se o parcial vazasse para eles, estas frases sumiriam.
+    comValidade(VENCIDO);
+    render(<HomeAurora />);
+    expect(screen.getByText('Ciclos e significados')).toBeTruthy();
+    expect(screen.getByText('Desejos e rituais')).toBeTruthy();
+  });
+
+  it('tocar abre a folha em vez de navegar', () => {
+    comValidade(VENCIDO);
+    render(<HomeAurora />);
+    fireEvent.press(screen.getByText('Tarot'));
+    expect(mockPush).not.toHaveBeenCalled();
+    expect(screen.getByText(/Seu acesso terminou em 10\/10\./)).toBeTruthy();
+    expect(screen.getByText(/A tiragem e a leitura base seguem abertas/)).toBeTruthy();
+  });
+
+  it('cada oráculo explica o que é dele', () => {
+    // Trocar as frases entre os três não quebraria nada que o tsc enxergue, e a pessoa
+    // leria sobre o jogo de búzios dentro do mapa astral.
+    comValidade(VENCIDO);
+    render(<HomeAurora />);
+    fireEvent.press(screen.getByText('Mapa Astral'));
+    expect(screen.getByText(/Sol, Lua e Ascendente/)).toBeTruthy();
+  });
+
+  it.each([
+    ['Fazer a leitura grátis', '/consulta'],
+    ['Ver minhas leituras anteriores', '/consultas'],
+    ['Liberar o aprofundamento com IA', '/planos'],
+  ])('a escolha "%s" leva para %s', (rotulo, destino) => {
+    comValidade(VENCIDO);
+    render(<HomeAurora />);
+    fireEvent.press(screen.getByText('Tarot'));
+    fireEvent.press(screen.getByText(rotulo));
+    expect(mockPush).toHaveBeenCalledWith(destino);
+  });
+
+  it('a folha fecha ao escolher', () => {
+    // Deixá-la montada por cima da tela nova prenderia o toque seguinte no fundo que
+    // fecha, e a pessoa voltaria sem querer.
+    comValidade(VENCIDO);
+    render(<HomeAurora />);
+    fireEvent.press(screen.getByText('Tarot'));
+    fireEvent.press(screen.getByText('Liberar o aprofundamento com IA'));
+    expect(screen.queryByText('Fazer a leitura grátis')).toBeNull();
+  });
+
+  it('com acesso válido o card leva direto para a leitura, sem folha', () => {
+    // O contrapeso: prova que a folha é do vencimento, não de todo toque no tarô.
+    comValidade(VALIDO);
+    render(<HomeAurora />);
+    fireEvent.press(screen.getByText('Tarot'));
+    expect(mockPush).toHaveBeenCalledWith('/consulta');
+    expect(screen.queryByText('Fazer a leitura grátis')).toBeNull();
+  });
+
+  it('com o perfil ainda nulo, nada de folha', () => {
+    // Mesmo motivo do cadeado que não pisca: quem está pagando não pode ser parado por
+    // uma folha enquanto o perfil não chegou.
+    mockPerfil = null;
+    render(<HomeAurora />);
+    fireEvent.press(screen.getByText('Tarot'));
+    expect(mockPush).toHaveBeenCalledWith('/consulta');
+  });
+
+  it('super-admin não vê folha', () => {
+    comValidade(VENCIDO, true);
+    render(<HomeAurora />);
+    fireEvent.press(screen.getByText('Tarot'));
+    expect(mockPush).toHaveBeenCalledWith('/consulta');
   });
 });

@@ -171,14 +171,24 @@ function diaEMes(iso: string | null | undefined): string {
   return `${local.slice(8, 10)}/${local.slice(5, 7)}`;
 }
 
+/**
+ * 'Seu acesso terminou em 28/09.' — a constatação, sem o convite.
+ *
+ * Separada de `mensagemDoLimite` porque há lugar que dá o caminho de volta de outro
+ * jeito: a folha do card explica o que continua aberto e põe os planos como uma das
+ * escolhas, e ali "Atualize seu plano para continuar" repetiria o que o botão já diz.
+ *
+ * Sem data legível, a frase omite o quando em vez de escrever "null" ou "Invalid Date"
+ * na tela de alguém.
+ */
+export function fraseDoVencimento(venceuEm: string | null | undefined): string {
+  const quando = diaEMes(venceuEm);
+  return quando ? `Seu acesso terminou em ${quando}.` : 'Seu acesso terminou.';
+}
+
 export function mensagemDoLimite(veredito: Veredito, tipo: TipoUso): string {
   if (veredito.motivo === 'vencido') {
-    const quando = diaEMes(veredito.venceuEm);
-    // Sem data legível, a frase omite o quando em vez de escrever "null" ou
-    // "Invalid Date" na tela de alguém.
-    return quando
-      ? `Seu acesso terminou em ${quando}. Atualize seu plano para continuar.`
-      : 'Seu acesso terminou. Atualize seu plano para continuar.';
+    return `${fraseDoVencimento(veredito.venceuEm)} Atualize seu plano para continuar.`;
   }
   if (veredito.motivo === 'desligado') {
     return `${NOME[tipo]} não está disponível no seu plano.`;
