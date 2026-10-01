@@ -392,7 +392,20 @@ Deno.serve(async (request) => {
       // Inclui o raciocínio, que neste modelo vem ligado por padrão: teto baixo
       // faz a resposta voltar cortada e o JSON não fechar.
       max_tokens: 12000,
-      output_config: { effort: 'high' },
+      // `medium` desde 01/10, e esta é a maior economia disponível: a aba Custo
+      // mostrou o aprofundamento com 95% do gasto de IA (US$ 0,19 de US$ 0,20), e
+      // esforço é profundidade de raciocínio — cobrado como SAÍDA, a US$ 20 por
+      // milhão neste modelo.
+      //
+      // `high` aqui era opt-in: o padrão do próprio Opus 5.5 é `medium`. E esforço
+      // alto rende em código e agente de longo prazo, não em escrita delimitada como
+      // esta, que recebe cartas, posições e significados prontos no prompt — sem
+      // busca, sem ferramenta, sem verificação em etapas.
+      //
+      // O que muda não é acerto, é voz, e isso é gosto: a decisão de voltar para
+      // `high` está no roadmap, para depois dos primeiros clientes. Voltar é esta
+      // palavra de volta.
+      output_config: { effort: 'medium' },
       system: INSTRUCOES_POR_ORACULO[oraculo],
       messages: [{ role: 'user', content: [{ type: 'text', text: dados }] }],
     });
