@@ -3,6 +3,8 @@ import {
   decidirUso,
   fraseDoVencimento,
   mensagemDoLimite,
+  validadeComCarencia,
+  CARENCIA_DIAS,
   restanteHoje,
   type AcessoDoPlano,
   type ConfiguracaoIA,
@@ -285,5 +287,55 @@ describe('fraseDoVencimento', () => {
       .toBe('Seu acesso terminou em 28/09. Atualize seu plano para continuar.');
     expect(mensagemDoLimite({ ...veredito, venceuEm: null }, 'interpretacao'))
       .toBe('Seu acesso terminou. Atualize seu plano para continuar.');
+  });
+});
+
+describe('validadeComCarencia', () => {
+  it('soma exatamente a carencia ao fim do periodo', () => {
+    // Se CARENCIA_DIAS mudar, este teste muda junto — de proposito. O numero e
+    // decisao de negocio, e trocar sem olhar o comentario que o explica e o erro
+    // que este teste existe para tornar barulhento.
+    expect(CARENCIA_DIAS).toBe(3);
+    expect(validadeComCarencia('2026-10-11T00:05:12.000Z'))
+      .toBe('2026-10-14T00:05:12.000Z');
+  });
+
+  it('preserva a hora, nao arredonda para o comeco do dia', () => {
+    // Arredondar daria ate um dia a mais ou a menos de acesso de graca, conforme a
+    // hora da compra.
+    expect(validadeComCarencia('2026-12-31T23:59:59.000Z'))
+      .toBe('2027-01-03T23:59:59.000Z');
+  });
+
+  it('atravessa a virada do ano sem se perder', () => {
+    expect(validadeComCarencia('2026-12-30T12:00:00.000Z'))
+      .toBe('2027-01-02T12:00:00.000Z');
+  });
+
+  it('lanca em data ilegivel em vez de gravar lixo', () => {
+    // Devolver algo aqui poria "Invalid Date" em perfis.plano_valido_ate, e
+    // `acessoDoPlano` barra data ilegivel — o cliente pagante ficaria trancado. Lancar
+    // faz a Stripe reentregar o webhook, que e o jeito certo de falhar.
+    for (const entrada of ['', '   ', 'ontem', 'nao e data']) {
+      expect(() => validadeComCarencia(entrada)).toThrow(/ileg/i);
+    }
+  });
+
+  it('a validade que ela produz passa por acessoDoPlano no dia do vencimento', () => {
+    // O ponto da carencia, afirmado de ponta a ponta: no instante exato do fim do
+    // periodo, a pessoa continua com acesso. Sem a carencia, `acessoDoPlano` trata
+    // "igual a agora" como vencido e ela veria cadeado.
+    const fimDoPeriodo = '2026-10-11T00:05:12.000Z';
+    const gravado = validadeComCarencia(fimDoPeriodo);
+    expect(acessoDoPlano(gravado, new Date(fimDoPeriodo), false).liberado).toBe(true);
+    expect(acessoDoPlano(fimDoPeriodo, new Date(fimDoPeriodo), false).liberado).toBe(false);
+  });
+
+  it('depois da carencia, vence mesmo', () => {
+    // O contrapeso: a folga e finita. Sem este teste, uma carencia enorme passaria.
+    const fimDoPeriodo = '2026-10-11T00:05:12.000Z';
+    const gravado = validadeComCarencia(fimDoPeriodo);
+    const depois = new Date(Date.parse(gravado) + 1000);
+    expect(acessoDoPlano(gravado, depois, false).liberado).toBe(false);
   });
 });
