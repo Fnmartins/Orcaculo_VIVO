@@ -1335,7 +1335,12 @@ const estilos = StyleSheet.create({
 
   // Abas scroll horizontal
   abasScroll: {
-    maxHeight: 52,
+    // `flexGrow: 0` no lugar de `maxHeight: 52`: a altura das abas depende do tamanho
+    // de fonte do sistema, e com a letra aumentada o conteúdo passava de 52 e era
+    // cortado ao meio — justamente para quem aumentou a letra por precisar dela.
+    // O teto existia só para a ScrollView não esticar, e `flexGrow: 0` faz isso sem
+    // impor altura.
+    flexGrow: 0,
     marginHorizontal: Espacamento.md,
     marginTop: Espacamento.md,
   },
