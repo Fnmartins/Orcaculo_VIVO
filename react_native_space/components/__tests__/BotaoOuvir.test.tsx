@@ -6,6 +6,33 @@ jest.mock('../../services/voz', () => ({
   gerarLeituraFalada: (...a: unknown[]) => mockGerar(...a),
 }));
 
+// O botão agora carrega o semáforo de uso, que lê a sessão e o perfil. O mesmo preâmbulo
+// de `SemaforoUso.test.tsx`: sem perfil nem sessão de mentira, o teste olharia o estado
+// de quem ainda não entrou, e não o de quem tem ou perdeu o acesso.
+interface PerfilFalso {
+  plano: string;
+  is_super_admin: boolean;
+  plano_valido_ate: string | null;
+}
+let mockPerfil: PerfilFalso | null = null;
+jest.mock('../../contexts/AuthContext', () => ({
+  useAuth: () => ({ perfil: mockPerfil, sessao: { user: { id: 'u1' } } }),
+}));
+jest.mock('../../services/usoIA', () => ({
+  lerUsoDoDia: jest.fn().mockResolvedValue(null),
+}));
+// O ícone real carrega a fonte de forma assíncrona e dispara aviso de "not wrapped in
+// act(...)" a cada renderização. As asserções olham rótulo e texto, nunca o desenho.
+jest.mock('@expo/vector-icons/Ionicons', () => () => null);
+
+// Datas fixas, nunca relativas a "hoje": no dia em que uma deixasse de ser passado (ou
+// futuro), o teste mudaria de sentido sozinho.
+const VENCIDO = '2025-10-10T15:00:00Z';
+const VALIDO = '2099-01-01T00:00:00Z';
+const comValidade = (validoAte: string | null) => {
+  mockPerfil = { plano: 'gratuito', is_super_admin: false, plano_valido_ate: validoAte };
+};
+
 // `expo-av` já vem mockado em `jest.setup.ts`; aqui só se pega a referência
 // para poder fazer a criação do som falhar, que é como o Safari do iPhone
 // recusa tocar fora de um gesto.
@@ -24,6 +51,31 @@ const LEITURA = { url: 'https://exemplo/a.mp3', doCache: false, cortado: false }
 beforeEach(() => {
   jest.clearAllMocks();
   mockGerar.mockResolvedValue(LEITURA);
+  // Começa com acesso: os testes de som abaixo não são sobre validade, e um cadeado
+  // ao lado do botão não deve ser o que os distingue.
+  comValidade(VALIDO);
+});
+
+describe('BotaoOuvir quando o acesso venceu', () => {
+  // O servidor recusa a voz a quem venceu (402), mas `voz_ligada` vale para todo plano,
+  // então sem este aviso o botão prometia o que o servidor negava: a pessoa tocava,
+  // esperava "Preparando a leitura…" e só então lia o erro, sem cadeado nem caminho
+  // para os planos. O semáforo mora no botão, e não nas quatro telas que o usam, para
+  // uma tela nova não nascer sem ele.
+  it('mostra o cadeado ao lado do botão de ouvir', () => {
+    comValidade(VENCIDO);
+    render(<BotaoOuvir partes={partes} />);
+    expect(screen.getByLabelText('Acesso vencido')).toBeTruthy();
+    expect(screen.getByText(/10\/10/)).toBeTruthy();
+  });
+
+  it('com validade no futuro não mostra cadeado', () => {
+    comValidade(VALIDO);
+    render(<BotaoOuvir partes={partes} />);
+    expect(screen.queryByLabelText('Acesso vencido')).toBeNull();
+    // "Sem cadeado" sozinho passaria também se o botão sumisse da tela.
+    expect(screen.getByLabelText('Ouvir a leitura em voz')).toBeTruthy();
+  });
 });
 
 describe('BotaoOuvir', () => {

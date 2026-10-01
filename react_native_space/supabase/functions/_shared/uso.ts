@@ -5,7 +5,7 @@
 //
 // Separado de limites.ts porque este toca banco. Lá ficou só a decisão, pura,
 // para o Jest do app poder testá-la sem subir nada.
-import { decidirUso, type ConfiguracaoIA, type TipoUso, type Veredito } from './limites.ts';
+import { acessoDoPlano, decidirUso, type ConfiguracaoIA, type TipoUso, type Veredito } from './limites.ts';
 
 /**
  * O cliente do supabase-js tipado de leve: este arquivo roda no Deno e não
@@ -50,6 +50,10 @@ const COLUNAS_CONFIG = 'imagem_ligada, interpretacao_ligada, pergunta_ligada, vo
  * Erro de leitura não barra ninguém: `decidirUso` com configuração nula deixa
  * passar. Tabela nova não pode derrubar recurso que já estava no ar — o que
  * sobra é o log, para a falha não ficar invisível.
+ *
+ * A validade é o contrário: `validoAte` nula, vazia ou ilegível **barra**. Erro nosso
+ * de leitura não pode derrubar recurso que já estava no ar, mas vencimento não é erro
+ * nosso — é um fato sobre a pessoa, e dado estragado não pode virar permissão.
  */
 export async function conferirUso(
   cliente: Cliente,
@@ -57,6 +61,7 @@ export async function conferirUso(
   plano: string,
   semLimite: boolean,
   tipo: TipoUso,
+  validoAte: string | null | undefined,
 ): Promise<Veredito> {
   let config: ConfiguracaoIA | null = null;
   const { data: linha, error } = await cliente
@@ -70,7 +75,10 @@ export async function conferirUso(
   if (erroUso) console.error('falha ao ler uso_ia', erroUso.message);
   const usado = typeof uso?.quantidade === 'number' ? uso.quantidade : 0;
 
-  return decidirUso(tipo, config, usado, semLimite);
+  return decidirUso(
+    tipo, config, usado, semLimite,
+    acessoDoPlano(validoAte, new Date(), semLimite),
+  );
 }
 
 /**
@@ -104,16 +112,7 @@ export async function registrarUso(
   if (error) console.error('falha ao contar uso', error.message);
 }
 
-const NOME: Record<TipoUso, string> = {
-  imagem: 'A leitura por imagem',
-  interpretacao: 'O aprofundamento com IA',
-  pergunta: 'As perguntas',
-  voz: 'A leitura falada',
-};
-
-export function mensagemDoLimite(veredito: Veredito, tipo: TipoUso): string {
-  if (veredito.motivo === 'desligado') {
-    return `${NOME[tipo]} não está disponível no seu plano.`;
-  }
-  return 'Você já usou o limite de hoje. Amanhã tem mais.';
-}
+// `mensagemDoLimite` mudou para `limites.ts`: ela é decisão pura sobre um veredito,
+// e aqui ficava num módulo que toca banco, fora do alcance do Jest. A
+// re-exportação evita mexer nos quatro importadores só por causa do caminho.
+export { mensagemDoLimite } from './limites.ts';

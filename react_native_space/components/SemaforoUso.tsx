@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Cores } from '../constants/colors';
 import { Fontes } from '../constants/typography';
 import { Espacamento, RaioBorda } from '../constants/spacing';
 import { useAuth } from '../contexts/AuthContext';
 import { lerUsoDoDia, type TipoUso, type UsoDoDia } from '../services/usoIA';
+import { acessoDoPlano, mensagemDoLimite } from '../supabase/functions/_shared/limites';
 
 /**
  * Semáforo de uso: diz quanto de IA ainda cabe hoje, **antes** de a pessoa
@@ -14,6 +16,10 @@ import { lerUsoDoDia, type TipoUso, type UsoDoDia } from '../services/usoIA';
  * nas Edge Functions). Este componente só mostra o número, e desaparece
  * quando não tem número para mostrar — semáforo apagado é melhor que semáforo
  * chutando.
+ *
+ * Com o acesso vencido mostra um cadeado no lugar do número. Como este semáforo já
+ * está em todos os lugares onde a IA é oferecida, o aviso aparece antes da pessoa
+ * tocar, e não só depois que o servidor recusa.
  */
 
 const VERDE = '#4CAF50';
@@ -31,15 +37,43 @@ export function SemaforoUso({ tipo, rotulo }: Props) {
   const usuarioId = sessao?.user?.id ?? null;
   const plano = perfil?.plano ?? 'gratuito';
   const semLimite = perfil?.is_super_admin === true;
+  // A mesma regra do servidor decide o cadeado. Se a tela decidisse por conta própria
+  // existiriam duas verdades, e a que desse acesso indevido seria a que ninguém notaria.
+  const acesso = acessoDoPlano(perfil?.plano_valido_ate, new Date(), semLimite);
 
   useEffect(() => {
-    if (!usuarioId || semLimite) return;
+    // Quem está trancado não pode usar o recurso de jeito nenhum: ler o contador do dia
+    // seria uma ida ao banco para um número que a tela nem vai mostrar.
+    if (!usuarioId || semLimite || !acesso.liberado) return;
     let vivo = true;
     lerUsoDoDia(usuarioId, plano, tipo).then((resultado) => {
       if (vivo) setUso(resultado);
     });
     return () => { vivo = false; };
-  }, [usuarioId, plano, tipo, semLimite]);
+  }, [usuarioId, plano, tipo, semLimite, acesso.liberado]);
+
+  // Fica ANTES do `!uso`: quem venceu não tem contador para mostrar, e este retorno
+  // precisa ser alcançado justamente quando `uso` está nulo. Dois guardas, e cada um
+  // existe por um motivo. `usuarioId` separa o vencido de quem saiu da conta: sem
+  // sessão não há ninguém para acusar. `perfil != null` separa o vencido de quem o app
+  // ainda não conhece: o AuthContext define a sessão e só DEPOIS busca o perfil, então
+  // esse intervalo existe em todo cold start (e dura a sessão inteira se a leitura
+  // falhar, porque `buscarPerfil` devolve nulo em vez de lançar). Nos dois casos
+  // `acessoDoPlano` também barra, e a pessoa leria "seu acesso terminou" sem ter
+  // perdido nada. O super-admin não precisa de checagem aqui: `acessoDoPlano` já o libera.
+  if (usuarioId && perfil != null && !acesso.liberado) {
+    return (
+      <View style={estilos.trancado} accessibilityLabel="Acesso vencido">
+        <Ionicons name="lock-closed" size={16} color={Cores.textoSecundario} />
+        <Text style={estilos.trancadoTexto}>
+          {mensagemDoLimite({
+            permitido: false, motivo: 'vencido', usadoHoje: 0,
+            limiteDia: null, venceuEm: acesso.venceuEm,
+          }, tipo)}
+        </Text>
+      </View>
+    );
+  }
 
   if (!usuarioId || semLimite || !uso) return null;
 
@@ -81,4 +115,15 @@ const estilos = StyleSheet.create({
   },
   ponto: { width: 8, height: 8, borderRadius: 4 },
   texto: { flex: 1, fontFamily: Fontes.corpo, fontSize: 12, color: Cores.textoSecundario },
+  trancado: {
+    flexDirection: 'row', alignItems: 'center', gap: Espacamento.xs,
+    paddingVertical: Espacamento.xs,
+    // A mesma margem de `faixa`: o cadeado ocupa a vaga do semáforo, e os cinco lugares
+    // que o usam põem conteúdo logo abaixo. Sem ela, o estado trancado encosta no que
+    // vem depois e o liberado não.
+    marginBottom: Espacamento.sm,
+  },
+  trancadoTexto: {
+    flex: 1, fontFamily: Fontes.corpo, fontSize: 13, color: Cores.textoSecundario,
+  },
 });

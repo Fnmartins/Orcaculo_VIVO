@@ -8,6 +8,7 @@ import { Espacamento, RaioBorda } from '../constants/spacing';
 import { Hapticos } from '../utils/haptics';
 import { montarRoteiro, type ParteDaLeitura } from '../utils/vozLeitura';
 import { gerarLeituraFalada } from '../services/voz';
+import { SemaforoUso } from './SemaforoUso';
 
 /**
  * "Ouvir a leitura", agora com a voz de verdade.
@@ -210,6 +211,12 @@ export function BotaoOuvir({ partes, titulo }: Props) {
 
   return (
     <View style={estilos.area}>
+      {/* O semáforo mora aqui, e não nas quatro telas que usam o botão, porque a voz é
+          o que o servidor recusa a quem venceu (`ia-voz`, 402) e o botão é o único
+          lugar comum a todas. Numa tela nova, a pessoa tocaria, esperaria "Preparando
+          a leitura…" e só então leria o erro, sem cadeado nem caminho para os planos.
+          Fica ACIMA do botão: o aviso tem de chegar antes do toque, não depois. */}
+      <SemaforoUso tipo="voz" rotulo="Leituras faladas" />
       <Pressable
         onPress={() => { void alternar(); }}
         disabled={estado === 'preparando'}

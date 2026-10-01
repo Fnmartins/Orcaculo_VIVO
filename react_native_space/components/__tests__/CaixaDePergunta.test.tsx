@@ -21,7 +21,13 @@ jest.mock('../../services/usoIA', () => ({
   lerUsoDoDia: (...a: unknown[]) => mockLerUso(...a),
 }));
 
-const perfil: { data_nascimento: string | null } = { data_nascimento: '1990-05-10' };
+// A validade no futuro é o que faz o `SemaforoUso` de dentro da caixa mostrar o
+// contador em vez do cadeado. Sem ela a pessoa deste teste está vencida, e o que
+// se mede aqui é a caixa de pergunta de quem PODE perguntar.
+const perfil: { data_nascimento: string | null; plano_valido_ate: string } = {
+  data_nascimento: '1990-05-10',
+  plano_valido_ate: '2099-01-01T00:00:00Z',
+};
 const mockAtualizarPerfil = jest.fn().mockResolvedValue(undefined);
 jest.mock('../../contexts/AuthContext', () => ({
   useAuth: () => ({

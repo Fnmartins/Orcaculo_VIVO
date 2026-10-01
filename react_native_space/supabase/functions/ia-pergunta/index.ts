@@ -159,7 +159,7 @@ Deno.serve(async (request) => {
   }
 
   const { data: perfil, error: erroPerfil } = await supabaseAdmin
-    .from('perfis').select('plano, is_super_admin, consentimento_perguntas')
+    .from('perfis').select('plano, is_super_admin, consentimento_perguntas, plano_valido_ate')
     .eq('id', usuarioId).maybeSingle();
   if (erroPerfil) {
     console.error('falha ao ler perfil', erroPerfil.message);
@@ -169,7 +169,10 @@ Deno.serve(async (request) => {
   const plano = typeof perfil?.plano === 'string' ? perfil.plano : 'gratuito';
 
   // Pergunta não desconta consulta do período: o limite é o do dia, do plano.
-  const veredito = await conferirUso(supabaseAdmin, usuarioId, plano, semLimite, 'pergunta');
+  const veredito = await conferirUso(
+    supabaseAdmin, usuarioId, plano, semLimite, 'pergunta',
+    perfil?.plano_valido_ate as string | null,
+  );
   if (!veredito.permitido) {
     return resposta({
       erro: mensagemDoLimite(veredito, 'pergunta'),

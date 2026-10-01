@@ -192,6 +192,11 @@ Deno.serve(async (request) => {
   // O cache vem ANTES da cota, de propósito: ouvir de novo o que já foi gerado
   // não custa chamada paga, então não pode custar uma do dia. É o mesmo desenho
   // do cache de interpretação do mapa.
+  //
+  // Vem também antes da validade, e o motivo é o custo, não a posse: a chave é
+  // `sha256(VOZ + texto)`, global, não por pessoa. Quem venceu e manda um texto que
+  // QUALQUER conta já sintetizou recebe aquele áudio — já gerado, por qualquer pessoa.
+  // Não gasta chamada paga nem cota, então barrar aqui não protegeria nada.
   const { data: guardado } = await supabaseAdmin
     .from('voz_cache').select('arquivo, usos, codigo').eq('hash', hash).maybeSingle();
 
@@ -216,7 +221,7 @@ Deno.serve(async (request) => {
   }
 
   const { data: perfil, error: erroPerfil } = await supabaseAdmin
-    .from('perfis').select('is_super_admin, plano').eq('id', usuarioId).maybeSingle();
+    .from('perfis').select('is_super_admin, plano, plano_valido_ate').eq('id', usuarioId).maybeSingle();
   if (erroPerfil) {
     console.error('falha ao ler perfil', erroPerfil.message);
     return resposta({ erro: 'Falha ao conferir seu plano' }, 502);
@@ -224,7 +229,10 @@ Deno.serve(async (request) => {
   const semLimite = perfil?.is_super_admin === true;
   const plano = typeof perfil?.plano === 'string' ? perfil.plano : 'gratuito';
 
-  const veredito = await conferirUso(supabaseAdmin, usuarioId, plano, semLimite, 'voz');
+  const veredito = await conferirUso(
+    supabaseAdmin, usuarioId, plano, semLimite, 'voz',
+    perfil?.plano_valido_ate as string | null,
+  );
   if (!veredito.permitido) {
     return resposta({ erro: mensagemDoLimite(veredito, 'voz'), motivo: veredito.motivo }, 402);
   }
