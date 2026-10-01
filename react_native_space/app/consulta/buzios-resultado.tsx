@@ -20,6 +20,8 @@ import { Button } from '../../components/Button';
 import { EstadoTela } from '../../components/EstadoTela';
 import { CaixaDePergunta } from '../../components/CaixaDePergunta';
 import { SemaforoUso } from '../../components/SemaforoUso';
+import { AvisoDeFalhaIA } from '../../components/AvisoDeFalhaIA';
+import { falhaDaIA, type FalhaDaIA } from '../../services/falhaDaIA';
 import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
@@ -46,7 +48,9 @@ export default function TelaBuziosResultado() {
   const slideAnim = useRef(new Animated.Value(30)).current;
   const [interpretacaoIA, setInterpretacaoIA] = useState<InterpretacaoBuzios | null>(null);
   const [carregandoIA, setCarregandoIA] = useState(false);
-  const [erroIA, setErroIA] = useState(false);
+  // Guarda o motivo, não só o fato: o servidor manda a frase, e um booleano a jogava
+  // fora para escrever "falha ao conectar" sobre uma recusa de plano.
+  const [erroIA, setErroIA] = useState<FalhaDaIA | null>(null);
 
   let resultado: ResultadoBuzios | null = null;
   try {
@@ -65,7 +69,7 @@ export default function TelaBuziosResultado() {
   async function aprofundarComIA() {
     if (carregandoIA || interpretacaoIA || !resultado?.odu) return;
     setCarregandoIA(true);
-    setErroIA(false);
+    setErroIA(null);
     try {
       const res = await gerarInterpretacaoBuzios({
         nome: resultado.odu.nome,
@@ -75,8 +79,8 @@ export default function TelaBuziosResultado() {
         intencao: intencao || 'Orientação geral',
       });
       setInterpretacaoIA(res);
-    } catch {
-      setErroIA(true);
+    } catch (e) {
+      setErroIA(falhaDaIA(e));
     } finally {
       setCarregandoIA(false);
     }
@@ -305,16 +309,7 @@ export default function TelaBuziosResultado() {
             )}
 
             {erroIA && !carregandoIA && (
-              <Pressable
-                onPress={aprofundarComIA}
-                accessibilityRole="button"
-                accessibilityLabel="Tentar gerar a interpretação novamente"
-              >
-                <View style={estilos.iaErro}>
-                  <Ionicons name="refresh-outline" size={16} color={Cores.textoSecundario} />
-                  <Text style={estilos.iaErroTexto}>Falha ao conectar. Tocar para tentar novamente.</Text>
-                </View>
-              </Pressable>
+              <AvisoDeFalhaIA falha={erroIA} aoTentarDeNovo={aprofundarComIA} />
             )}
 
             {interpretacaoIA && (
@@ -575,8 +570,6 @@ const estilos = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(124,154,130,0.12)',
   },
   iaCarregandoTexto: { fontFamily: Fontes.corpo, fontSize: 13, color: Cores.textoSecundario },
-  iaErro: { flexDirection: 'row', alignItems: 'center', gap: Espacamento.xs, padding: Espacamento.sm },
-  iaErroTexto: { fontFamily: Fontes.corpo, fontSize: 12, color: Cores.textoSecundario },
   iaResultado: {
     borderRadius: RaioBorda.xl, padding: Espacamento.lg,
     borderWidth: 1, borderColor: 'rgba(124,154,130,0.2)',
