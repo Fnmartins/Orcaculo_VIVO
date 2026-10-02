@@ -56,10 +56,16 @@ function texto(valor: unknown, limite: number): string {
 
 const INSTRUCOES_TAROT = `${REGRAS}
 
-Você interpreta uma tiragem de três cartas, ligando-as numa leitura coerente — não três leituras soltas.
+Você interpreta uma tiragem de tarô, ligando as cartas numa leitura coerente — não uma leitura solta por carta.
+
+As posições vêm dentro de <dados>, cada uma com a pergunta que ela faz. Escreva a partir do ENCONTRO entre a carta e a pergunta da posição dela, nunca da carta sozinha: a mesma carta diz coisas diferentes em posições diferentes, e é isso que faz a leitura ser desta tiragem e não de qualquer uma.
+
+Quando a carta vier marcada como invertida, ela **não** é o contrário da carta de pé: é a mesma força travada, atrasada ou virada contra. Inverter o significado é o erro que tarólogo reconhece na hora.
+
+Escreva uma entrada em "leituras" para CADA posição recebida, com o nome da posição copiado exatamente como veio. Nem uma a menos.
 
 Responda SOMENTE com um objeto JSON, sem cercas de código e sem texto antes ou depois:
-{"titulo": "3 a 5 palavras", "narrativa": "4 a 6 frases ligando as três cartas", "passado": "2 a 3 frases", "presente": "2 a 3 frases", "futuro": "2 a 3 frases", "conselho": "2 frases"}`;
+{"titulo": "3 a 5 palavras", "narrativa": "4 a 6 frases ligando as cartas entre si", "leituras": [{"posicao": "o nome exato da posição", "texto": "2 a 3 frases"}], "conselho": "2 frases"}`;
 
 const INSTRUCOES_BUZIOS = `${REGRAS}
 
@@ -106,26 +112,39 @@ const INSTRUCOES_POR_ORACULO: Record<Oraculo, string> = {
 };
 
 const CAMPOS: Record<Oraculo, string[]> = {
-  tarot: ['titulo', 'narrativa', 'passado', 'presente', 'futuro', 'conselho'],
+  // O tarô não lista posições aqui: elas variam com a tiragem, e exigi-las por nome
+  // fazia a Cruz Celta ser recusada como "resposta fora do formato". Quem confere as
+  // posições é `leituras`, contra as que foram realmente enviadas.
+  tarot: ['titulo', 'narrativa', 'conselho'],
   buzios: ['titulo', 'narrativa', 'mensagem', 'conselho', 'afirmacao'],
   mapa: ['titulo', 'narrativa', 'forca', 'tensao', 'conselho', 'amor', 'trabalho', 'dinheiro', 'caminho'],
 };
 
-function dadosDoTarot(body: Record<string, unknown>): string {
-  const cartas = Array.isArray(body.cartas) ? body.cartas.slice(0, 3) : [];
+/** Teto de posições. A Cruz Celta tem dez; acima disso é pedido malformado. */
+const MAX_POSICOES = 10;
+
+function dadosDoTarot(body: Record<string, unknown>): { dados: string; posicoes: string[] } {
+  const cartas = Array.isArray(body.cartas) ? body.cartas.slice(0, MAX_POSICOES) : [];
   if (cartas.length === 0) throw new Error('Nenhuma carta recebida');
+  const posicoes: string[] = [];
   const linhas = cartas.map((item) => {
     const c = item as Record<string, unknown>;
     const nome = texto(c.nome, 60);
     const posicao = texto(c.posicao, 40);
+    const regra = texto(c.regra, 120);
     const significado = texto(c.significado, 300);
     if (!nome || !posicao) throw new Error('Carta sem nome ou posição');
-    return `- ${posicao}: ${nome}${significado ? ` (${significado})` : ''}`;
+    posicoes.push(posicao);
+    // A orientação vai junto porque sem ela a IA lê a carta invertida como se estivesse
+    // de pé e escreve o significado trocado — sem nada quebrar.
+    const orientacao = c.invertida === true ? ' [invertida]' : '';
+    const pergunta = regra ? ` — a posição pergunta: ${regra}` : '';
+    return `- ${posicao}${pergunta}: ${nome}${orientacao}${significado ? ` (${significado})` : ''}`;
   });
   // Mesma frase e mesma escolha de `dadosDosBuzios`: dizer que nao houve pergunta, em
   // vez de calar. Calando, o modelo adivinha se houve uma, e passa a inventar contexto.
   const intencao = `Intenção de quem consultou: ${texto(body.intencao, 300) || 'não informada'}`;
-  return `<dados>\n${linhas.join('\n')}\n${intencao}\n</dados>`;
+  return { dados: `<dados>\n${linhas.join('\n')}\n${intencao}\n</dados>`, posicoes };
 }
 
 function dadosDosBuzios(body: Record<string, unknown>): string {
@@ -285,16 +304,40 @@ async function chaveDoMapa(dados: string): Promise<string> {
     .join('');
 }
 
-function validarResultado(bruto: string, oraculo: Oraculo): Record<string, string> {
+function validarResultado(
+  bruto: string,
+  oraculo: Oraculo,
+  posicoes: string[] = [],
+): Record<string, unknown> {
   const limpo = bruto.trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
   const dado = JSON.parse(limpo) as Record<string, unknown>;
-  const saida: Record<string, string> = {};
+  const saida: Record<string, unknown> = {};
   for (const campo of CAMPOS[oraculo]) {
     const valor = dado[campo];
     if (typeof valor !== 'string' || !valor.trim()) {
       throw new Error(`resposta sem o campo ${campo}`);
     }
     saida[campo] = valor.trim();
+  }
+
+  // Uma entrada por posição ENVIADA, e não por posição que a IA resolveu escrever.
+  // Faltando alguma, a leitura é recusada aqui: é melhor pedir de novo do que mostrar
+  // uma posição em branco no meio de uma tiragem que a pessoa montou com a mão.
+  if (posicoes.length > 0) {
+    const escritas = new Map<string, string>();
+    for (const item of Array.isArray(dado.leituras) ? dado.leituras : []) {
+      const i = item as Record<string, unknown>;
+      const posicao = typeof i.posicao === 'string' ? i.posicao.trim() : '';
+      const corpo = typeof i.texto === 'string' ? i.texto.trim() : '';
+      if (posicao && corpo) escritas.set(posicao, corpo);
+    }
+    const faltando = posicoes.filter((p) => !escritas.has(p));
+    if (faltando.length > 0) {
+      throw new Error(`resposta sem as posições: ${faltando.join(', ')}`);
+    }
+    // Reordenadas pela tiragem: a tela mostra na ordem em que a pessoa distribuiu, não
+    // na ordem em que o modelo escreveu.
+    saida.leituras = posicoes.map((p) => ({ posicao: p, texto: escritas.get(p) }));
   }
   return saida;
 }
@@ -328,9 +371,16 @@ Deno.serve(async (request) => {
   if (!ORACULOS.includes(oraculo)) return resposta({ erro: 'Oráculo inválido' }, 400);
 
   let dados: string;
+  // As posições enviadas viajam até a validação: é por elas que se confere se a IA
+  // escreveu TODAS. Sem isso, uma Cruz Celta voltando com oito das dez posições
+  // mostraria duas em branco na tela, e nada no servidor teria reclamado.
+  let posicoesDaTiragem: string[] = [];
   try {
-    if (oraculo === 'tarot') dados = dadosDoTarot(body);
-    else if (oraculo === 'buzios') dados = dadosDosBuzios(body);
+    if (oraculo === 'tarot') {
+      const tarot = dadosDoTarot(body);
+      dados = tarot.dados;
+      posicoesDaTiragem = tarot.posicoes;
+    } else if (oraculo === 'buzios') dados = dadosDosBuzios(body);
     else dados = dadosDoMapa(body);
   } catch (erro) {
     return resposta({ erro: erro instanceof Error ? erro.message : 'Dados incompletos' }, 400);
@@ -427,7 +477,7 @@ Deno.serve(async (request) => {
 
     let interpretacao;
     try {
-      interpretacao = validarResultado(saida, oraculo);
+      interpretacao = validarResultado(saida, oraculo, posicoesDaTiragem);
     } catch (erro) {
       console.error(
         'resposta fora do formato',

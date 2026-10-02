@@ -36,6 +36,28 @@ import { falhaDaIA, type FalhaDaIA } from '../../services/falhaDaIA';
 
 const POSICOES = ['Passado', 'Presente', 'Futuro'];
 
+/**
+ * As seções da caixa de IA, numa tiragem de qualquer tamanho.
+ *
+ * `leituras` é o formato de agora: uma entrada por posição, na ordem em que a pessoa
+ * distribuiu. As três abaixo são o formato antigo, de quando a tiragem era sempre
+ * Passado / Presente / Futuro — `consultas.resultado` guarda o objeto inteiro, então
+ * leituras salvas naquele tempo continuam chegando assim e precisam continuar abrindo.
+ */
+export function secoesDaLeitura(
+  leitura: InterpretacaoTarot,
+): { label: string; texto: string }[] {
+  const posicoes = leitura.leituras?.length
+    ? leitura.leituras.map((l) => ({ label: l.posicao, texto: l.texto }))
+    : [
+      { label: 'Passado', texto: leitura.passado ?? '' },
+      { label: 'Presente', texto: leitura.presente ?? '' },
+      { label: 'Futuro', texto: leitura.futuro ?? '' },
+    ];
+  return [...posicoes, { label: '💡 Conselho da IA', texto: leitura.conselho }]
+    .filter((s) => s.texto.trim().length > 0);
+}
+
 const FORMATOS_ENTREGA = [
   { id: 'texto', icone: 'document-text-outline', titulo: 'Texto', disponivel: true },
   { id: 'audio', icone: 'headset-outline', titulo: 'Áudio', disponivel: true },
@@ -44,10 +66,8 @@ const FORMATOS_ENTREGA = [
 ];
 
 export default function TelaResultado() {
-  const { cartas: cartasParam = '[]', intencao = '' } = useLocalSearchParams<{
-    cartas?: string;
-    intencao?: string;
-  }>();
+  const { cartas: cartasParam = '[]', intencao = '', posicoes: posicoesParam } =
+    useLocalSearchParams<{ cartas?: string; intencao?: string; posicoes?: string }>();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
   const [interpretacaoIA, setInterpretacaoIA] = useState<InterpretacaoTarot | null>(null);
@@ -62,6 +82,21 @@ export default function TelaResultado() {
   } catch {
     cartas = [];
   }
+
+  // As posições viajam com a tiragem. Reconstruí-las aqui a partir de uma lista fixa
+  // funcionava só enquanto toda tiragem fosse Passado / Presente / Futuro — numa Cruz
+  // Celta, a tela mostraria "Futuro" na quarta carta e a IA receberia a pergunta errada.
+  // A lista local fica como recuo para leituras abertas antes deste parâmetro existir.
+  let posicoes: { nome: string; regra?: string }[] = POSICOES.map((nome) => ({ nome }));
+  try {
+    if (posicoesParam) {
+      const lidas = JSON.parse(posicoesParam);
+      if (Array.isArray(lidas) && lidas.length > 0) posicoes = lidas;
+    }
+  } catch {
+    // Parâmetro corrompido não pode derrubar a leitura: fica o recuo.
+  }
+  const nomeDaPosicao = (i: number) => posicoes[i]?.nome ?? `Carta ${i + 1}`;
 
   useEffect(() => {
     Animated.parallel([
@@ -78,7 +113,8 @@ export default function TelaResultado() {
       const resultado = await gerarInterpretacaoTarot(
         cartas.map((c, i) => ({
           nome: c.nomeCompleto,
-          posicao: POSICOES[i] ?? `Carta ${i + 1}`,
+          posicao: nomeDaPosicao(i),
+          regra: posicoes[i]?.regra,
           significado: c.significado,
         })),
         intencao
@@ -184,7 +220,7 @@ export default function TelaResultado() {
                 {/* Posição + carta */}
                 <View style={estilos.cartaHeader}>
                   <View style={estilos.posicaoBadge}>
-                    <Text style={estilos.posicaoTexto}>{POSICOES[index]}</Text>
+                    <Text style={estilos.posicaoTexto}>{nomeDaPosicao(index)}</Text>
                   </View>
                   <CartaTarotVisual cartaId={carta.id} nome={carta.nomeCompleto} largura={68} />
                 </View>
@@ -280,12 +316,7 @@ export default function TelaResultado() {
                 <Text style={estilos.iaResultadoTitulo}>{interpretacaoIA.titulo}</Text>
                 <Text style={estilos.iaResultadoNarrativa}>{interpretacaoIA.narrativa}</Text>
 
-                {[
-                  { label: 'Passado', texto: interpretacaoIA.passado },
-                  { label: 'Presente', texto: interpretacaoIA.presente },
-                  { label: 'Futuro', texto: interpretacaoIA.futuro },
-                  { label: '💡 Conselho da IA', texto: interpretacaoIA.conselho },
-                ].map((item) => (
+                {secoesDaLeitura(interpretacaoIA).map((item) => (
                   <View key={item.label} style={estilos.iaSecao}>
                     <Text style={estilos.iaSecaoLabel}>{item.label}</Text>
                     <Text style={estilos.iaSecaoTexto}>{item.texto}</Text>
@@ -303,17 +334,17 @@ export default function TelaResultado() {
               oraculo: 'tarot',
               cartas: cartas.map((c, i) => ({
                 nome: c.nomeCompleto,
-                posicao: POSICOES[i] ?? `Carta ${i + 1}`,
+                posicao: nomeDaPosicao(i),
               })),
             }}
             textoDaLeitura={cartas
-              .map((c, i) => `${POSICOES[i] ?? ''}: ${c.nomeCompleto} — ${c.significado}`)
+              .map((c, i) => `${nomeDaPosicao(i)}: ${c.nomeCompleto} — ${c.significado}`)
               .join('\n')}
           />
 
           <BotaoOuvir
             partes={cartas.map((c, i) => ({
-              rotulo: POSICOES[i] ?? `Carta ${i + 1}`,
+              rotulo: nomeDaPosicao(i),
               texto: `${c.nomeCompleto}. ${c.significado}`,
             }))}
           />

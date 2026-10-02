@@ -215,7 +215,13 @@ export default function TelaCartas() {
     const cartas = tiragem.filter((c): c is CartaTarot => c !== null);
     router.push({
       pathname: '/consulta/resultado',
-      params: { cartas: JSON.stringify(cartas), intencao: intencao.trim() },
+      params: {
+        cartas: JSON.stringify(cartas),
+        intencao: intencao.trim(),
+        // As posições viajam junto: a tela do resultado não pode adivinhar qual tiragem
+        // foi feita, e a IA precisa da pergunta de cada posição, não só do nome dela.
+        posicoes: JSON.stringify(POSICOES),
+      },
     });
   }, [tiragem, intencao]);
 

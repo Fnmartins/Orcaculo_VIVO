@@ -120,13 +120,23 @@ async function erroDeInterpretacao(error: unknown): Promise<Error> {
 // Interpretação de Tarot por IA
 // ─────────────────────────────────────────────────────────────────────────────
 
+export interface LeituraDePosicao {
+  posicao: string;
+  texto: string;
+}
+
 export interface InterpretacaoTarot {
   titulo: string;
   narrativa: string;
-  passado: string;
-  presente: string;
-  futuro: string;
   conselho: string;
+  /** Uma por posição da tiragem, na ordem em que a pessoa distribuiu. */
+  leituras?: LeituraDePosicao[];
+  // As três abaixo são o formato antigo, de quando a tiragem era sempre Passado /
+  // Presente / Futuro. Continuam aqui porque `consultas.resultado` guarda o objeto
+  // inteiro: as leituras já salvas vieram assim e precisam continuar abrindo.
+  passado?: string;
+  presente?: string;
+  futuro?: string;
 }
 
 /**
@@ -134,8 +144,17 @@ export interface InterpretacaoTarot {
  * daqui, qualquer pessoa usaria a chave paga do projeto para gerar o que
  * quisesse. O app manda só as cartas sorteadas.
  */
+export interface CartaParaLeitura {
+  nome: string;
+  posicao: string;
+  /** A pergunta que a posição faz. É dela que sai a leitura, não da carta sozinha. */
+  regra?: string;
+  significado: string;
+  invertida?: boolean;
+}
+
 export async function gerarInterpretacaoTarot(
-  cartas: { nome: string; posicao: string; significado: string }[],
+  cartas: CartaParaLeitura[],
   /** O que a pessoa escreveu antes de cortar o baralho. Vazio quando não escreveu. */
   intencao = '',
 ): Promise<InterpretacaoTarot> {
@@ -148,13 +167,17 @@ export async function gerarInterpretacaoTarot(
   if (!bruto.titulo || !bruto.narrativa) {
     throw new Error('A interpretação voltou incompleta. Tente de novo.');
   }
+  // Campo a campo, e por isso cada campo novo precisa ser acrescentado aqui: foi
+  // esquecer exatamente isto que fez as quatro áreas do mapa chegarem do servidor e
+  // morrerem aqui, um dia inteiro, sem erro nenhum.
   return {
     titulo: bruto.titulo,
     narrativa: bruto.narrativa,
-    passado: bruto.passado ?? '',
-    presente: bruto.presente ?? '',
-    futuro: bruto.futuro ?? '',
     conselho: bruto.conselho ?? '',
+    ...(bruto.leituras ? { leituras: bruto.leituras } : {}),
+    ...(bruto.passado ? { passado: bruto.passado } : {}),
+    ...(bruto.presente ? { presente: bruto.presente } : {}),
+    ...(bruto.futuro ? { futuro: bruto.futuro } : {}),
   };
 }
 
