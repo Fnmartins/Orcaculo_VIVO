@@ -94,3 +94,20 @@ const CRUZ_CELTA: Tiragem = {
 export const TIRAGENS: Tiragem[] = [TRES_CARTAS, CRUZ_CELTA];
 
 export const TIRAGEM_PADRAO = TRES_CARTAS;
+
+/**
+ * A ordem em que as posições desta tiragem devem ser LIDAS.
+ *
+ * Sem regra própria, é a ordem em que as cartas foram postas. Uma regra que devolva
+ * índice fora da faixa ou repetido é descartada inteira e volta-se à ordem natural: é
+ * melhor ler na ordem errada do que deixar uma posição de fora da leitura.
+ */
+export function ordemDasPosicoes(tiragem: Tiragem, agora: Date = new Date()): number[] {
+  const natural = tiragem.posicoes.map((_, i) => i);
+  if (!tiragem.ordemDeLeitura) return natural;
+  const pedida = tiragem.ordemDeLeitura(agora);
+  const valida = pedida.length === natural.length
+    && new Set(pedida).size === natural.length
+    && pedida.every((i) => Number.isInteger(i) && i >= 0 && i < natural.length);
+  return valida ? pedida : natural;
+}

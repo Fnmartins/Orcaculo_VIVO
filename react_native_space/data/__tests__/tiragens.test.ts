@@ -1,4 +1,4 @@
-import { TIRAGENS, TIRAGEM_PADRAO } from '../tiragens';
+import { TIRAGENS, TIRAGEM_PADRAO, ordemDasPosicoes } from '../tiragens';
 import { ARCANOS_MAIORES } from '../tarot';
 
 describe('tiragens', () => {
@@ -111,5 +111,27 @@ describe('geometria das tiragens', () => {
       const chaves = tiragem.posicoes.map((p) => p.chave).filter(Boolean);
       expect(new Set(chaves).size).toBe(chaves.length);
     }
+  });
+});
+
+describe('ordemDasPosicoes', () => {
+  it('sem regra própria, lê na ordem em que as cartas foram postas', () => {
+    for (const tiragem of TIRAGENS) {
+      const esperada = tiragem.posicoes.map((_, i) => i);
+      expect(ordemDasPosicoes(tiragem)).toEqual(esperada);
+    }
+  });
+
+  it('com regra própria, lê na ordem que ela manda', () => {
+    // Há tiragens em que a ordem de leitura não é a de distribuição: "O ano à frente"
+    // começa pela carta do mês corrente. Sem isto, a leitura começaria sempre em abril.
+    const falsa = { ...TIRAGENS[0], ordemDeLeitura: () => [2, 0, 1] };
+    expect(ordemDasPosicoes(falsa)).toEqual([2, 0, 1]);
+  });
+
+  it('regra que devolve lixo não derruba a leitura', () => {
+    // Índice fora da faixa ou repetido deixaria uma posição de fora e outra duas vezes.
+    const falsa = { ...TIRAGENS[0], ordemDeLeitura: () => [9, 1, 1] };
+    expect(ordemDasPosicoes(falsa)).toEqual([0, 1, 2]);
   });
 });
