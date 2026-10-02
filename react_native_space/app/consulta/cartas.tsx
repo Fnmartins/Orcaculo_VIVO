@@ -17,9 +17,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Button } from '../../components/Button';
 import { LequeDeCorte } from '../../components/taro/LequeDeCorte';
 import { MontesCortados } from '../../components/taro/MontesCortados';
-import { CruzCelta, LARGURA_MINIMA_DA_CRUZ } from '../../components/taro/CruzCelta';
 import { MonteParaDistribuir, type MedidaDaVaga } from '../../components/taro/MonteParaDistribuir';
 import { Recolhimento } from '../../components/taro/Recolhimento';
+import { Tabuleiro, LARGURA_MINIMA_DO_TABULEIRO } from '../../components/taro/Tabuleiro';
 import { VagaDaTiragem } from '../../components/taro/VagaDaTiragem';
 import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
@@ -204,9 +204,10 @@ export default function TelaCartas() {
     });
   }, [tiragem, intencao, POSICOES]);
 
-  // A cruz só em tela larga: espremida num celular ela deixa de ser legível, e o que
-  // carrega o sentido da posição é o nome com a pergunta, que some primeiro.
-  const emCruz = modelo.id === 'cruz-celta' && larguraDaTela >= LARGURA_MINIMA_DA_CRUZ;
+  // O tabuleiro só em tela larga: espremida num celular a mesa deixa de ser legível, e o
+  // que carrega o sentido da posição é o nome com a pergunta, que some primeiro. Até três
+  // cartas a lista já é a própria mesa, em linha — não há o que arrumar.
+  const emTabuleiro = POSICOES.length > 3 && larguraDaTela >= LARGURA_MINIMA_DO_TABULEIRO;
 
   const desenharVaga = (i: number) => (
     <VagaDaTiragem
@@ -214,7 +215,7 @@ export default function TelaCartas() {
       posicao={POSICOES[i]}
       carta={tiragem[i]}
       revelada={reveladas[i]}
-      compacta={emCruz}
+      compacta={emTabuleiro}
       aoReceber={() => puxarPara(i)}
       aoVirar={() => virar(i)}
       aoMedir={(medida) => medirVaga(i, medida)}
@@ -286,7 +287,7 @@ export default function TelaCartas() {
           onMomentumScrollEnd={() => setVersaoDaMedida((v) => v + 1)}
         >
           <Animated.View
-            style={[estilos.coluna, emCruz && estilos.colunaLarga, { opacity: fade }]}
+            style={[estilos.coluna, emTabuleiro && estilos.colunaLarga, { opacity: fade }]}
           >
             {/* ───────── Antes de cortar ───────── */}
             {!distribuindo && !recolhendo && (
@@ -391,8 +392,8 @@ export default function TelaCartas() {
                       + 'saber o que você pensou.'}
                 </Text>
 
-                {emCruz
-                  ? <CruzCelta vaga={desenharVaga} />
+                {emTabuleiro
+                  ? <Tabuleiro posicoes={POSICOES} vaga={desenharVaga} />
                   : POSICOES.map((_, i) => desenharVaga(i))}
               </>
             )}
@@ -458,7 +459,7 @@ const estilos = StyleSheet.create({
   // O protótipo usa uma coluna de 62rem. Sem ela, no navegador o campo de intenção
   // atravessa a tela inteira.
   coluna: { width: '100%', maxWidth: 620, gap: Espacamento.md },
-  // A cruz precisa de mais largura que o resto da tela; a coluna abre só para ela.
+  // O tabuleiro precisa de mais largura que o resto da tela; a coluna abre só para ele.
   colunaLarga: { maxWidth: 1100 },
 
   painel: {
