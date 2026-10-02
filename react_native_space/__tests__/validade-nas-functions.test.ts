@@ -179,6 +179,41 @@ describe('a leitura de taro nao e mais fixa em tres posicoes', () => {
     // duas posicoes em branco, e nada no servidor teria reclamado.
     expect(fonte).toMatch(/posicoes/);
   });
+
+  // O texto do prompt do tarô, e só dele: do começo da constante até a dos búzios.
+  const instrucoesDoTarot = fonte.slice(
+    fonte.indexOf('INSTRUCOES_TAROT'),
+    fonte.indexOf('INSTRUCOES_BUZIOS'),
+  );
+
+  it('o prompt do taro manda fechar devolvendo uma pergunta', () => {
+    // As fontes fecham cada carta com uma pergunta a quem consulta, e e isso que separa
+    // leitura simbolica de afirmacao sobre a vida de alguem.
+    //
+    // Nao basta o prompt dizer "pergunta": ele ja a menciona ao explicar que cada posicao
+    // vem com a sua. O que se confere aqui e a ordem de FECHAR a leitura com uma, e a
+    // recusa do veredito.
+    expect(instrucoesDoTarot).toMatch(/devolvendo uma pergunta/i);
+    expect(instrucoesDoTarot).toMatch(/veredito/i);
+  });
+
+  it('o prompt do taro manda partir do material da carta e tecer, sem fingir que ele veio', () => {
+    // O payload passou a levar palavras-chave, frases-chave e a nota daquela posicao, mas
+    // sem uma regra dizendo o que fazer com elas o modelo as trataria como enfeite e
+    // seguiria inventando o que a carta significa. O trabalho dele e tecer: ligar as
+    // cartas entre si, com as perguntas das posicoes e com a intencao.
+    for (const rotulo of ['palavras-chave', 'frases-chave', 'nesta posição']) {
+      // O prompt chama o material pelo mesmo rotulo que o payload escreve. Se um dos dois
+      // mudar de nome sozinho, o modelo passa a procurar o que nao esta la.
+      expect(fonte).toContain(`  ${rotulo}: \${`);
+      expect(instrucoesDoTarot).toContain(rotulo);
+    }
+    expect(instrucoesDoTarot).toMatch(/é desse material que a leitura parte/);
+    expect(instrucoesDoTarot).toMatch(/tecer/);
+    // E quando o material nao vier, nao se finge que havia.
+    expect(instrucoesDoTarot).toMatch(/n.o vier/i);
+    expect(instrucoesDoTarot).toMatch(/n.o finja/i);
+  });
 });
 
 describe('o payload do taro carrega o material da carta', () => {
