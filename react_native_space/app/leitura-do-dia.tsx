@@ -177,7 +177,7 @@ export default function TelaLeituraDia() {
                     colors={[carta.cor + '18', 'rgba(255,252,246,0.96)'] as const}
                     style={estilos.cartaFrente}
                   >
-                    <CartaTarotVisual icone={carta.icone} cor={carta.cor} largura={104} />
+                    <CartaTarotVisual cartaId={carta.id} nome={carta.nomeCompleto} largura={104} />
                     <Text style={[estilos.cartaNome, { color: carta.cor }]}>{carta.nomeCompleto}</Text>
                     <View style={estilos.divisorCarta} />
 

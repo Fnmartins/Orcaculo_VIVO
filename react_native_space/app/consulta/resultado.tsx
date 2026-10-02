@@ -182,7 +182,7 @@ export default function TelaResultado() {
                   <View style={estilos.posicaoBadge}>
                     <Text style={estilos.posicaoTexto}>{POSICOES[index]}</Text>
                   </View>
-                  <CartaTarotVisual icone={carta.icone} cor={carta.cor} largura={68} />
+                  <CartaTarotVisual cartaId={carta.id} nome={carta.nomeCompleto} largura={68} />
                 </View>
 
                 {/* Nome da carta */}
