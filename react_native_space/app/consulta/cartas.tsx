@@ -272,6 +272,9 @@ export default function TelaCartas() {
           contentContainerStyle={estilos.rolagemConteudo}
           keyboardShouldPersistTaps="handled"
         >
+          {/* Coluna com largura máxima: o app também é servido no navegador, e sem ela o
+              campo de intenção atravessava 1800 pixels de ponta a ponta. */}
+          <View style={estilos.coluna}>
           {recolhendo ? (
             <Recolhimento ligado={movimento === true} aoTerminar={terminarRecolhimento} />
           ) : !distribuindo ? (
@@ -296,9 +299,17 @@ export default function TelaCartas() {
                 aoCortar={aoCortar}
                 desligado={!podeCortar}
               />
-              {cortes >= MAX_CORTES && (
+              {cortes >= MAX_CORTES ? (
                 <Text style={estilos.aviso}>
                   Dez cortes é o bastante. Junte o baralho para seguir.
+                </Text>
+              ) : (
+                /* A frase do protótipo. Ela não é enfeite: é o que diferencia este
+                   baralho de um sorteio, e quem não lê isso não sabe o que ganhou. */
+                <Text style={estilos.aviso}>
+                  O corte é real: onde você toca, o baralho se parte ali e o monte de
+                  baixo sobe para cima. A ordem das cartas sai da sua mão, não de um
+                  gerador escondido.
                 </Text>
               )}
             </>
@@ -331,6 +342,7 @@ export default function TelaCartas() {
               )}
             </View>
           )}
+          </View>
         </ScrollView>
 
         <Animated.View style={[estilos.footer, { opacity: fade }]}>
@@ -419,8 +431,9 @@ const estilos = StyleSheet.create({
   rolagem: { flex: 1 },
   rolagemConteudo: {
     paddingHorizontal: Espacamento.md, paddingBottom: Espacamento.lg,
-    gap: Espacamento.lg, alignItems: 'center',
+    alignItems: 'center',
   },
+  coluna: { width: '100%', maxWidth: 620, gap: Espacamento.lg, alignItems: 'center' },
 
   campoBloco: { width: '100%', gap: Espacamento.xs },
   campoRotulo: {

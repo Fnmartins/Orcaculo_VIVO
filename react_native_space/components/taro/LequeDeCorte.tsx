@@ -10,35 +10,77 @@ interface Props {
 
 const LARGURA_LAMINA = 38;
 const ALTURA_LAMINA = 60;
-const MEIA_ABERTURA = 38; // graus para cada lado: leque de mão, não semicírculo
+/** Graus para cada lado: leque de mão, não semicírculo. */
+export const MEIA_ABERTURA = 38;
+const MARGEM_LATERAL = 16;
+const RAIO_MAXIMO = 430;
+const FOLGA_EMBAIXO = 22;
+
+export interface GeometriaDoLeque {
+  /** Distância do pivô ao centro da lâmina. É ela que decide o quanto o arco abre. */
+  raio: number;
+  /** O quanto as pontas descem em relação à lâmina do meio. */
+  queda: number;
+  /** Metade da largura ocupada pelo arco, já contando a lâmina. */
+  meiaLargura: number;
+  /** Graus entre uma lâmina e a seguinte. */
+  passo: number;
+  /** Altura que a mesa precisa ter para o arco não ser cortado pela borda. */
+  altura: number;
+}
+
+/**
+ * A conta do arco, separada do componente para poder ser verificada sozinha.
+ *
+ * O raio sai da largura disponível, e não de um número fixo: preso, o arco estoura a
+ * tela no celular e fica pequeno demais no navegador. O teto de {@link RAIO_MAXIMO}
+ * existe porque, acima dele, o arco vira quase uma linha reta.
+ */
+export function geometriaDoLeque(larguraDaTela: number, quantidade: number): GeometriaDoLeque {
+  const rad = (MEIA_ABERTURA * Math.PI) / 180;
+  const disponivel = Math.max(120, larguraDaTela / 2 - LARGURA_LAMINA / 2 - MARGEM_LATERAL);
+  const raio = Math.min(RAIO_MAXIMO, disponivel / Math.sin(rad));
+  const queda = raio * (1 - Math.cos(rad));
+  return {
+    raio,
+    queda,
+    meiaLargura: raio * Math.sin(rad) + LARGURA_LAMINA / 2,
+    passo: quantidade > 1 ? (MEIA_ABERTURA * 2) / (quantidade - 1) : 0,
+    altura: ALTURA_LAMINA + queda + FOLGA_EMBAIXO,
+  };
+}
 
 /**
  * O baralho aberto em arco, de costas.
  *
- * Gira em torno de um pivô ABAIXO das cartas — é isso que faz o leque abrir em arco em
- * vez de esticar na horizontal. As pontas descem `raio * (1 - cos)`, e a altura da mesa
- * sai dessa conta: com altura fixa, o arco é cortado pela borda.
+ * **O pivô é composto, e tem de ser.** No React Native não existe `transform-origin`:
+ * `rotate` gira a view em torno do centro dela. O protótipo era CSS, onde o pivô é
+ * configurável — traduzido direto, na Fase 1, as 22 lâminas giraram cada uma sobre si
+ * mesma, empilhadas no mesmo ponto, e o leque foi para produção como um borrão de 60
+ * pixels no meio da tela. Os testes passavam: contavam lâminas e rótulos, não geometria.
+ *
+ * Descer `raio`, girar e subir `raio` gira em torno de um ponto `raio` abaixo do centro.
+ * É isso que abre o arco.
  */
 export function LequeDeCorte({ quantidade, aoCortar, desligado = false }: Props) {
   const { width } = useWindowDimensions();
-  const { queda, passo } = useMemo(() => {
-    const rad = (MEIA_ABERTURA * Math.PI) / 180;
-    const raio = Math.min(430, Math.max(170, (width / 2 - 26) / Math.sin(rad)));
-    return {
-      queda: raio * (1 - Math.cos(rad)),
-      passo: quantidade > 1 ? (MEIA_ABERTURA * 2) / (quantidade - 1) : 0,
-    };
-  }, [width, quantidade]);
+  const { raio, passo, altura } = useMemo(
+    () => geometriaDoLeque(width, quantidade),
+    [width, quantidade],
+  );
 
   return (
-    <View style={[estilos.mesa, { height: ALTURA_LAMINA + queda + 22 }]}>
+    <View style={[estilos.mesa, { height: altura }]}>
       {Array.from({ length: quantidade }, (_, i) => (
         <View
           key={i}
           style={[estilos.pivo, {
-            bottom: queda + 10,
             zIndex: i,
-            transform: [{ rotate: `${(-MEIA_ABERTURA + i * passo).toFixed(2)}deg` }],
+            transform: [
+              { translateY: raio },
+              { rotate: `${(-MEIA_ABERTURA + i * passo).toFixed(2)}deg` },
+              { translateY: -raio },
+            ],
           }]}
         >
           <Pressable
@@ -56,11 +98,12 @@ export function LequeDeCorte({ quantidade, aoCortar, desligado = false }: Props)
 }
 
 const estilos = StyleSheet.create({
-  mesa: { position: 'relative', marginTop: 16 },
+  mesa: { position: 'relative', width: '100%', marginTop: 16 },
   // Duas camadas de propósito: o invólucro gira e a lâmina se desloca. Numa só, a
   // animação do corte apagaria a rotação e as cartas levantadas se empilhariam.
   pivo: {
-    position: 'absolute', left: '50%', width: LARGURA_LAMINA, height: ALTURA_LAMINA,
+    position: 'absolute', top: 0, left: '50%',
+    width: LARGURA_LAMINA, height: ALTURA_LAMINA,
     marginLeft: -LARGURA_LAMINA / 2,
   },
   // O verso traz a própria borda dourada e os cantos arredondados; a lâmina só o segura.
