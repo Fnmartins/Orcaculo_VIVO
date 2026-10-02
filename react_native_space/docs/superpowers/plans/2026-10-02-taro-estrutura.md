@@ -451,7 +451,7 @@ git commit -m "feat(taro): a ordem de leitura deixa de ser a ordem de distribuic
 
 **Interfaces:**
 - Consumes: `PosicaoDaTiragem` com `lugar` e `deitada` (Task 2).
-- Produces: `<Tabuleiro posicoes={PosicaoDaTiragem[]} vaga={(indice: number) => ReactNode} />`; `LARGURA_MINIMA_DO_TABULEIRO = 760`.
+- Produces: `<Tabuleiro posicoes={PosicaoDaTiragem[]} vaga={(indice: number) => ReactNode} />`; `LARGURA_MINIMA_DO_TABULEIRO = 950`.
 
 - [ ] **Step 1: Escrever o teste que falha**
 
@@ -516,7 +516,7 @@ interface Props {
 }
 
 /** Abaixo disto a mesa não cabe sem espremer, e a tiragem vai em coluna. */
-export const LARGURA_MINIMA_DO_TABULEIRO = 760;
+export const LARGURA_MINIMA_DO_TABULEIRO = 950;  // ver "O que mudou na execução"
 
 /**
  * Desenha qualquer tiragem a partir da coordenada de cada posição.
@@ -975,3 +975,42 @@ git commit -m "feat(taro): embaralhar volta como gesto, com a pergunta na cabeca
 **Consistência de tipos.** `PosicaoChave` nasce em `data/tarot.ts` (Task 1) e é consumida por `data/tiragens.ts` (Task 2) e `services/ia.ts` (Task 5) com o mesmo nome. `notaDaPosicao(carta, chave)` é definida na Task 1 e chamada na Task 5 com a mesma assinatura. `lugar: { coluna, linha }` nasce na Task 2 e é lido pelo `Tabuleiro` na Task 4 com os mesmos campos. `LARGURA_MINIMA_DO_TABULEIRO` substitui `LARGURA_MINIMA_DA_CRUZ`, que some com o arquivo apagado.
 
 **Ordem obrigatória.** A Task 2 importa da Task 1; a Task 4 depende da Task 2; a Task 5 depende das Tasks 1 e 2. As Tasks 6 e 7 são independentes das demais e podem ir em qualquer ponto.
+
+---
+
+## O que mudou na execução
+
+Registrado depois, para quem ler o plano e o código juntos. Cada item é uma
+decisão tomada durante a execução, com o motivo; o plano acima é o argumento
+original, não o que está no repositório.
+
+**Task 4 — o limiar virou 950, não 760.** Medido no navegador: a Cruz Celta
+ocupa 894 px com a lâmina girada, e a 800 saía cortada dos dois lados. Os 760
+eram chute herdado do `CruzCelta.tsx` antigo, que já cortava. Entre 760 e 950 a
+tiragem cai em coluna em vez de cruz — degradação, não quebra.
+
+**Task 4 — `VAO_ENTRE_COLUNAS = 16`, não 8.** Entra na conta dos 894 e separa o
+bastão da cruz, que a revisão da Task 2 apontou como colados.
+
+**Task 4 — o giro ficou na vaga, não no involucro.** `deitada` gira só a lâmina,
+dentro de `VagaDaTiragem`. Girando o involucro, o rótulo da posição, a pergunta
+e o nome da carta iam de lado junto — ilegíveis. O `deitada` vale também na
+lista em coluna do celular: a carta que atravessa é posta cruzada na mesa de
+verdade.
+
+**Task 4 — medição por célula, com `minWidth` por coluna.** O código do brief
+desalinhava as colunas, porque cada linha é um bloco flex e a célula vazia não
+ocupa nada. A spec pede "geometria é dado, e o tabuleiro desenha"; desenhar
+torto não cumpre isso.
+
+**Task 6 — o teste da regra de fechamento mudou de asserção.** `/pergunta/i`
+já passava antes da regra existir, porque o prompt dizia "cada uma com a
+pergunta que ela faz". Trocado por `/devolvendo uma pergunta/i` e `/veredito/i`,
+que só passam com a regra escrita.
+
+**Task 7 — o campo de intenção trava depois de embaralhar.** Sem isso dá para
+embaralhar e só então digitar, que é a mesma falsidade da tela de preparo que
+esta entrega removeu: o gesto não carregaria a pergunta. A **tiragem** continua
+trocável até o primeiro corte — ela é o formato da pergunta, não a pergunta.
+Com o campo vazio e travado, a tela diz como voltar em vez de convidar a
+escrever num campo que não aceita texto.
