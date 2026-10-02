@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
@@ -16,12 +16,23 @@ interface Props {
   aoVirar?: () => void;
   /** Onde esta vaga está na tela, para o arraste saber o que há debaixo do dedo. */
   aoMedir?: (medida: { topo: number; base: number }) => void;
+  /**
+   * Muda quando a tela rola, para a vaga se medir de novo.
+   *
+   * `onLayout` não dispara ao rolar: com o monte fixo na tela, soltar a carta depois de
+   * rolar usaria a medida antiga e a carta cairia na vaga errada.
+   */
+  versaoDaMedida?: number;
+  /** Cartao menor, para a Cruz Celta caber em forma de cruz na tela larga. */
+  compacta?: boolean;
 }
 
 /** 13rem no protótipo. A carta encaixa dentro pela proporção, como no baralho real. */
 const ALTURA_LAMINA = 208;
+/** Na cruz são dez cartões ao mesmo tempo; no tamanho cheio não cabe cruz nenhuma. */
+const ALTURA_COMPACTA = 124;
 const PROPORCAO = 1.58;
-const LARGURA_CARTA = Math.round(ALTURA_LAMINA / PROPORCAO);
+const larguraDaCarta = (altura: number) => Math.round(altura / PROPORCAO);
 
 /**
  * Uma posição da tiragem, como cartão.
@@ -35,11 +46,24 @@ const LARGURA_CARTA = Math.round(ALTURA_LAMINA / PROPORCAO);
  * já que no React Native não há `backface-visibility` para fazer o giro de verdade.
  */
 export function VagaDaTiragem({
-  posicao, carta, revelada = false, aoReceber, aoVirar, aoMedir,
+  posicao, carta, revelada = false, aoReceber, aoVirar, aoMedir, versaoDaMedida = 0,
+  compacta = false,
 }: Props) {
+  const alturaDaLamina = compacta ? ALTURA_COMPACTA : ALTURA_LAMINA;
+  const larguraCarta = larguraDaCarta(alturaDaLamina);
   const caixa = useRef<View>(null);
   const giro = useRef(new Animated.Value(0)).current;
   const clarao = useRef(new Animated.Value(0)).current;
+
+  // `measureInWindow` e não o layout do `onLayout`: o layout vem relativo ao pai, e o
+  // dedo chega em coordenada de tela. Misturar os dois acerta por acaso.
+  const medir = useCallback(() => {
+    caixa.current?.measureInWindow((_x, y, _largura, altura) => {
+      aoMedir?.({ topo: y, base: y + altura });
+    });
+  }, [aoMedir]);
+
+  useEffect(() => { medir(); }, [medir, versaoDaMedida]);
 
   useEffect(() => {
     if (!revelada) {
@@ -75,19 +99,15 @@ export function VagaDaTiragem({
       accessibilityLabel={rotulo}
       accessibilityHint={carta ? undefined : 'Põe aqui a carta de cima do monte'}
       onPress={tocar}
-      style={estilos.vaga}
+      style={[estilos.vaga, compacta && estilos.vagaCompacta]}
       ref={caixa}
-      // `measureInWindow` e não o layout do `onLayout`: o layout vem relativo ao pai, e
-      // o dedo chega em coordenada de tela. Misturar os dois acerta por acaso.
-      onLayout={() => {
-        caixa.current?.measureInWindow((_x, y, _largura, altura) => {
-          aoMedir?.({ topo: y, base: y + altura });
-        });
-      }}
+      onLayout={medir}
     >
-      <Text style={estilos.posicao}>{posicao.nome}</Text>
+      <Text style={[estilos.posicao, compacta && estilos.posicaoCompacta]}>
+        {posicao.nome}
+      </Text>
 
-      <View style={estilos.lamina}>
+      <View style={[estilos.lamina, { height: alturaDaLamina }]}>
         {carta ? (
           <Animated.View
             style={{
@@ -106,27 +126,38 @@ export function VagaDaTiragem({
                 <CartaTarotVisual
                   cartaId={carta.id}
                   nome={carta.nomeCompleto}
-                  largura={LARGURA_CARTA}
+                  largura={larguraCarta}
                 />
               )
-              : <VersoDaCarta largura={LARGURA_CARTA} altura={ALTURA_LAMINA} />}
+              : <VersoDaCarta largura={larguraCarta} altura={alturaDaLamina} />}
             <Animated.View
               pointerEvents="none"
-              style={[StyleSheet.absoluteFillObject, estilos.clarao, { opacity: clarao }]}
+              style={[
+                StyleSheet.absoluteFillObject, estilos.clarao,
+                { opacity: clarao, borderRadius: larguraCarta * 0.1 },
+              ]}
             />
           </Animated.View>
         ) : (
-          <View style={estilos.vazia} />
+          <View
+            style={[estilos.vazia, { width: larguraCarta, height: alturaDaLamina }]}
+          />
         )}
       </View>
 
       {revelada && carta ? (
         <View style={estilos.corpo}>
-          <Text style={estilos.nome}>{carta.nomeCompleto}</Text>
-          <Text style={estilos.texto}>{carta.significado}</Text>
+          <Text style={[estilos.nome, compacta && estilos.nomeCompacto]}>
+            {carta.nomeCompleto}
+          </Text>
+          {/* Na cruz o significado fica de fora: dez blocos de texto apagam o desenho
+              da cruz, que e a razao de ela existir. Ele volta na leitura completa. */}
+          {!compacta && <Text style={estilos.texto}>{carta.significado}</Text>}
         </View>
       ) : (
-        <Text style={estilos.texto}>{posicao.regra}</Text>
+        <Text style={[estilos.texto, compacta && estilos.textoCompacto]}>
+          {posicao.regra}
+        </Text>
       )}
     </Pressable>
   );
@@ -138,16 +169,21 @@ const estilos = StyleSheet.create({
     backgroundColor: Cores.cardFundo, borderWidth: 1, borderColor: Cores.cardBorda,
     borderRadius: 14,
   },
+  // Largura fixa, e nao '100%': dentro das colunas da cruz, '100%' faz cada vaga
+  // tentar ocupar a linha inteira e duas delas acabam no mesmo lugar, uma sobre a
+  // outra — foi exatamente o que aconteceu com 'O que atravessa' e 'O que vem'.
+  vagaCompacta: { width: 158, padding: Espacamento.sm, gap: 4, borderRadius: 10 },
   posicao: { fontFamily: Fontes.titulo, fontSize: 17, color: Cores.acento },
-  lamina: { height: ALTURA_LAMINA, alignItems: 'center', justifyContent: 'center' },
+  posicaoCompacta: { fontSize: 13 },
+  lamina: { alignItems: 'center', justifyContent: 'center' },
   vazia: {
-    width: LARGURA_CARTA, height: ALTURA_LAMINA, borderRadius: RaioBorda.md,
+    borderRadius: RaioBorda.md,
     borderWidth: 1, borderColor: Cores.cardBorda, borderStyle: 'dashed',
   },
-  clarao: {
-    backgroundColor: 'rgba(212,175,55,0.9)', borderRadius: LARGURA_CARTA * 0.1,
-  },
+  clarao: { backgroundColor: 'rgba(212,175,55,0.9)' },
   corpo: { gap: 4 },
   nome: { fontFamily: Fontes.titulo, fontSize: 18, color: Cores.textoClaro, lineHeight: 23 },
+  nomeCompacto: { fontSize: 13, lineHeight: 17 },
   texto: { fontFamily: Fontes.corpo, fontSize: 14, lineHeight: 22, color: Cores.textoSecundario },
+  textoCompacto: { fontSize: 11, lineHeight: 15 },
 });

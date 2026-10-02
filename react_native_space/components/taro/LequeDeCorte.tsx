@@ -17,6 +17,15 @@ const MARGEM_LATERAL = 16;
 const RAIO_MAXIMO = 430;
 const FOLGA_EMBAIXO = 22;
 
+export interface LugarDaLamina {
+  /** Deslocamento horizontal do centro da lâmina em relação ao meio da mesa. */
+  x: number;
+  /** O quanto esta lâmina desce em relação à do meio. */
+  y: number;
+  /** Graus de rotação. */
+  giro: number;
+}
+
 export interface GeometriaDoLeque {
   /** Distância do pivô ao centro da lâmina. É ela que decide o quanto o arco abre. */
   raio: number;
@@ -24,110 +33,99 @@ export interface GeometriaDoLeque {
   queda: number;
   /** Metade da largura ocupada pelo arco, já contando a lâmina. */
   meiaLargura: number;
-  /** Graus entre uma lâmina e a seguinte. */
-  passo: number;
   /** Altura que a mesa precisa ter para o arco não ser cortado pela borda. */
   altura: number;
+  /** Onde cada lâmina fica, já resolvido — uma entrada por carta. */
+  lugares: LugarDaLamina[];
 }
 
 /**
  * A conta do arco, separada do componente para poder ser verificada sozinha.
  *
+ * **Cada lâmina sai daqui com posição de layout, não com um transform que a desloca.**
+ * Não é preciosismo: até 02/10 as 22 lâminas tinham a mesma caixa de layout
+ * (`top: 0, left: 50%`) e só o transform as espalhava. Onde o toque é testado pela
+ * caixa e não pelo desenho, elas ficam empilhadas num ponto só e apenas a de cima
+ * recebe o toque — o leque parecia morto, com um único "lugar certo" que cortava sempre
+ * na mesma carta. Posicionadas por layout, a área de toque é onde a carta aparece.
+ *
  * O raio sai da largura disponível, e não de um número fixo: preso, o arco estoura a
- * tela no celular e fica pequeno demais no navegador. O teto de {@link RAIO_MAXIMO}
- * existe porque, acima dele, o arco vira quase uma linha reta.
+ * tela no celular e fica pequeno demais no navegador.
  */
 export function geometriaDoLeque(larguraDaTela: number, quantidade: number): GeometriaDoLeque {
   const rad = (MEIA_ABERTURA * Math.PI) / 180;
   const disponivel = Math.max(120, larguraDaTela / 2 - LARGURA_LAMINA / 2 - MARGEM_LATERAL);
   const raio = Math.min(RAIO_MAXIMO, disponivel / Math.sin(rad));
   const queda = raio * (1 - Math.cos(rad));
+  const passo = quantidade > 1 ? (MEIA_ABERTURA * 2) / (quantidade - 1) : 0;
+
+  // Girar em torno de um pivô `raio` abaixo leva o centro da lâmina para
+  // (raio·sen θ, raio·(1 − cos θ)). É a mesma figura de antes, resolvida em números em
+  // vez de delegada ao transform.
+  const lugares = Array.from({ length: quantidade }, (_, i) => {
+    const giro = quantidade > 1 ? -MEIA_ABERTURA + i * passo : 0;
+    const t = (giro * Math.PI) / 180;
+    return { x: raio * Math.sin(t), y: raio * (1 - Math.cos(t)), giro };
+  });
+
   return {
     raio,
     queda,
     meiaLargura: raio * Math.sin(rad) + LARGURA_LAMINA / 2,
-    passo: quantidade > 1 ? (MEIA_ABERTURA * 2) / (quantidade - 1) : 0,
     altura: ALTURA_LAMINA + queda + FOLGA_EMBAIXO,
+    lugares,
   };
 }
 
 /**
  * O baralho aberto em arco, de costas.
  *
- * **O pivô é composto, e tem de ser.** No React Native não existe `transform-origin`:
- * `rotate` gira a view em torno do centro dela. O protótipo era CSS, onde o pivô é
- * configurável — traduzido direto, na Fase 1, as 22 lâminas giraram cada uma sobre si
- * mesma, empilhadas no mesmo ponto, e o leque foi para produção como um borrão de 60
- * pixels no meio da tela. Os testes passavam: contavam lâminas e rótulos, não geometria.
- *
- * Descer `raio`, girar e subir `raio` gira em torno de um ponto `raio` abaixo do centro.
- * É isso que abre o arco.
+ * Encostar numa lâmina acende todas até ela: a escolha é de um monte, não de uma carta
+ * solta, e sem ver o monte a pessoa acha que está escolhendo a carta em que encostou.
  */
 export function LequeDeCorte({ quantidade, aoCortar, desligado = false }: Props) {
   const { width } = useWindowDimensions();
-  const { raio, passo, altura } = useMemo(
+  const { altura, lugares } = useMemo(
     () => geometriaDoLeque(width, quantidade),
     [width, quantidade],
   );
-  // O monte inteiro que sairia se o corte fosse aqui. Acende antes do toque soltar,
-  // porque a escolha é de um monte e não de uma carta solta — e sem ver o monte a
-  // pessoa acha que está escolhendo a carta em que encostou.
   const [apontado, setApontado] = useState<number | null>(null);
 
   return (
     <View style={[estilos.mesa, { height: altura }]}>
-      {Array.from({ length: quantidade }, (_, i) => (
-        <View
-          key={i}
-          style={[estilos.pivo, {
-            zIndex: i,
-            transform: [
-              { translateY: raio },
-              { rotate: `${(-MEIA_ABERTURA + i * passo).toFixed(2)}deg` },
-              { translateY: -raio },
-            ],
-          }]}
-        >
+      {lugares.map(({ x, y, giro }, i) => {
+        const aceso = apontado !== null && i <= apontado;
+        return (
           <Pressable
+            key={i}
             accessibilityRole="button"
             accessibilityLabel={`Cortar aqui, carta ${i + 1} de ${quantidade}`}
+            // Alvo de 38 pixels é menos que o mínimo confortável de toque; o hitSlop
+            // devolve a folga sem alargar a lâmina e desmontar o arco.
+            hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
             onPressIn={() => { if (!desligado) setApontado(i); }}
             onPressOut={() => setApontado(null)}
             onPress={() => { if (!desligado) aoCortar(i); }}
-            style={estilos.lamina}
+            style={[estilos.lamina, {
+              left: '50%',
+              marginLeft: -LARGURA_LAMINA / 2 + x,
+              top: y + (aceso ? -12 : 0),
+              zIndex: i,
+              transform: [{ rotate: `${giro.toFixed(2)}deg` }],
+            }]}
           >
-            {/* O realce vive aqui dentro, e não no Pressable: no Pressable ele seria o
-                primeiro transform que o teste do pivô encontra, e o teste passaria sem
-                olhar a composição que faz o arco abrir. */}
-            <View
-              style={[
-                estilos.realce,
-                apontado !== null && i <= apontado && estilos.levantada,
-              ]}
-            >
-              <VersoDaCarta largura={LARGURA_LAMINA} altura={ALTURA_LAMINA} />
-              {apontado !== null && i <= apontado && <View style={estilos.contorno} />}
-            </View>
+            <VersoDaCarta largura={LARGURA_LAMINA} altura={ALTURA_LAMINA} />
+            {aceso && <View style={estilos.contorno} />}
           </Pressable>
-        </View>
-      ))}
+        );
+      })}
     </View>
   );
 }
 
 const estilos = StyleSheet.create({
   mesa: { position: 'relative', width: '100%', marginTop: 16 },
-  // Duas camadas de propósito: o invólucro gira e a lâmina se desloca. Numa só, a
-  // animação do corte apagaria a rotação e as cartas levantadas se empilhariam.
-  pivo: {
-    position: 'absolute', top: 0, left: '50%',
-    width: LARGURA_LAMINA, height: ALTURA_LAMINA,
-    marginLeft: -LARGURA_LAMINA / 2,
-  },
-  // O verso traz a própria borda dourada e os cantos arredondados; a lâmina só o segura.
-  lamina: { width: '100%', height: '100%' },
-  realce: { width: '100%', height: '100%' },
-  levantada: { transform: [{ translateY: -12 }] },
+  lamina: { position: 'absolute', width: LARGURA_LAMINA, height: ALTURA_LAMINA },
   contorno: {
     ...StyleSheet.absoluteFillObject,
     borderRadius: 5, borderWidth: 1.5, borderColor: Cores.acento,

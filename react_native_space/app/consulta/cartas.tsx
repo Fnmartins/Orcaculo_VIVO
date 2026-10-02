@@ -8,6 +8,7 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -16,6 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Button } from '../../components/Button';
 import { LequeDeCorte } from '../../components/taro/LequeDeCorte';
 import { MontesCortados } from '../../components/taro/MontesCortados';
+import { CruzCelta, LARGURA_MINIMA_DA_CRUZ } from '../../components/taro/CruzCelta';
 import { MonteParaDistribuir, type MedidaDaVaga } from '../../components/taro/MonteParaDistribuir';
 import { Recolhimento } from '../../components/taro/Recolhimento';
 import { VagaDaTiragem } from '../../components/taro/VagaDaTiragem';
@@ -64,10 +66,14 @@ export default function TelaCartas() {
   );
   const [recolhendo, setRecolhendo] = useState(false);
   const [medidas, setMedidas] = useState<MedidaDaVaga[]>([]);
+  // Sobe a cada rolagem parada: e o sinal para as vagas se medirem de novo. Sem isso,
+  // com o monte fixo na tela, soltar a carta depois de rolar usaria medida velha.
+  const [versaoDaMedida, setVersaoDaMedida] = useState(0);
   // `null` enquanto não se sabe: começar em `true` deixaria a animação partir antes da
   // resposta do sistema a quem pediu "reduzir movimento".
   const [movimento, setMovimento] = useState<boolean | null>(null);
 
+  const { width: larguraDaTela } = useWindowDimensions();
   const fade = useRef(new Animated.Value(0)).current;
   const relogios = useRef<ReturnType<typeof setTimeout>[]>([]);
 
@@ -194,6 +200,24 @@ export default function TelaCartas() {
     });
   }, [tiragem, intencao, POSICOES]);
 
+  // A cruz só em tela larga: espremida num celular ela deixa de ser legível, e o que
+  // carrega o sentido da posição é o nome com a pergunta, que some primeiro.
+  const emCruz = modelo.id === 'cruz-celta' && larguraDaTela >= LARGURA_MINIMA_DA_CRUZ;
+
+  const desenharVaga = (i: number) => (
+    <VagaDaTiragem
+      key={POSICOES[i].nome}
+      posicao={POSICOES[i]}
+      carta={tiragem[i]}
+      revelada={reveladas[i]}
+      compacta={emCruz}
+      aoReceber={() => puxarPara(i)}
+      aoVirar={() => virar(i)}
+      aoMedir={(medida) => medirVaga(i, medida)}
+      versaoDaMedida={versaoDaMedida}
+    />
+  );
+
   // Os textos abaixo são do protótipo, palavra por palavra. São eles que contam o que
   // está acontecendo — sem eles a tela é um monte de cartas sem narração.
   let passo: string;
@@ -248,10 +272,18 @@ export default function TelaCartas() {
 
         <ScrollView
           style={estilos.rolagem}
-          contentContainerStyle={estilos.rolagemConteudo}
+          contentContainerStyle={[
+            estilos.rolagemConteudo,
+            // Espaço para o monte flutuante não tapar a última vaga.
+            distribuindo && !tudoPuxado && estilos.espacoDoMonte,
+          ]}
           keyboardShouldPersistTaps="handled"
+          onScrollEndDrag={() => setVersaoDaMedida((v) => v + 1)}
+          onMomentumScrollEnd={() => setVersaoDaMedida((v) => v + 1)}
         >
-          <Animated.View style={[estilos.coluna, { opacity: fade }]}>
+          <Animated.View
+            style={[estilos.coluna, emCruz && estilos.colunaLarga, { opacity: fade }]}
+          >
             {/* ───────── Antes de cortar ───────── */}
             {!distribuindo && !recolhendo && (
               <View style={estilos.painel}>
@@ -349,35 +381,29 @@ export default function TelaCartas() {
                       + 'saber o que você pensou.'}
                 </Text>
 
-                {!tudoPuxado && (
-                  <View style={estilos.monteCaixa}>
-                    <MonteParaDistribuir
-                      restantes={baralho.length}
-                      aoPuxar={puxar}
-                      aoSoltarEm={puxarPara}
-                      vagas={medidas}
-                    />
-                    <Text style={[estilos.nota, estilos.notaDoMonte]}>
-                      {passoDaDistribuicao}
-                    </Text>
-                  </View>
-                )}
-
-                {POSICOES.map((posicao, i) => (
-                  <VagaDaTiragem
-                    key={posicao.nome}
-                    posicao={posicao}
-                    carta={tiragem[i]}
-                    revelada={reveladas[i]}
-                    aoReceber={() => puxarPara(i)}
-                    aoVirar={() => virar(i)}
-                    aoMedir={(medida) => medirVaga(i, medida)}
-                  />
-                ))}
+                {emCruz
+                  ? <CruzCelta vaga={desenharVaga} />
+                  : POSICOES.map((_, i) => desenharVaga(i))}
               </>
             )}
           </Animated.View>
         </ScrollView>
+
+        {/* O monte acompanha a rolagem porque fica FORA dela: numa Cruz Celta a pessoa
+            precisa ver de onde a carta sai enquanto olha a vaga lá embaixo. */}
+        {distribuindo && !tudoPuxado && (
+          <View style={estilos.monteFlutuante} pointerEvents="box-none">
+            <View style={estilos.monteCaixa}>
+              <MonteParaDistribuir
+                restantes={baralho.length}
+                aoPuxar={puxar}
+                aoSoltarEm={puxarPara}
+                vagas={medidas}
+              />
+              <Text style={[estilos.nota, estilos.notaDoMonte]}>{passoDaDistribuicao}</Text>
+            </View>
+          </View>
+        )}
 
         {prontas && (
           <View style={estilos.footer}>
@@ -422,6 +448,8 @@ const estilos = StyleSheet.create({
   // O protótipo usa uma coluna de 62rem. Sem ela, no navegador o campo de intenção
   // atravessa a tela inteira.
   coluna: { width: '100%', maxWidth: 620, gap: Espacamento.md },
+  // A cruz precisa de mais largura que o resto da tela; a coluna abre só para ela.
+  colunaLarga: { maxWidth: 1100 },
 
   painel: {
     backgroundColor: Cores.cardFundo, borderWidth: 1, borderColor: Cores.cardBorda,
@@ -434,7 +462,7 @@ const estilos = StyleSheet.create({
   passo: { fontFamily: Fontes.titulo, fontSize: 19, color: Cores.textoClaro, lineHeight: 25 },
   contador: { fontFamily: Fontes.corpo, fontSize: 13, color: Cores.textoSecundario, lineHeight: 19 },
   nota: { fontFamily: Fontes.corpo, fontSize: 13, color: Cores.textoSecundario, lineHeight: 21 },
-  notaDoMonte: { flex: 1, minWidth: 180 },
+  notaDoMonte: { flex: 1, minWidth: 0, fontSize: 12, lineHeight: 17 },
 
   campo: {
     borderRadius: RaioBorda.md, borderWidth: 1, borderColor: Cores.cardBorda,
@@ -462,10 +490,20 @@ const estilos = StyleSheet.create({
   sobre: {
     fontFamily: Fontes.corpo, fontSize: 14, lineHeight: 22, color: Cores.textoSecundario,
   },
-  monteCaixa: {
-    flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center',
-    gap: Espacamento.md, width: '100%',
+  // Encostado no canto, e nao centralizado: no meio da tela ele tapava o tabuleiro da
+  // Cruz Celta — as vagas 'A situacao' e 'A raiz' ficavam embaixo dele.
+  monteFlutuante: {
+    position: 'absolute', right: 0, bottom: 0,
+    paddingHorizontal: Espacamento.md, paddingBottom: Espacamento.md,
+    alignItems: 'flex-end',
   },
+  monteCaixa: {
+    flexDirection: 'row', alignItems: 'center', gap: Espacamento.sm,
+    maxWidth: 330,
+    backgroundColor: Cores.cardFundo, borderWidth: 1, borderColor: Cores.acento,
+    borderRadius: 14, padding: Espacamento.sm,
+  },
+  espacoDoMonte: { paddingBottom: 170 },
 
   footer: {
     paddingHorizontal: Espacamento.lg, paddingVertical: Espacamento.md,
