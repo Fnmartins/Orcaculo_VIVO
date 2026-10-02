@@ -81,10 +81,10 @@ export interface CartaTarot {
   nomeCompleto: string;
 
   /** 3 a 5 palavras. Âncora curta — é o que a IA usa para não divagar. */
-  palavrasChave: string[];
+  palavrasChave?: string[];
   /** 6 a 8 frases curtíssimas. O "sentimento" da carta. */
-  frasesChave: string[];
-  /** A interpretação em prosa. Substitui o atual `significado`. */
+  frasesChave?: string[];
+  /** A interpretação em prosa. (Na execução ficou `significado`, sem rename.) */
   interpretacao: string;
   conselho: string;
 
@@ -94,8 +94,15 @@ export interface CartaTarot {
    */
   porPosicao?: Partial<Record<PosicaoChave, string>>;
 
-  /** Serve também à posição `obstaculo` — é a mesma leitura. */
-  invertida?: string;
+  /**
+   * Serve também à posição `obstaculo` — é a mesma leitura.
+   *
+   * É a LEITURA da carta invertida, não um estado "esta carta está
+   * invertida": esse é o sinalizador booleano que viaja no payload
+   * (`CartaParaLeitura.invertida`). Os dois nomes foram separados de
+   * propósito, para que preencher um nunca apague o outro.
+   */
+  leituraInvertida?: string;
 
   /** Só nos Menores. */
   naipe?: 'espadas' | 'paus' | 'copas' | 'ouros';
@@ -121,7 +128,7 @@ export interface PosicaoDaTiragem {
 }
 
 export interface Tiragem {
-  id: string;
+  id: string;  // na execução ficou união fechada: o `find` dos testes pega o erro de digitação
   nome: string;
   quando: string;
   posicoes: PosicaoDaTiragem[];
