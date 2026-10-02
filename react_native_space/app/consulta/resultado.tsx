@@ -379,7 +379,7 @@ export default function TelaResultado() {
                   icone="refresh-outline"
                   posicaoIcone="left"
                   larguraTotal
-                  onPress={() => router.replace('/consulta/preparo')}
+                  onPress={() => router.replace('/consulta/cartas')}
                 />
               </View>
             </View>

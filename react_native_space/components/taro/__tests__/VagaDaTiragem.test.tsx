@@ -1,4 +1,5 @@
 import React from 'react';
+import { StyleSheet } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { ARCANOS_MAIORES } from '../../../data/tarot';
 import { VagaDaTiragem } from '../VagaDaTiragem';
@@ -61,4 +62,32 @@ it('revelada, mostra o nome completo e o significado da carta', () => {
   render(<VagaDaTiragem posicao={PASSADO} carta={TORRE} revelada aoReceber={jest.fn()} />);
   expect(screen.getByText(TORRE.nomeCompleto)).toBeTruthy();
   expect(screen.getByText(TORRE.significado)).toBeTruthy();
+});
+
+describe('tamanho da vaga', () => {
+  const larguraDa = (compacta: boolean) => {
+    const { getByLabelText } = render(
+      <VagaDaTiragem
+        posicao={PASSADO}
+        carta={null}
+        compacta={compacta}
+        aoReceber={jest.fn()}
+      />,
+    );
+    const estilo = StyleSheet.flatten(
+      getByLabelText('Posição Passado, vazia').props.style,
+    ) as Record<string, unknown>;
+    return estilo.width;
+  };
+
+  it('compacta tem largura fixa, nunca 100%', () => {
+    // Dentro das colunas da Cruz Celta, `width: '100%'` faz cada vaga tentar ocupar a
+    // linha inteira — e duas acabam no mesmo lugar, uma sobre a outra. Aconteceu com
+    // "O que atravessa" e "O que vem", medidas no mesmo x na tela.
+    expect(typeof larguraDa(true)).toBe('number');
+  });
+
+  it('normal ocupa a coluna inteira', () => {
+    expect(larguraDa(false)).toBe('100%');
+  });
 });

@@ -23,7 +23,6 @@ jest.mock('../../../utils/haptics', () => ({
 }));
 
 import { AberturaOraculo } from '../../../components/AberturaOraculo';
-import TelaPreparoTarot from '../../../app/consulta/preparo';
 import TelaBuziosPreparo from '../../../app/consulta/buzios-preparo';
 
 // O "reduzir movimento" do sistema: com ele ligado as aberturas entregam a tela
@@ -88,37 +87,9 @@ describe('AberturaOraculo', () => {
   });
 });
 
-describe('Abertura do tarô', () => {
-  it('quem pergunta embaralha, corta e só então as cartas abrem', async () => {
-    reduzirMovimento = true;
-    render(<TelaPreparoTarot />);
-    await waitFor(() => expect(AccessibilityInfo.isReduceMotionEnabled).toHaveBeenCalled());
-
-    expect(screen.getByText('Pense na sua pergunta e embaralhe as cartas.')).toBeTruthy();
-    fireEvent.press(screen.getByText('Embaralhar'));
-
-    expect(await screen.findByText('Cortar')).toBeTruthy();
-    expect(mockReplace).not.toHaveBeenCalled();
-
-    fireEvent.press(screen.getByText('Cortar'));
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/consulta/cartas'));
-  });
-
-  // Conselho de 23/09, ajuste 3: quem usa leitor de tela não descobre "toque no baralho".
-  it('cada gesto tem um equivalente com rótulo', async () => {
-    reduzirMovimento = true;
-    render(<TelaPreparoTarot />);
-    await waitFor(() => expect(screen.getAllByLabelText('Embaralhar')).toHaveLength(2));
-  });
-
-  it('com animação, o baralho leva ao corte quando ela termina', async () => {
-    render(<TelaPreparoTarot />);
-    // [0] é o próprio baralho; [1] é o botão com rótulo.
-    fireEvent.press(screen.getAllByLabelText('Embaralhar')[0]);
-    expect(await screen.findByText('Agora corte o baralho, quando sentir que é hora.')).toBeTruthy();
-  });
-});
-
+// A abertura do tarô saiu em 02/10: embaralhar e cortar viraram o rito de verdade,
+// em `consulta/cartas`, e pedir o mesmo gesto duas vezes fazia o primeiro parecer
+// falso. O que sobra aqui é o componente de abertura e a dos búzios, que seguem em uso.
 describe('Abertura do búzios', () => {
   it('a peneira aparece e o jogo começa quando a pessoa toca', async () => {
     render(<TelaBuziosPreparo />);
