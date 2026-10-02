@@ -264,7 +264,8 @@ export default function TelaCartas() {
       + 'a ordem do monte.';
   } else {
     passo = 'A leitura está posta.';
-    contador = 'Toque em "Recomeçar o rito" para cortar outra vez.';
+    // Recomeçar leva de volta ao embaralhamento, não ao corte.
+    contador = 'Toque em "Recomeçar o rito" para embaralhar e cortar outra vez.';
   }
 
   const passoDaDistribuicao = faltam === 0
@@ -323,15 +324,23 @@ export default function TelaCartas() {
                   value={intencao}
                   onChangeText={setIntencao}
                   editable={!embaralhado}
-                  placeholder="Ex.: estou decidindo se mudo de trabalho"
+                  placeholder={embaralhado
+                    ? 'Nenhuma pergunta escrita'
+                    : 'Ex.: estou decidindo se mudo de trabalho'}
                   placeholderTextColor={Cores.textoSecundario}
                   maxLength={140}
                   style={[estilos.campo, embaralhado && estilos.campoValendo]}
                 />
-                {embaralhado && intencao.trim() ? (
+                {/* Campo travado e vazio seria beco sem saída: a pessoa que segurou a pergunta
+                    na cabeça e quer escrevê-la precisa saber que o caminho é recomeçar. No
+                    caso vazio a linha não afirma pergunta nenhuma. */}
+                {embaralhado ? (
                   <Text style={estilos.nota}>
-                    {'A pergunta já entrou com o embaralhamento. Para mudá-la, toque em '
-                      + '"Recomeçar o rito".'}
+                    {intencao.trim()
+                      ? 'A pergunta já entrou com o embaralhamento. Para mudá-la, toque em '
+                        + '"Recomeçar o rito".'
+                      : 'Você embaralhou sem escrever. Para pôr uma pergunta, toque em '
+                        + '"Recomeçar o rito".'}
                   </Text>
                 ) : null}
                 {podeTrocarDeTiragem && (

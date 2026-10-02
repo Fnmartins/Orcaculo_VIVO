@@ -39,6 +39,10 @@ const CAMPO_INTENCAO = 'O que te trouxe aqui?';
 const campo = () => screen.getByLabelText(CAMPO_INTENCAO);
 // A linha precisa dizer as duas coisas: que a pergunta já entrou, e como mudá-la.
 const AVISO_DA_PERGUNTA = /A pergunta já entrou com o embaralhamento.*Recomeçar o rito/;
+// O espelho, para quem embaralhou sem escrever: não afirma pergunta nenhuma, só mostra o
+// caminho.
+const AVISO_SEM_PERGUNTA = /Você embaralhou sem escrever.*Recomeçar o rito/;
+const PLACEHOLDER_ABERTO = 'Ex.: estou decidindo se mudo de trabalho';
 const embaralharCartas = () => fireEvent.press(screen.getByText('Embaralhar'));
 const cortar = () => fireEvent.press(screen.getByLabelText('Cortar aqui, carta 8 de 22'));
 const irParaLeitura = () => fireEvent.press(screen.getByText('Ir para a leitura'));
@@ -221,7 +225,14 @@ describe('o rito do tarô', () => {
     embaralharCartas(); cortar(); irParaLeitura();
     expect(screen.getByText('Pegue daqui')).toBeTruthy();
     fireEvent.press(screen.getByText('Recomeçar o rito'));
-    // O rito volta ao gesto de embaralhar; o baralho inteiro reaparece quando ele é feito.
+    // O rito volta ao gesto de embaralhar. O baralho inteiro tem de estar de volta JÁ
+    // aqui, antes do gesto: embaralhar reconstrói o baralho cheio sozinho, e conferir só
+    // depois dele esconderia um `recomecar` que deixasse de restaurar o leque (a tela
+    // diria "O baralho tem 14 cartas").
+    expect(screen.getByText(
+      'O baralho tem 22 cartas. O que você está pensando entra agora, com o gesto.'
+    )).toBeTruthy();
+    expect(screen.queryByLabelText(/Cortar aqui/)).toBeNull();
     embaralharCartas();
     expect(screen.getAllByLabelText(/Cortar aqui/)).toHaveLength(22);
     expect(screen.queryByText('Pegue daqui')).toBeNull();
@@ -253,6 +264,7 @@ describe('o rito do tarô', () => {
     fireEvent.changeText(campo(), 'outra pergunta, pensada tarde');
     expect(campo().props.value).toBe('devo aceitar a proposta');
     expect(screen.getByText(AVISO_DA_PERGUNTA)).toBeTruthy();
+    expect(screen.queryByText(AVISO_SEM_PERGUNTA)).toBeNull();
   });
 
   it('sem pergunta escrita, embaralhar não afirma que uma pergunta entrou', async () => {
@@ -266,6 +278,45 @@ describe('o rito do tarô', () => {
     fireEvent.changeText(campo(), '   ');
     embaralharCartas();
     expect(screen.queryByText(AVISO_DA_PERGUNTA)).toBeNull();
+  });
+
+  it('quem embaralha sem escrever vê o caminho para escrever, e o campo não convida', async () => {
+    // Campo travado e vazio, com o placeholder convidando e nada explicando, é um beco
+    // sem saída: a pessoa segurou a pergunta na cabeça, como a tela pediu, quer escrevê-la
+    // e não tem pista de que o caminho é recomeçar. A linha não afirma pergunta nenhuma.
+    await abrir();
+    expect(campo().props.placeholder).toBe(PLACEHOLDER_ABERTO);
+    expect(screen.queryByText(AVISO_SEM_PERGUNTA)).toBeNull();
+
+    embaralharCartas();
+    expect(screen.getByText(AVISO_SEM_PERGUNTA)).toBeTruthy();
+    expect(campo().props.placeholder).not.toBe(PLACEHOLDER_ABERTO);
+
+    // Recomeçar é o caminho que a linha aponta: o convite e a edição voltam, a linha some.
+    fireEvent.press(screen.getByText('Recomeçar o rito'));
+    expect(screen.queryByText(AVISO_SEM_PERGUNTA)).toBeNull();
+    expect(campo().props.placeholder).toBe(PLACEHOLDER_ABERTO);
+    expect(campo().props.editable).toBe(true);
+  });
+
+  it('só espaços não é pergunta: o campo travado mostra o caminho, não o aviso de pergunta', async () => {
+    await abrir();
+    fireEvent.changeText(campo(), '   ');
+    embaralharCartas();
+    expect(screen.getByText(AVISO_SEM_PERGUNTA)).toBeTruthy();
+    expect(screen.queryByText(AVISO_DA_PERGUNTA)).toBeNull();
+  });
+
+  it('com a leitura posta, a tela diz que recomeçar volta ao embaralhamento', async () => {
+    // "Recomeçar o rito" já não leva ao corte: leva ao gesto de embaralhar. A frase do
+    // estado "lido" tem de dizer o que o botão faz hoje.
+    await abrir();
+    embaralharCartas(); cortar(); irParaLeitura();
+    await distribuir(3);
+    expect(screen.getByText(
+      'Toque em "Recomeçar o rito" para embaralhar e cortar outra vez.'
+    )).toBeTruthy();
+    expect(screen.queryByText(/para cortar outra vez/)).toBeNull();
   });
 
   it('recomeçar devolve a edição ao campo, e a pergunta escrita continua lá', async () => {
