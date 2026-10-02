@@ -1,7 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { ARCANOS_MAIORES } from '../../../data/tarot';
-import { VagaDaTiragem } from '../VagaDaTiragem';
+import { VagaDaTiragem, larguraDaVaga } from '../VagaDaTiragem';
 
 const PASSADO = { nome: 'Passado', regra: 'o que já se consumou e ainda pesa' };
 const TORRE = ARCANOS_MAIORES[16];
@@ -54,3 +54,22 @@ describe('VagaDaTiragem', () => {
     expect(screen.queryByText(PASSADO.regra)).toBeNull();
   });
 });
+
+describe('larguraDaVaga', () => {
+  it('tres vagas cabem numa linha, do celular estreito ao navegador', () => {
+    // Largura fixa estourava a tela de 320. `flex: 1` resolvia numa linha so, mas a
+    // Cruz Celta precisa de uma linha que envolve, e ai `flex` faz cada item tentar
+    // ocupar a linha inteira — foi por isso que a conta veio para ca.
+    for (const tela of [320, 360, 375, 414, 768, 1400]) {
+      const largura = larguraDaVaga(tela);
+      const linha = largura * 3 + 8 * 2 + 32; // tres vagas, dois vaos e o respiro lateral
+      expect(linha).toBeLessThanOrEqual(Math.max(tela, 620));
+      expect(largura).toBeGreaterThanOrEqual(76);
+    }
+  });
+
+  it('nao cresce alem da carta desenhada', () => {
+    expect(larguraDaVaga(1400)).toBe(104);
+  });
+});
+

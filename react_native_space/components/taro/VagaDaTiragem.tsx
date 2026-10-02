@@ -1,5 +1,7 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Animated, Pressable, StyleSheet, Text, View, useWindowDimensions,
+} from 'react-native';
 import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
@@ -18,8 +20,21 @@ interface Props {
   aoMedir?: (medida: { topo: number; base: number }) => void;
 }
 
-const LARGURA = 104;
-const ALTURA = 164;
+const LARGURA_MAXIMA = 104;
+const PROPORCAO = 1.58;
+/** Folga da coluna mais os vãos entre três colunas. */
+const FOLGA_DA_LINHA = 56;
+
+/**
+ * Três cabem numa linha em qualquer celular.
+ *
+ * Largura fixa estourava a tela de 320; `flex: 1` resolvia isso numa linha só, mas a
+ * Cruz Celta precisa de uma linha que envolve, e aí `flex` faz cada item tentar ocupar
+ * a linha inteira. Calculada, a largura é previsível nos dois casos.
+ */
+export function larguraDaVaga(larguraDaTela: number): number {
+  return Math.max(76, Math.min(LARGURA_MAXIMA, (larguraDaTela - FOLGA_DA_LINHA) / 3));
+}
 
 /**
  * Uma das três posições da tiragem.
@@ -35,6 +50,8 @@ const ALTURA = 164;
 export function VagaDaTiragem({
   posicao, carta, revelada = false, aoReceber, aoVirar, aoMedir,
 }: Props) {
+  const { width } = useWindowDimensions();
+  const largura = larguraDaVaga(width);
   const caixa = useRef<View>(null);
   const giro = useRef(new Animated.Value(0)).current;
   const clarao = useRef(new Animated.Value(0)).current;
@@ -73,7 +90,7 @@ export function VagaDaTiragem({
       accessibilityLabel={rotulo}
       accessibilityHint={carta ? undefined : 'Põe aqui a carta de cima do monte'}
       onPress={tocar}
-      style={estilos.vaga}
+      style={[estilos.vaga, { width: largura }]}
       ref={caixa}
       // `measureInWindow` e nao o layout do `onLayout`: o layout vem relativo ao pai, e o
       // dedo chega em coordenada de tela. Misturar os dois acerta por acaso e so no topo.
@@ -98,15 +115,20 @@ export function VagaDaTiragem({
           }}
         >
           {revelada
-            ? <CartaTarotVisual cartaId={carta.id} nome={carta.nomeCompleto} largura={LARGURA} />
-            : <VersoDaCarta largura={LARGURA} altura={ALTURA} />}
+            ? <CartaTarotVisual cartaId={carta.id} nome={carta.nomeCompleto} largura={largura} />
+            : <VersoDaCarta largura={largura} altura={largura * PROPORCAO} />}
           <Animated.View
             pointerEvents="none"
-            style={[StyleSheet.absoluteFillObject, estilos.clarao, { opacity: clarao }]}
+            style={[
+              StyleSheet.absoluteFillObject, estilos.clarao,
+              { opacity: clarao, borderRadius: largura * 0.1 },
+            ]}
           />
         </Animated.View>
       ) : (
-        <View style={estilos.vazia} />
+        <View
+          style={[estilos.vazia, { width: largura, height: largura * PROPORCAO }]}
+        />
       )}
       <Text style={estilos.regra}>{revelada && carta ? carta.nome : posicao.regra}</Text>
     </Pressable>
@@ -114,12 +136,12 @@ export function VagaDaTiragem({
 }
 
 const estilos = StyleSheet.create({
-  vaga: { alignItems: 'center', gap: Espacamento.sm, flex: 1, minWidth: 112 },
+  vaga: { alignItems: 'center', gap: Espacamento.sm },
   nome: { fontFamily: Fontes.titulo, fontSize: 15, color: Cores.acento },
   vazia: {
-    width: LARGURA, height: ALTURA, borderRadius: RaioBorda.md,
+    borderRadius: RaioBorda.md,
     borderWidth: 1, borderColor: Cores.cardBorda, borderStyle: 'dashed',
   },
-  clarao: { backgroundColor: 'rgba(212,175,55,0.9)', borderRadius: LARGURA * 0.1 },
+  clarao: { backgroundColor: 'rgba(212,175,55,0.9)' },
   regra: { fontFamily: Fontes.corpo, fontSize: 12, color: Cores.textoSecundario, textAlign: 'center' },
 });

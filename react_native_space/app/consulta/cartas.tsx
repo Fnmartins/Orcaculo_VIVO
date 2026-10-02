@@ -25,6 +25,7 @@ import { Hapticos } from '../../utils/haptics';
 import { voltarOuIr } from '../../utils/navegacao';
 import { ARCANOS_MAIORES, type CartaTarot } from '../../data/tarot';
 import { cortar, embaralhar, recolher } from '../../data/corteDoBaralho';
+import { TIRAGENS, TIRAGEM_PADRAO, type Tiragem } from '../../data/tiragens';
 
 /**
  * O rito do tarô: a pessoa corta, junta, puxa e vira.
@@ -39,12 +40,6 @@ import { cortar, embaralhar, recolher } from '../../data/corteDoBaralho';
  * mola e clarão. O que morreu: a frente desenhada com ícone do Ionicons, que era
  * justamente o que fazia a leitura virar recitação de significado.
  */
-
-const POSICOES = [
-  { nome: 'Passado', regra: 'o que já se consumou e ainda pesa' },
-  { nome: 'Presente', regra: 'o que está em jogo agora' },
-  { nome: 'Futuro', regra: 'o que tende a se formar se nada mudar' },
-];
 
 /** Dez cortes foi o teto escolhido no protótipo: além disso é teimosia, não rito. */
 const MAX_CORTES = 10;
@@ -96,11 +91,16 @@ function Particula({ x, delay, ligado }: { x: number; delay: number; ligado: boo
 
 export default function TelaCartas() {
   const [intencao, setIntencao] = useState('');
+  const [modelo, setModelo] = useState<Tiragem>(TIRAGEM_PADRAO);
   const [leque, setLeque] = useState<CartaTarot[]>(() => embaralhar(ARCANOS_MAIORES));
   const [montes, setMontes] = useState<CartaTarot[][]>([]);
   const [baralho, setBaralho] = useState<CartaTarot[] | null>(null);
-  const [tiragem, setTiragem] = useState<(CartaTarot | null)[]>([null, null, null]);
-  const [reveladas, setReveladas] = useState([false, false, false]);
+  const [tiragem, setTiragem] = useState<(CartaTarot | null)[]>(
+    () => TIRAGEM_PADRAO.posicoes.map(() => null),
+  );
+  const [reveladas, setReveladas] = useState<boolean[]>(
+    () => TIRAGEM_PADRAO.posicoes.map(() => false),
+  );
   const [recolhendo, setRecolhendo] = useState(false);
   const [medidas, setMedidas] = useState<MedidaDaVaga[]>([]);
   // `null` enquanto não se sabe: começar em `true` deixaria os laços partirem antes da
@@ -138,11 +138,25 @@ export default function TelaCartas() {
     return () => loop.stop();
   }, [movimento, pulso]);
 
+  const POSICOES = modelo.posicoes;
   const cortes = montes.length;
   const podeCortar = leque.length >= 2 && cortes < MAX_CORTES;
   const distribuindo = baralho !== null;
   const tudoPuxado = tiragem.every((c) => c !== null);
   const prontas = tudoPuxado && reveladas.every(Boolean);
+  // Trocar de tiragem só antes do primeiro corte. Depois, os cortes já foram dados
+  // sobre uma tiragem — mudá-la ali embaixo transformaria o rito em outra coisa.
+  const podeTrocarDeTiragem = cortes === 0 && !distribuindo && !recolhendo;
+
+  const escolherTiragem = useCallback((escolhida: Tiragem) => {
+    Hapticos.selecao();
+    setModelo(escolhida);
+    // As vagas e as viradas são redimensionadas junto: guardar três `null` numa Cruz
+    // Celta faria `tudoPuxado` virar verdadeiro com sete posições ainda vazias.
+    setTiragem(escolhida.posicoes.map(() => null));
+    setReveladas(escolhida.posicoes.map(() => false));
+    setMedidas([]);
+  }, []);
 
   const aoCortar = useCallback((indice: number) => {
     Hapticos.impactoLeve();
@@ -204,11 +218,11 @@ export default function TelaCartas() {
     setLeque(embaralhar(ARCANOS_MAIORES));
     setMontes([]);
     setBaralho(null);
-    setTiragem([null, null, null]);
-    setReveladas([false, false, false]);
+    setTiragem(POSICOES.map(() => null));
+    setReveladas(POSICOES.map(() => false));
     setRecolhendo(false);
     setMedidas([]);
-  }, []);
+  }, [POSICOES]);
 
   const verResultado = useCallback(() => {
     Hapticos.impactoMedio();
@@ -299,6 +313,39 @@ export default function TelaCartas() {
                   style={estilos.campo}
                 />
               </View>
+
+              {/* O passo 2 do rito na spec. Some depois do primeiro corte: os cortes já
+                  foram dados sobre uma tiragem, e trocá-la ali faria outra coisa. */}
+              {podeTrocarDeTiragem && (
+                <View style={estilos.campoBloco}>
+                  <Text style={estilos.campoRotulo}>Qual tiragem</Text>
+                  <View style={estilos.tiragens}>
+                    {TIRAGENS.map((opcao) => {
+                      const escolhida = opcao.id === modelo.id;
+                      return (
+                        <Pressable
+                          key={opcao.id}
+                          accessibilityRole="radio"
+                          accessibilityState={{ selected: escolhida }}
+                          accessibilityLabel={`${opcao.nome}, ${opcao.posicoes.length} cartas`}
+                          onPress={() => escolherTiragem(opcao)}
+                          style={[estilos.tiragem, escolhida && estilos.tiragemEscolhida]}
+                        >
+                          <Text
+                            style={[estilos.tiragemNome, escolhida && estilos.tiragemNomeEscolhida]}
+                          >
+                            {opcao.nome}
+                          </Text>
+                          <Text style={estilos.tiragemCartas}>
+                            {opcao.posicoes.length} cartas
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                  <Text style={estilos.tiragemQuando}>{modelo.quando}</Text>
+                </View>
+              )}
 
               <LequeDeCorte
                 quantidade={leque.length}
@@ -456,9 +503,29 @@ const estilos = StyleSheet.create({
   },
 
   mesa: { width: '100%', alignItems: 'center', gap: Espacamento.lg },
+  // Envolve de proposito: a Cruz Celta tem dez posicoes, e dez numa linha so nao cabem
+  // em tela nenhuma. A forma de cruz do baralho classico precisa de cinco colunas de
+  // largura; num celular ela sai ilegivel, e o que carrega o sentido da posicao e o
+  // nome dela com a pergunta, que continuam visiveis.
   vagas: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'flex-start', width: '100%', gap: Espacamento.xs,
+    flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center',
+    alignItems: 'flex-start', width: '100%', gap: Espacamento.sm,
+  },
+  tiragens: { flexDirection: 'row', gap: Espacamento.sm },
+  tiragem: {
+    flex: 1, alignItems: 'center', gap: 2, paddingVertical: Espacamento.sm,
+    borderRadius: RaioBorda.md, borderWidth: 1, borderColor: Cores.cardBorda,
+    backgroundColor: Cores.cardFundo,
+  },
+  tiragemEscolhida: { borderColor: Cores.acento, borderWidth: 2 },
+  tiragemNome: { fontFamily: Fontes.corpo, fontSize: 14, color: Cores.textoClaro },
+  tiragemNomeEscolhida: { fontFamily: Fontes.corpoNegrito, color: Cores.acento },
+  tiragemCartas: {
+    fontFamily: Fontes.corpo, fontSize: 11, color: Cores.textoSecundario,
+    letterSpacing: 0.5, textTransform: 'uppercase',
+  },
+  tiragemQuando: {
+    fontFamily: Fontes.corpo, fontSize: 12, color: Cores.textoSecundario,
   },
   monteBloco: { position: 'relative', alignItems: 'center' },
 
