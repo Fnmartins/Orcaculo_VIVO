@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { VersoDaCarta } from './VersoDaCarta';
 
 interface Props {
   quantidade: number;
@@ -45,7 +46,9 @@ export function LequeDeCorte({ quantidade, aoCortar, desligado = false }: Props)
             accessibilityLabel={`Cortar aqui, carta ${i + 1} de ${quantidade}`}
             onPress={() => { if (!desligado) aoCortar(i); }}
             style={estilos.lamina}
-          />
+          >
+            <VersoDaCarta largura={LARGURA_LAMINA} altura={ALTURA_LAMINA} />
+          </Pressable>
         </View>
       ))}
     </View>
@@ -60,8 +63,6 @@ const estilos = StyleSheet.create({
     position: 'absolute', left: '50%', width: LARGURA_LAMINA, height: ALTURA_LAMINA,
     marginLeft: -LARGURA_LAMINA / 2,
   },
-  lamina: {
-    width: '100%', height: '100%', borderRadius: 5,
-    backgroundColor: '#2A1B3D', borderWidth: 1, borderColor: 'rgba(181,139,70,0.45)',
-  },
+  // O verso traz a própria borda dourada e os cantos arredondados; a lâmina só o segura.
+  lamina: { width: '100%', height: '100%' },
 });
