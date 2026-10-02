@@ -143,3 +143,40 @@ describe('a leitura de tarô recebe posição e intenção', () => {
     for (const linha of linhas) expect(linha).toContain('não informada');
   });
 });
+
+describe('a leitura de taro nao e mais fixa em tres posicoes', () => {
+  const fonte = readFileSync(join(RAIZ, 'ia-interpretacao', 'index.ts'), 'utf8');
+
+  it('nao corta a tiragem em tres cartas', () => {
+    // `slice(0, 3)` jogaria fora sete das dez cartas da Cruz Celta, sem erro nenhum:
+    // a leitura voltaria completa, falando de um terco da tiragem.
+    expect(fonte).not.toMatch(/slice\(0, 3\)/);
+  });
+
+  it('o prompt do taro nao promete tres cartas', () => {
+    const instrucoes = fonte.slice(
+      fonte.indexOf('INSTRUCOES_TAROT'),
+      fonte.indexOf('INSTRUCOES_BUZIOS'),
+    );
+    expect(instrucoes).not.toMatch(/tr.s cartas/i);
+  });
+
+  it('os campos exigidos do taro nao sao passado, presente e futuro', () => {
+    // Exigi-los faria a Cruz Celta ser recusada como "resposta fora do formato".
+    const campos = fonte.slice(fonte.indexOf('const CAMPOS'), fonte.indexOf('function dadosDoTarot'));
+    expect(campos).not.toMatch(/passado/);
+    expect(campos).toMatch(/leituras/);
+  });
+
+  it('a orientacao da carta vai no payload', () => {
+    // Sem ela a Fase 2 nao existe: a IA receberia a carta invertida como se estivesse
+    // de pe, e escreveria o significado trocado.
+    expect(fonte).toMatch(/invertida/);
+  });
+
+  it('toda posicao enviada tem de voltar escrita', () => {
+    // O defeito que isto pega: a IA devolver oito das dez posicoes. A tela mostraria
+    // duas posicoes em branco, e nada no servidor teria reclamado.
+    expect(fonte).toMatch(/posicoes/);
+  });
+});

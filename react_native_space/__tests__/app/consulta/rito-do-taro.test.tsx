@@ -43,6 +43,7 @@ const virar = (posicao: string) =>
   fireEvent.press(screen.getByLabelText(`Posição ${posicao}, carta de costas, toque para virar`));
 const virarAsTres = () => { virar('Passado'); virar('Presente'); virar('Futuro'); };
 const seguir = () => fireEvent.press(screen.getByText('Ver Leitura Completa'));
+const recomecar = () => fireEvent.press(screen.getByText('Recomeçar o rito'));
 
 describe('o rito do tarô', () => {
   it('começa pedindo o corte, não a tiragem', async () => {
@@ -112,6 +113,98 @@ describe('o rito do tarô', () => {
     expect(
       screen.getByLabelText('Posição Futuro, carta de costas, toque para virar')
     ).toBeTruthy();
+  });
+
+
+  it('antes de cortar, nao oferece recomecar', async () => {
+    // Nao ha nada a desfazer: o botao so confundiria quem acabou de chegar.
+    await abrir();
+    expect(screen.queryByText('Recomeçar o rito')).toBeNull();
+  });
+
+  it('recomecar devolve o baralho inteiro e desfaz os cortes', async () => {
+    await abrir();
+    cortar(); juntar();
+    expect(screen.getByText('Pegue daqui')).toBeTruthy();
+    recomecar();
+    expect(screen.getAllByLabelText(/Cortar aqui/)).toHaveLength(22);
+    expect(screen.queryByText('Pegue daqui')).toBeNull();
+    expect(screen.queryByText('Juntar e seguir')).toBeNull();
+  });
+
+  it('com a tiragem pronta, recomecar limpa as tres vagas', async () => {
+    // O defeito que isto pega: zerar o baralho e esquecer as cartas ja postas. A tela
+    // voltaria ao leque com a tiragem velha guardada, e a proxima leitura sairia com
+    // cartas da anterior.
+    await abrir();
+    cortar(); juntar(); puxar(); puxar(); puxar(); virarAsTres();
+    recomecar();
+    cortar(); juntar();
+    expect(screen.getByLabelText('Posição Passado, vazia')).toBeTruthy();
+    expect(screen.getByLabelText('Posição Presente, vazia')).toBeTruthy();
+    expect(screen.getByLabelText('Posição Futuro, vazia')).toBeTruthy();
+  });
+
+  it('recomecar nao apaga a intencao escrita', async () => {
+    // A pergunta que trouxe a pessoa continua a mesma. Fazer ela digitar de novo e
+    // castigo por querer outra tiragem.
+    await abrir();
+    const campo = screen.getByLabelText('Se quiser, diga o que te trouxe aqui');
+    fireEvent.changeText(campo, 'devo aceitar a proposta');
+    cortar();
+    recomecar();
+    expect(
+      screen.getByLabelText('Se quiser, diga o que te trouxe aqui').props.value
+    ).toBe('devo aceitar a proposta');
+  });
+
+
+  it('oferece as duas tiragens antes de cortar', async () => {
+    await abrir();
+    expect(screen.getByLabelText(/Tr.s cartas, 3 cartas/)).toBeTruthy();
+    expect(screen.getByLabelText('Cruz Celta, 10 cartas')).toBeTruthy();
+  });
+
+  it('a Cruz Celta abre dez posicoes, cada uma com a sua pergunta', async () => {
+    await abrir();
+    fireEvent.press(screen.getByLabelText('Cruz Celta, 10 cartas'));
+    cortar(); juntar();
+    expect(screen.getAllByLabelText(/^Posição .*, vazia$/)).toHaveLength(10);
+    expect(screen.getByLabelText('Posição A situação, vazia')).toBeTruthy();
+    expect(screen.getByLabelText('Posição Para onde tende, vazia')).toBeTruthy();
+  });
+
+  it('trocar de tiragem redimensiona a tiragem inteira', async () => {
+    // O defeito que isto pega: guardar tres vagas e trocar para a Cruz Celta. Com tres
+    // cartas puxadas o rito se daria por completo, e a leitura sairia com sete posicoes
+    // vazias que a pessoa nunca viu.
+    await abrir();
+    fireEvent.press(screen.getByLabelText('Cruz Celta, 10 cartas'));
+    cortar(); juntar();
+    for (let i = 0; i < 3; i++) puxar();
+    expect(screen.queryByText('Ver Leitura Completa')).toBeNull();
+  });
+
+  it('depois do primeiro corte nao da mais para trocar de tiragem', async () => {
+    // Os cortes ja foram dados sobre uma tiragem. Trocar ali embaixo faria outra coisa.
+    await abrir();
+    cortar();
+    expect(screen.queryByLabelText('Cruz Celta, 10 cartas')).toBeNull();
+  });
+
+  it('a tiragem escolhida viaja ate o resultado, com a pergunta de cada posicao', async () => {
+    await abrir();
+    fireEvent.press(screen.getByLabelText('Cruz Celta, 10 cartas'));
+    cortar(); juntar();
+    for (let i = 0; i < 10; i++) puxar();
+    for (const vaga of screen.getAllByLabelText(/carta de costas, toque para virar$/)) {
+      fireEvent.press(vaga);
+    }
+    seguir();
+    const enviadas = JSON.parse(mockPush.mock.calls[0][0].params.posicoes);
+    expect(enviadas).toHaveLength(10);
+    expect(enviadas[0].nome).toBe('A situação');
+    expect(enviadas[0].regra.length).toBeGreaterThan(0);
   });
 
   it('sem intenção escrita, nada é afirmado sobre ela', async () => {

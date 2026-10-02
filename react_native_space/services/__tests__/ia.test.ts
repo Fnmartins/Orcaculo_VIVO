@@ -146,3 +146,49 @@ describe('gerarInterpretacaoTarot', () => {
     expect(mockInvoke.mock.calls[0][1].body.intencao).toBe('');
   });
 });
+
+describe('InterpretacaoTarot com numero livre de posicoes', () => {
+  beforeEach(() => mockInvoke.mockReset());
+
+  it('as leituras por posicao chegam inteiras a tela', async () => {
+    // O defeito que isto pega e o mesmo que ficou um dia no ar com as areas do mapa:
+    // montar o objeto de retorno campo por campo e esquecer de copiar o novo.
+    mockInvoke.mockResolvedValue({
+      data: {
+        titulo: 'A torre que ainda nao caiu',
+        narrativa: 'Cinco frases ligando as cartas.',
+        conselho: 'Uma pratica concreta.',
+        leituras: [
+          { posicao: 'Passado', texto: 'O que ja se consumou.' },
+          { posicao: 'Presente', texto: 'O que esta em jogo.' },
+          { posicao: 'Futuro', texto: 'O que tende a se formar.' },
+        ],
+      },
+      error: null,
+    });
+
+    const lida = await gerarInterpretacaoTarot(TRES_CARTAS);
+
+    expect(lida.leituras).toHaveLength(3);
+    expect(lida.leituras?.[2]).toEqual({ posicao: 'Futuro', texto: 'O que tende a se formar.' });
+  });
+
+  it('leitura guardada antes das leituras continua abrindo', async () => {
+    // `consultas.resultado` guarda o objeto inteiro: as leituras ja salvas vieram com
+    // passado, presente e futuro, e precisam continuar aparecendo.
+    mockInvoke.mockResolvedValue({ data: TAROT_COMPLETO, error: null });
+
+    const lida = await gerarInterpretacaoTarot(TRES_CARTAS);
+
+    expect(lida.leituras).toBeUndefined();
+    expect(lida.passado).toBe(TAROT_COMPLETO.passado);
+  });
+
+  it('manda a orientacao de cada carta', async () => {
+    mockInvoke.mockResolvedValue({ data: TAROT_COMPLETO, error: null });
+
+    await gerarInterpretacaoTarot([{ ...TRES_CARTAS[0], invertida: true }]);
+
+    expect(mockInvoke.mock.calls[0][1].body.cartas[0].invertida).toBe(true);
+  });
+});
