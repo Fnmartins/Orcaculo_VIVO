@@ -45,3 +45,59 @@ describe('tiragens', () => {
     expect(TIRAGENS).toContain(TIRAGEM_PADRAO);
   });
 });
+
+describe('geometria das tiragens', () => {
+  it('toda posição diz onde fica', () => {
+    for (const tiragem of TIRAGENS) {
+      for (const posicao of tiragem.posicoes) {
+        expect(Number.isFinite(posicao.lugar.coluna)).toBe(true);
+        expect(Number.isFinite(posicao.lugar.linha)).toBe(true);
+      }
+    }
+  });
+
+  it('duas posições nunca ocupam o mesmo lugar', () => {
+    // O defeito que isto pega: duas cartas desenhadas uma sobre a outra, impossíveis
+    // de escolher separadamente. Aconteceu com "O que atravessa" e "O que vem".
+    for (const tiragem of TIRAGENS) {
+      const lugares = tiragem.posicoes.map((p) => `${p.lugar.coluna},${p.lugar.linha}`);
+      expect(new Set(lugares).size).toBe(lugares.length);
+    }
+  });
+
+  it('as três cartas ficam numa linha só', () => {
+    const tres = TIRAGENS.find((t) => t.id === 'tres-cartas');
+    const linhas = new Set(tres?.posicoes.map((p) => p.lugar.linha));
+    expect(linhas.size).toBe(1);
+  });
+
+  it('a Cruz Celta tem a cruz à esquerda e o bastão numa coluna à direita', () => {
+    const cruz = TIRAGENS.find((t) => t.id === 'cruz-celta');
+    const posicoes = cruz?.posicoes ?? [];
+    const colunaDoBastao = Math.max(...posicoes.map((p) => p.lugar.coluna));
+    const bastao = posicoes.filter((p) => p.lugar.coluna === colunaDoBastao);
+    expect(bastao).toHaveLength(4);
+    // A carta que atravessa fica ao lado da situação, na mesma linha.
+    const situacao = posicoes[0];
+    const atravessa = posicoes[1];
+    expect(atravessa.lugar.linha).toBe(situacao.lugar.linha);
+    expect(atravessa.deitada).toBe(true);
+  });
+
+  it('as posições-chave declaradas são das quatro válidas', () => {
+    const validas = new Set(['agora', 'passado', 'futuro', 'obstaculo']);
+    for (const tiragem of TIRAGENS) {
+      for (const posicao of tiragem.posicoes) {
+        if (posicao.chave) expect(validas.has(posicao.chave)).toBe(true);
+      }
+    }
+  });
+
+  it('a posição que atravessa é um obstáculo, e o passado é passado', () => {
+    // É a chave que liga a posição à nota da carta. Sem ela, a nota nunca é usada.
+    const cruz = TIRAGENS.find((t) => t.id === 'cruz-celta');
+    expect(cruz?.posicoes[1].chave).toBe('obstaculo');
+    const tres = TIRAGENS.find((t) => t.id === 'tres-cartas');
+    expect(tres?.posicoes.map((p) => p.chave)).toEqual(['passado', 'agora', 'futuro']);
+  });
+});
