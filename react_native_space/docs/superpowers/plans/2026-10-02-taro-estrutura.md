@@ -16,7 +16,7 @@
 - **Zero conteúdo novo.** Nenhum significado, palavra-chave ou frase de carta é escrito neste plano. Campos ficam vazios ou ausentes.
 - **Nada quebra.** `significado` e `conselho` continuam existindo e sendo usados. `icone` e `cor` continuam — `app/consulta/resultado.tsx:215,229` ainda usa `carta.cor`.
 - **As quatro posições-chave são, exatamente:** `'agora' | 'passado' | 'futuro' | 'obstaculo'`.
-- **Invertida e obstáculo são o mesmo texto.** Quem lê a nota de obstáculo cai no texto de invertida quando não houver nota própria.
+- **Invertida e obstáculo são o mesmo texto.** Quem lê a nota de obstáculo cai no texto de `leituraInvertida` quando não houver nota própria.
 - **Toda leitura devolve pergunta, nunca veredito** (`docs/COMPLIANCE-SCOPE.md`).
 - Comentários e identificadores em português, como o resto do repo.
 - Rodar sempre os três portões: `npx jest`, `npx tsc --noEmit`, `node scripts/conferir-functions.js`.
@@ -50,7 +50,7 @@
 
 **Interfaces:**
 - Consumes: nada.
-- Produces: `type PosicaoChave = 'agora' | 'passado' | 'futuro' | 'obstaculo'`; `CartaTarot` com `palavrasChave?: string[]`, `frasesChave?: string[]`, `porPosicao?: Partial<Record<PosicaoChave, string>>`, `invertida?: string`, `naipe?`, `elemento?`, `ehCorte?`; `notaDaPosicao(carta: CartaTarot, chave?: PosicaoChave): string | undefined`.
+- Produces: `type PosicaoChave = 'agora' | 'passado' | 'futuro' | 'obstaculo'`; `CartaTarot` com `palavrasChave?: string[]`, `frasesChave?: string[]`, `porPosicao?: Partial<Record<PosicaoChave, string>>`, `leituraInvertida?: string`, `naipe?`, `elemento?`, `ehCorte?`; `notaDaPosicao(carta: CartaTarot, chave?: PosicaoChave): string | undefined`.
 
 - [ ] **Step 1: Escrever o teste que falha**
 
@@ -66,26 +66,26 @@ describe('notaDaPosicao', () => {
     expect(notaDaPosicao(TORRE, undefined)).toBeUndefined();
   });
 
-  it('a nota de obstáculo cai no texto de invertida quando não houver própria', () => {
+  it('a nota de obstáculo cai no texto de leituraInvertida quando não houver própria', () => {
     // As fontes tratam "revertido" e "posição de obstáculo" como a mesma leitura.
     // Escrever os dois seria escrever duas vezes a mesma coisa, e elas divergiriam.
-    const carta: CartaTarot = { ...TORRE, invertida: 'A mesma força, travada.' };
+    const carta: CartaTarot = { ...TORRE, leituraInvertida: 'A mesma força, travada.' };
     expect(notaDaPosicao(carta, 'obstaculo')).toBe('A mesma força, travada.');
   });
 
-  it('a nota própria tem precedência sobre a de invertida', () => {
+  it('a nota própria tem precedência sobre a de leituraInvertida', () => {
     const carta: CartaTarot = {
       ...TORRE,
-      invertida: 'travada',
+      leituraInvertida: 'travada',
       porPosicao: { obstaculo: 'o que trava aqui é outra coisa' },
     };
     expect(notaDaPosicao(carta, 'obstaculo')).toBe('o que trava aqui é outra coisa');
   });
 
-  it('as outras posições não herdam nada de invertida', () => {
-    // O defeito que isto pega: fazer `invertida` valer para qualquer posição. A leitura
+  it('as outras posições não herdam nada de leituraInvertida', () => {
+    // O defeito que isto pega: fazer `leituraInvertida` valer para qualquer posição. A leitura
     // de futuro sairia com o tom de obstáculo, e ninguém veria o erro no texto.
-    const carta: CartaTarot = { ...TORRE, invertida: 'travada' };
+    const carta: CartaTarot = { ...TORRE, leituraInvertida: 'travada' };
     for (const chave of ['agora', 'passado', 'futuro'] as const) {
       expect(notaDaPosicao(carta, chave)).toBeUndefined();
     }
@@ -153,7 +153,7 @@ export interface CartaTarot {
    */
   porPosicao?: Partial<Record<PosicaoChave, string>>;
   /** A carta de cabeça para baixo. Serve também à posição `obstaculo`. */
-  invertida?: string;
+  leituraInvertida?: string;
 
   // ─── Só nos Menores, que chegam na Fase 3. ───
   naipe?: 'espadas' | 'paus' | 'copas' | 'ouros';
@@ -165,7 +165,7 @@ export interface CartaTarot {
 /**
  * A nota desta carta para esta posição, se houver.
  *
- * `obstaculo` cai em `invertida` quando não houver nota própria: as fontes tratam
+ * `obstaculo` cai em `leituraInvertida` quando não houver nota própria: as fontes tratam
  * "revertido" e "posição de obstáculo" como a mesma leitura, e escrever os dois seria
  * escrever duas vezes a mesma coisa — que depois divergem.
  */
@@ -176,7 +176,7 @@ export function notaDaPosicao(
   if (!chave) return undefined;
   const propria = carta.porPosicao?.[chave];
   if (propria) return propria;
-  return chave === 'obstaculo' ? carta.invertida : undefined;
+  return chave === 'obstaculo' ? carta.leituraInvertida : undefined;
 }
 ```
 
@@ -1014,3 +1014,121 @@ esta entrega removeu: o gesto não carregaria a pergunta. A **tiragem** continua
 trocável até o primeiro corte — ela é o formato da pergunta, não a pergunta.
 Com o campo vazio e travado, a tela diz como voltar em vez de convidar a
 escrever num campo que não aceita texto.
+
+**Rodada final (depois da revisão da branch inteira).** Três itens entraram
+depois das sete tarefas: `CartaTarot.invertida` virou `leituraInvertida` — o
+nome colidia com o sinalizador booleano de orientação que viaja no payload, e
+preencher um na Fase 2 poderia apagar o outro sem o `tsc` ver; um teste passou
+a prender que nenhuma tiragem tem mais posições do que o servidor lê; e duas
+provas novas prendem que o gesto de embaralhar embaralha de fato. Os blocos de
+código acima já usam o nome novo. O `invertida?: boolean` do payload é outro
+campo e fica como está.
+
+---
+
+## Pendências registradas na execução
+
+Nada aqui bloqueia o uso. É a lista do que foi visto e adiado de propósito,
+com a tarefa de origem entre colchetes. Quem continuar na Fase 2 ou 3 começa
+por aqui em vez de redescobrir.
+
+### Testes a afiar
+
+- [T1] "sem posição-chave" passa por vacuidade: não pega a regressão
+  `if (!chave) return carta.leituraInvertida`.
+- [T1] "devolve indefinido" só afirma `not.toThrow()` — o título promete mais
+  do que o corpo.
+- [T2] o teste da cruz só afirma "mesma linha": trocar as colunas de
+  "o que atravessa" e "o que vem" passaria verde.
+- [T2] a ordem das colunas nas três cartas não é testada.
+- [T2] o teste de chaves válidas é quase vacuoso — o `tsc` já impede.
+- [T3] nada prova que `agora` chega à regra: trocar por `new Date()` passaria.
+- [T3] os testes 2 e 3 dependem de `TIRAGENS[0]` ter 3 posições; melhor buscar
+  por id.
+- [T3] o caso "curta demais" `[0,1]` quebra tamanho e unicidade ao mesmo
+  tempo — redundante, não isola nada.
+- [T4] os dois testes de giro do Tabuleiro quase não afirmam nada (`transform`
+  indefinido num `View` sem `style`).
+- [T4] o teste "mais larga" não distingue máximo de soma nem de "último
+  vence" — falta uma segunda medida na mesma coluna.
+- [T6] o teste da regra do material casa texto, não comportamento: reescrever
+  o prompt obriga a reescrever o teste junto.
+- [T6] asserções fracas no teste do material — `/tecer/` casaria em
+  "não precisa tecer".
+- [T6] o ramo `maiores === 0` de `proporcaoDeMaiores` não tem teste: falta o
+  caso "só Menores devolve null".
+- [T7] o teste do placeholder afirma `not.toBe(PLACEHOLDER_ABERTO)`, que passa
+  com qualquer troca e não fixa "Nenhuma pergunta escrita".
+- [T7] o nome do teste "começa pedindo o corte" descreve um teste que agora
+  começa depois de embaralhar.
+
+### Tela e layout
+
+- [T4] com só a lâmina girando, a cruz passou a ocupar 854 px e os 950 ficaram
+  com ~50 px de folga; 910 serviria.
+- [T4] o limiar 950 foi calibrado só para a Cruz Celta, com 158 e 16 copiados
+  de outro arquivo.
+- [T4] medição por célula poderia ser flex ou largura vinda de cima;
+  `larguras` nunca é podado.
+- [T4] invólucro duplo no Tabuleiro existe só para carregar um `testID`.
+- [revisão final] o primeiro quadro do Tabuleiro sai desalinhado: cada célula
+  começa em `minWidth: 0` até o `onLayout`, então a cruz pisca e ajusta.
+- [revisão final] `p.lugar.coluna` é lido sem guarda no Tabuleiro, ao
+  contrário do consumidor irmão em `resultado.tsx`.
+- [T7] o teclado pode ficar aberto sobre um campo recém-travado; um
+  `Keyboard.dismiss()` em `embaralharAgora` custaria uma linha.
+
+### Acessibilidade
+
+- [revisão final] `deitada` não é anunciada ao leitor de tela: a carta que
+  atravessa é a única gramática de mesa que o giro existe para mostrar.
+- [T7] o campo travado não ganha `accessibilityState` de desabilitado.
+
+### Payload, prompt e proporção
+
+- [T5] `resultado.tsx` ainda não envia `invertida` a `gerarInterpretacaoTarot`
+  — pré-existente, pertence à Fase 2; o tipo e a function já a esperam.
+- [T5] o teste da function só prova que os campos são LIDOS, não que chegam ao
+  `<dados>`; falta exigir os rótulos e o `.filter(Boolean)`.
+- [T5] `chave` viaja até a function e é descartada lá — vale uma frase no
+  comentário dizendo que o servidor não a lê.
+- [T5] o fallback `POSICOES` de `resultado.tsx` não tem `chave`: leitura sem o
+  parâmetro nunca recebe nota. Vestigial.
+- [T6] "a leitura parte do material" atrita com "nunca da carta sozinha" — um
+  modelo literal pode ler como licença para a carta sozinha.
+- [T6] a linha `o que diz:` do payload nunca é nomeada na regra do material, e
+  é o ramo vivo hoje: nenhuma carta tem verbete.
+- [T6] "pergunta" ganhou um terceiro sentido no prompt (regra da posição,
+  pergunta de quem consulta, pergunta de fechamento).
+- [T6] cada posição pede "2 a 3 frases" e agora também fechar com pergunta; numa
+  Cruz Celta de dez posições vale medir o tamanho de uma leitura real.
+- [T6] o `null` da proporção está amarrado à TIRAGEM, não ao baralho: com os 78,
+  uma casa só de Maiores vira achado real e a função o suprime. Decidir quando
+  escrever o consumidor.
+
+### Merece tarefa própria
+
+- [T4] `vagaSob` só olha o eixo y, e `medidas` não está na ordem dos índices:
+  na fileira central da cruz o alvo do arraste é arbitrário. `x` e a largura já
+  chegam no `measureInWindow` e são descartados.
+- [T4] suspeita de laço de medição (seta nova a cada render em `aoMedir`),
+  pré-existente, não verificada.
+- [T5] `ia-pergunta` manda só nome e posição e corta com `slice(0, 3)`: numa
+  Cruz Celta a pergunta de acompanhamento vê 3 das 10 cartas. É o mesmo
+  "rótulo em vez de material" que esta entrega corrigiu na leitura.
+- [revisão final] `MAX_POSICOES` deveria lançar erro em vez de cortar com
+  `slice(0, 10)`. Numa tiragem de 11 posições a 11ª carta chega à tela sem
+  leitura e nada reclama. O teste do lado do cliente já existe; o conserto no
+  servidor pede deploy próprio da function.
+
+### Esperando conteúdo
+
+- [T1] "3 a 5 palavras" e "6 a 8 frases" são promessas sem teste — cobrir
+  quando o conteúdo chegar.
+- [T2] `ordemDeLeitura` é gancho sem uso nem validação em produção: lembrar
+  quando a primeira tiragem real o usar.
+- [T6] a seção D.2 da spec (peso por proporção enviado pronto no payload) não
+  entrou: só a conta ficou pronta.
+- [revisão final] `ordemDeLeitura` existe como função em `data/mapaAstral.ts` e
+  como campo em `data/tiragens.ts` — confunde na busca; uma palavra num dos
+  dois comentários resolve.
