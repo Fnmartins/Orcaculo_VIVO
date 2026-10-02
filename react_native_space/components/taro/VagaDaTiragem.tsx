@@ -14,6 +14,8 @@ interface Props {
   revelada?: boolean;
   aoReceber: () => void;
   aoVirar?: () => void;
+  /** Onde esta vaga está na tela, para o arraste saber o que há debaixo do dedo. */
+  aoMedir?: (medida: { topo: number; base: number }) => void;
 }
 
 const LARGURA = 104;
@@ -31,8 +33,9 @@ const ALTURA = 164;
  * troca das duas faces no meio do giro.
  */
 export function VagaDaTiragem({
-  posicao, carta, revelada = false, aoReceber, aoVirar,
+  posicao, carta, revelada = false, aoReceber, aoVirar, aoMedir,
 }: Props) {
+  const caixa = useRef<View>(null);
   const giro = useRef(new Animated.Value(0)).current;
   const clarao = useRef(new Animated.Value(0)).current;
 
@@ -71,6 +74,14 @@ export function VagaDaTiragem({
       accessibilityHint={carta ? undefined : 'Põe aqui a carta de cima do monte'}
       onPress={tocar}
       style={estilos.vaga}
+      ref={caixa}
+      // `measureInWindow` e nao o layout do `onLayout`: o layout vem relativo ao pai, e o
+      // dedo chega em coordenada de tela. Misturar os dois acerta por acaso e so no topo.
+      onLayout={() => {
+        caixa.current?.measureInWindow((_x, y, _largura, altura) => {
+          aoMedir?.({ topo: y, base: y + altura });
+        });
+      }}
     >
       <Text style={estilos.nome}>{posicao.nome}</Text>
       {carta ? (

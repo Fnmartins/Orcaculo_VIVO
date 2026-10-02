@@ -100,6 +100,20 @@ describe('o rito do tarô', () => {
     expect(new Set(cartas.map((c) => c.id)).size).toBe(3);
   });
 
+
+  it('tocar numa vaga poe a carta naquela vaga, nao na primeira', async () => {
+    // Desde o arraste a posicao e escolhida, nao sorteada pela ordem. Se o toque numa
+    // vaga caisse sempre na primeira vazia, o arraste e o toque diriam coisas
+    // diferentes sobre a mesma tela — e a posicao e metade do significado da leitura.
+    await abrir();
+    cortar(); juntar();
+    fireEvent.press(screen.getByLabelText('Posição Futuro, vazia'));
+    expect(screen.getByLabelText('Posição Passado, vazia')).toBeTruthy();
+    expect(
+      screen.getByLabelText('Posição Futuro, carta de costas, toque para virar')
+    ).toBeTruthy();
+  });
+
   it('sem intenção escrita, nada é afirmado sobre ela', async () => {
     await abrir();
     cortar(); juntar(); puxar(); puxar(); puxar(); virarAsTres(); seguir();

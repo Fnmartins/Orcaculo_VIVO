@@ -15,7 +15,8 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Button } from '../../components/Button';
 import { LequeDeCorte } from '../../components/taro/LequeDeCorte';
-import { MonteParaDistribuir } from '../../components/taro/MonteParaDistribuir';
+import { MonteParaDistribuir, type MedidaDaVaga } from '../../components/taro/MonteParaDistribuir';
+import { Recolhimento } from '../../components/taro/Recolhimento';
 import { VagaDaTiragem } from '../../components/taro/VagaDaTiragem';
 import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
@@ -100,6 +101,8 @@ export default function TelaCartas() {
   const [baralho, setBaralho] = useState<CartaTarot[] | null>(null);
   const [tiragem, setTiragem] = useState<(CartaTarot | null)[]>([null, null, null]);
   const [reveladas, setReveladas] = useState([false, false, false]);
+  const [recolhendo, setRecolhendo] = useState(false);
+  const [medidas, setMedidas] = useState<MedidaDaVaga[]>([]);
   // `null` enquanto não se sabe: começar em `true` deixaria os laços partirem antes da
   // resposta do sistema, e aí não há como desligá-los sem piscar.
   const [movimento, setMovimento] = useState<boolean | null>(null);
@@ -150,12 +153,19 @@ export default function TelaCartas() {
 
   const juntar = useCallback(() => {
     Hapticos.impactoMedio();
+    setRecolhendo(true);
+  }, []);
+
+  // A ordem ja foi decidida por `recolher` no instante do corte; o riffle so a mostra.
+  // Por isso ele nao recebe nem devolve cartas, e o baralho e montado aqui no fim dele.
+  const terminarRecolhimento = useCallback(() => {
     setBaralho(recolher(montes, leque));
+    setRecolhendo(false);
   }, [montes, leque]);
 
-  const puxar = useCallback(() => {
-    const vaga = tiragem.findIndex((c) => c === null);
-    if (vaga < 0 || !baralho || baralho.length === 0) return;
+  const puxarPara = useCallback((vaga: number) => {
+    if (vaga < 0 || vaga >= tiragem.length || tiragem[vaga]) return;
+    if (!baralho || baralho.length === 0) return;
     Hapticos.impactoLeve();
     const [topo, ...resto] = baralho;
     const nova = [...tiragem];
@@ -163,6 +173,18 @@ export default function TelaCartas() {
     setTiragem(nova);
     setBaralho(resto);
   }, [tiragem, baralho]);
+
+  // O toque cai na primeira vaga vazia; o arraste cai onde a pessoa soltou.
+  const puxar = useCallback(() => {
+    puxarPara(tiragem.findIndex((c) => c === null));
+  }, [puxarPara, tiragem]);
+
+  const medirVaga = useCallback((indice: number, medida: { topo: number; base: number }) => {
+    setMedidas((anteriores) => {
+      const sem = anteriores.filter((m) => m.indice !== indice);
+      return [...sem, { indice, ...medida }];
+    });
+  }, []);
 
   const virar = useCallback((indice: number) => {
     if (!tiragem[indice] || reveladas[indice]) return;
@@ -184,7 +206,9 @@ export default function TelaCartas() {
   }, [tiragem, intencao]);
 
   let subtitulo: string;
-  if (!distribuindo) {
+  if (recolhendo) {
+    subtitulo = 'Recolhendo o baralho';
+  } else if (!distribuindo) {
     subtitulo = cortes === 0
       ? 'Corte o baralho'
       : `${cortes} ${cortes === 1 ? 'corte' : 'cortes'} — corte de novo ou junte`;
@@ -234,7 +258,9 @@ export default function TelaCartas() {
           contentContainerStyle={estilos.rolagemConteudo}
           keyboardShouldPersistTaps="handled"
         >
-          {!distribuindo ? (
+          {recolhendo ? (
+            <Recolhimento ligado={movimento === true} aoTerminar={terminarRecolhimento} />
+          ) : !distribuindo ? (
             <>
               {/* O campo vive só nesta etapa: é a preparação, antes de tocar no baralho. */}
               <View style={estilos.campoBloco}>
@@ -271,8 +297,9 @@ export default function TelaCartas() {
                     posicao={posicao}
                     carta={tiragem[i]}
                     revelada={reveladas[i]}
-                    aoReceber={puxar}
+                    aoReceber={() => puxarPara(i)}
                     aoVirar={() => virar(i)}
+                    aoMedir={(medida) => medirVaga(i, medida)}
                   />
                 ))}
               </View>
@@ -280,7 +307,12 @@ export default function TelaCartas() {
               {!tudoPuxado && (
                 <View style={estilos.monteBloco}>
                   <Glow cor={Cores.acento} anim={pulso} />
-                  <MonteParaDistribuir restantes={baralho.length} aoPuxar={puxar} />
+                  <MonteParaDistribuir
+                    restantes={baralho.length}
+                    aoPuxar={puxar}
+                    aoSoltarEm={puxarPara}
+                    vagas={medidas}
+                  />
                 </View>
               )}
             </View>
@@ -297,7 +329,7 @@ export default function TelaCartas() {
               larguraTotal
               onPress={verResultado}
             />
-          ) : !distribuindo && cortes > 0 ? (
+          ) : !distribuindo && !recolhendo && cortes > 0 ? (
             <Button
               variante="primary"
               label="Juntar e seguir"
@@ -309,9 +341,13 @@ export default function TelaCartas() {
             <View style={estilos.dicaContainer}>
               <View style={estilos.dicaDivisor} />
               <Text style={estilos.dicaTexto}>
-                {distribuindo
-                  ? (tudoPuxado ? 'Toque em cada carta para virar' : 'Toque no monte dourado')
-                  : 'Toque no leque onde quiser cortar'}
+                {recolhendo
+                  ? 'As duas metades voltando a ser um baralho'
+                  : distribuindo
+                    ? (tudoPuxado
+                      ? 'Toque em cada carta para virar'
+                      : 'Arraste a carta de cima, ou toque')
+                    : 'Toque no leque onde quiser cortar'}
               </Text>
               <View style={estilos.dicaDivisor} />
             </View>
