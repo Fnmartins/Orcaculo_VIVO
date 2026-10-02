@@ -7,6 +7,14 @@ interface Props {
   quantidade: number;
   aoCortar: (indice: number) => void;
   desligado?: boolean;
+  /**
+   * O dedo encostou na carta `indice` (ou saiu, com `null`).
+   *
+   * Serve para a tela dizer quantas cartas sairiam ANTES de soltar. Sem isso, tocar
+   * perto da ponta direita leva quase o baralho inteiro de uma vez, e a pessoa só
+   * descobre depois — foi assim que o leque de 22 acabou em um corte.
+   */
+  aoApontar?: (indice: number | null) => void;
 }
 
 const LARGURA_LAMINA = 38;
@@ -83,7 +91,9 @@ export function geometriaDoLeque(larguraDaTela: number, quantidade: number): Geo
  * Encostar numa lâmina acende todas até ela: a escolha é de um monte, não de uma carta
  * solta, e sem ver o monte a pessoa acha que está escolhendo a carta em que encostou.
  */
-export function LequeDeCorte({ quantidade, aoCortar, desligado = false }: Props) {
+export function LequeDeCorte({
+  quantidade, aoCortar, desligado = false, aoApontar,
+}: Props) {
   const { width } = useWindowDimensions();
   const { altura, lugares } = useMemo(
     () => geometriaDoLeque(width, quantidade),
@@ -92,7 +102,7 @@ export function LequeDeCorte({ quantidade, aoCortar, desligado = false }: Props)
   const [apontado, setApontado] = useState<number | null>(null);
 
   return (
-    <View style={[estilos.mesa, { height: altura }]}>
+    <View style={[estilos.mesa, { height: altura }, desligado && estilos.inerte]}>
       {lugares.map(({ x, y, giro }, i) => {
         const aceso = apontado !== null && i <= apontado;
         return (
@@ -103,8 +113,12 @@ export function LequeDeCorte({ quantidade, aoCortar, desligado = false }: Props)
             // Alvo de 38 pixels é menos que o mínimo confortável de toque; o hitSlop
             // devolve a folga sem alargar a lâmina e desmontar o arco.
             hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
-            onPressIn={() => { if (!desligado) setApontado(i); }}
-            onPressOut={() => setApontado(null)}
+            onPressIn={() => {
+              if (desligado) return;
+              setApontado(i);
+              aoApontar?.(i);
+            }}
+            onPressOut={() => { setApontado(null); aoApontar?.(null); }}
             onPress={() => { if (!desligado) aoCortar(i); }}
             style={[estilos.lamina, {
               left: '50%',
@@ -125,6 +139,9 @@ export function LequeDeCorte({ quantidade, aoCortar, desligado = false }: Props)
 
 const estilos = StyleSheet.create({
   mesa: { position: 'relative', width: '100%', marginTop: 16 },
+  // Sem corte possivel, o leque para de parecer clicavel. Um leque de aparencia normal
+  // que nao responde se le como defeito — foi exatamente o que aconteceu.
+  inerte: { opacity: 0.4 },
   lamina: { position: 'absolute', width: LARGURA_LAMINA, height: ALTURA_LAMINA },
   contorno: {
     ...StyleSheet.absoluteFillObject,

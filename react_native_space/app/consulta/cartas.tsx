@@ -69,6 +69,10 @@ export default function TelaCartas() {
   // Sobe a cada rolagem parada: e o sinal para as vagas se medirem de novo. Sem isso,
   // com o monte fixo na tela, soltar a carta depois de rolar usaria medida velha.
   const [versaoDaMedida, setVersaoDaMedida] = useState(0);
+  // Qual carta o dedo esta tocando no leque, para dizer o tamanho do monte antes de
+  // soltar. Tocar perto da ponta direita leva quase o baralho inteiro, e com 22 cartas
+  // isso encerra o corte num toque so — a pessoa precisa ver isso antes, nao depois.
+  const [apontada, setApontada] = useState<number | null>(null);
   // `null` enquanto não se sabe: começar em `true` deixaria a animação partir antes da
   // resposta do sistema a quem pediu "reduzir movimento".
   const [movimento, setMovimento] = useState<boolean | null>(null);
@@ -329,7 +333,12 @@ export default function TelaCartas() {
             <View style={estilos.painel}>
               <Text style={estilos.rotulo}>O baralho</Text>
               <Text style={estilos.passo}>{passo}</Text>
-              <Text style={estilos.contador}>{contador}</Text>
+              <Text style={estilos.contador}>
+                {apontada !== null && podeCortar
+                  ? `Soltando aqui, saem ${apontada + 1} ${apontada === 0 ? 'carta' : 'cartas'} `
+                    + `e ficam ${leque.length - apontada - 1} no leque.`
+                  : contador}
+              </Text>
 
               {recolhendo ? (
                 <Recolhimento ligado={movimento === true} aoTerminar={terminarRecolhimento} />
@@ -338,6 +347,7 @@ export default function TelaCartas() {
                   quantidade={leque.length}
                   aoCortar={aoCortar}
                   desligado={!podeCortar}
+                  aoApontar={setApontada}
                 />
               ) : null}
 

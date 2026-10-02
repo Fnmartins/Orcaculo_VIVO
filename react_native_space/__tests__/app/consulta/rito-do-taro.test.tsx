@@ -68,6 +68,33 @@ describe('o rito do tarô', () => {
     expect(screen.getByText(/1 monte de lado, \d+ cartas ainda no leque\./)).toBeTruthy();
   });
 
+
+  it('cortar perto da ponta esvazia o leque, e a tela diz isso', async () => {
+    // O defeito que o dono encontrou com o dedo: o corte leva TUDO do comeco do leque
+    // ate onde se toca. Tocar perto da direita leva quase o baralho — e com 22 cartas
+    // o corte acaba num toque so. A carta mais facil de acertar e justamente a da
+    // ponta, que esta por cima de todas.
+    //
+    // Nao e defeito de toque; e o leque ficando sem cartas. O que era defeito e a tela
+    // continuar desenhando um leque com cara de clicavel depois disso.
+    await abrir();
+    fireEvent.press(screen.getByLabelText('Cortar aqui, carta 21 de 22'));
+    expect(screen.getAllByLabelText(/Cortar aqui/)).toHaveLength(1);
+    expect(screen.getByText('Nao sobrou leque para cortar.'.replace('Nao', 'Não'))).toBeTruthy();
+    expect(screen.getByText('Siga para a leitura.')).toBeTruthy();
+    expect(screen.getByText('Ir para a leitura')).toBeTruthy();
+  });
+
+  it('antes de soltar, a tela diz o tamanho do monte que sairia', async () => {
+    // Sem isto a pessoa so descobre o tamanho do corte depois de dado, e um toque na
+    // ponta direita leva o baralho inteiro sem aviso.
+    await abrir();
+    fireEvent(screen.getByLabelText('Cortar aqui, carta 8 de 22'), 'pressIn');
+    expect(screen.getByText(/Soltando aqui, saem 8 cartas e ficam 14 no leque\./)).toBeTruthy();
+    fireEvent(screen.getByLabelText('Cortar aqui, carta 8 de 22'), 'pressOut');
+    expect(screen.getByText(/O baralho tem 22 cartas/)).toBeTruthy();
+  });
+
   it('depois de juntar, as posições aparecem vazias com a pergunta de cada uma', async () => {
     await abrir();
     cortar(); irParaLeitura();
