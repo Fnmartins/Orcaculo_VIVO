@@ -120,3 +120,26 @@ describe('carência na renovação', () => {
     expect(webhook).toMatch(/import \{ validadeComCarencia \} from '\.\.\/_shared\/limites\.ts'/);
   });
 });
+
+describe('a leitura de tarô recebe posição e intenção', () => {
+  const fonte = readFileSync(join(RAIZ, 'ia-interpretacao', 'index.ts'), 'utf8');
+
+  it('o payload do tarô carrega a posição de cada carta', () => {
+    // Sem isto a IA recebe três cartas soltas e escreve três parágrafos soltos — que
+    // é exatamente o "muito simples" que esta entrega existe para corrigir.
+    expect(fonte).toMatch(/const posicao = texto\(c\.posicao/);
+  });
+
+  it('o tarô lê a intenção do corpo do pedido', () => {
+    expect(fonte).toMatch(/body\.intencao/);
+  });
+
+  it('sem intenção, o prompt diz que não houve, em vez de calar', () => {
+    // Calar deixaria o modelo adivinhar se houve pergunta. É a mesma escolha que
+    // `dadosDosBuzios` já fazia neste arquivo, e duas respostas diferentes para a
+    // mesma dúvida dentro de um arquivo é como se perde a consistência de um prompt.
+    const linhas = fonte.match(/Inten..o de quem consultou.*/g) ?? [];
+    expect(linhas.length).toBe(2);
+    for (const linha of linhas) expect(linha).toContain('não informada');
+  });
+});

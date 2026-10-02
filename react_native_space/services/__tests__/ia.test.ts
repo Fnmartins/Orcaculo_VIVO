@@ -10,7 +10,7 @@ jest.mock('../supabase', () => ({
 }));
 
 // eslint-disable-next-line import/first
-import { gerarInterpretacaoMapa, type InterpretacaoMapa } from '../ia';
+import { gerarInterpretacaoMapa, gerarInterpretacaoTarot, type InterpretacaoMapa } from '../ia';
 
 /**
  * Este teste existe por causa de um defeito que ficou um dia inteiro no ar sem
@@ -104,5 +104,45 @@ describe('gerarInterpretacaoMapa', () => {
   it('recusa resposta sem título ou narrativa, em vez de mostrar vazio', async () => {
     mockInvoke.mockResolvedValue({ data: { titulo: 'Só o título' }, error: null });
     await expect(gerarInterpretacaoMapa(mapaMinimo)).rejects.toThrow(/incompleta/i);
+  });
+});
+
+const TAROT_COMPLETO = {
+  titulo: 'A torre que ainda não caiu',
+  narrativa: 'Cinco frases sobre as três cartas juntas.',
+  passado: 'O que já se consumou.',
+  presente: 'O que está em jogo.',
+  futuro: 'O que tende a se formar.',
+  conselho: 'Uma prática concreta.',
+};
+
+const TRES_CARTAS = [
+  { nome: 'XVI - A Torre', posicao: 'Passado', significado: 'Ruptura.' },
+  { nome: 'I - O Mago', posicao: 'Presente', significado: 'Poder pessoal.' },
+  { nome: 'XIX - O Sol', posicao: 'Futuro', significado: 'Clareza.' },
+];
+
+describe('gerarInterpretacaoTarot', () => {
+  beforeEach(() => mockInvoke.mockReset());
+
+  it('manda a intenção escrita junto das cartas', async () => {
+    // A intenção é o que diferencia esta leitura de três parágrafos soltos. Se ela
+    // parar no caminho, a tela continua funcionando e ninguém percebe a perda.
+    mockInvoke.mockResolvedValue({ data: TAROT_COMPLETO, error: null });
+
+    await gerarInterpretacaoTarot(TRES_CARTAS, 'devo aceitar a proposta');
+
+    const enviado = mockInvoke.mock.calls[0][1].body;
+    expect(enviado.oraculo).toBe('tarot');
+    expect(enviado.intencao).toBe('devo aceitar a proposta');
+    expect(enviado.cartas[0].posicao).toBe('Passado');
+  });
+
+  it('sem intenção, manda string vazia e não inventa uma', async () => {
+    mockInvoke.mockResolvedValue({ data: TAROT_COMPLETO, error: null });
+
+    await gerarInterpretacaoTarot(TRES_CARTAS);
+
+    expect(mockInvoke.mock.calls[0][1].body.intencao).toBe('');
   });
 });
