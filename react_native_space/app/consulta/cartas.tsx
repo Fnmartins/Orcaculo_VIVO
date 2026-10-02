@@ -196,6 +196,20 @@ export default function TelaCartas() {
     });
   }, [tiragem, reveladas]);
 
+  // A intencao fica: a pergunta que trouxe a pessoa continua a mesma, e faze-la digitar
+  // de novo seria castigo por querer outra tiragem. O resto volta ao zero, com baralho
+  // novo — repetir o mesmo embaralhamento daria a mesma leitura e tiraria o sentido.
+  const recomeçar = useCallback(() => {
+    Hapticos.impactoMedio();
+    setLeque(embaralhar(ARCANOS_MAIORES));
+    setMontes([]);
+    setBaralho(null);
+    setTiragem([null, null, null]);
+    setReveladas([false, false, false]);
+    setRecolhendo(false);
+    setMedidas([]);
+  }, []);
+
   const verResultado = useCallback(() => {
     Hapticos.impactoMedio();
     const cartas = tiragem.filter((c): c is CartaTarot => c !== null);
@@ -320,6 +334,17 @@ export default function TelaCartas() {
         </ScrollView>
 
         <Animated.View style={[estilos.footer, { opacity: fade }]}>
+          {/* Secundario de proposito: um toque sem querer aqui joga fora uma tiragem que
+              a pessoa acabou de fazer com intencao. */}
+          {(cortes > 0 || distribuindo) && (
+            <Button
+              variante="ghost"
+              label="Recomeçar o rito"
+              icone="refresh-outline"
+              larguraTotal
+              onPress={recomeçar}
+            />
+          )}
           {prontas ? (
             <Button
               variante="primary"
@@ -423,7 +448,7 @@ const estilos = StyleSheet.create({
 
   footer: {
     paddingHorizontal: Espacamento.lg, paddingVertical: Espacamento.md,
-    paddingBottom: Espacamento.lg,
+    paddingBottom: Espacamento.lg, gap: Espacamento.sm,
   },
   dicaContainer: { flexDirection: 'row', alignItems: 'center', gap: Espacamento.sm },
   dicaDivisor: { flex: 1, height: 1, backgroundColor: 'rgba(212,175,55,0.2)' },
