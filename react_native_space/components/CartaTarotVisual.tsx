@@ -1,78 +1,54 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import Ionicons from '@expo/vector-icons/Ionicons';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Image } from 'expo-image';
 import { Cores } from '../constants/colors';
+import { ARTE_POR_ID } from '../data/arteDoTaro';
+
+/**
+ * A carta como ela é: a cena de 1909.
+ *
+ * Até 01/10 este componente desenhava um retângulo com degradê e um ícone do Ionicons
+ * no meio. No Rider-Waite isso não é uma simplificação, é outro produto — as
+ * interpretações descrevem o que está na imagem, e sem a imagem a leitura vira
+ * recitação de significado.
+ */
 
 interface CartaTarotVisualProps {
-  icone: string;
-  cor: string;
+  cartaId: number;
+  nome: string;
+  /** Usada a partir da Fase 2; entra agora para a tela não mudar de forma depois. */
+  invertida?: boolean;
   largura?: number;
 }
 
-export function CartaTarotVisual({ icone, cor, largura = 82 }: CartaTarotVisualProps) {
+export function CartaTarotVisual({
+  cartaId, nome, invertida = false, largura = 82,
+}: CartaTarotVisualProps) {
   const altura = largura * 1.58;
-  const tamanhoIcone = Math.round(largura * 0.34);
-
   return (
-    <View style={[estilos.sombra, { width: largura, height: altura, borderRadius: largura * 0.1 }]}> 
-      <LinearGradient
-        colors={[cor + '38', '#160B29', '#0C0714'] as const}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[estilos.carta, { borderRadius: largura * 0.1, padding: largura * 0.08 }]}
-      >
-        <View style={[estilos.moldura, { borderRadius: largura * 0.06 }]}> 
-          <MaterialCommunityIcons name="star-four-points" size={Math.max(8, largura * 0.1)} color={Cores.acento} />
-          <View style={[estilos.arco, { width: largura * 0.48, height: largura * 0.48, borderRadius: largura * 0.24, borderColor: cor + '65' }]}> 
-            <Ionicons name={icone as any} size={tamanhoIcone} color={cor} />
-          </View>
-          <MaterialCommunityIcons name="star-four-points" size={Math.max(8, largura * 0.1)} color={Cores.acento} />
-        </View>
-        <View style={[estilos.canto, estilos.cantoSuperiorEsquerdo]} />
-        <View style={[estilos.canto, estilos.cantoSuperiorDireito]} />
-        <View style={[estilos.canto, estilos.cantoInferiorEsquerdo]} />
-        <View style={[estilos.canto, estilos.cantoInferiorDireito]} />
-      </LinearGradient>
+    <View
+      accessibilityLabel={invertida ? `${nome}, invertida` : nome}
+      style={[estilos.moldura, { width: largura, height: altura, borderRadius: largura * 0.1 }]}
+    >
+      <Image
+        source={ARTE_POR_ID[cartaId]}
+        style={[estilos.arte, invertida && estilos.deCabecaParaBaixo]}
+        contentFit="cover"
+        transition={160}
+      />
     </View>
   );
 }
 
 const estilos = StyleSheet.create({
-  sombra: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.38,
-    shadowRadius: 10,
-    elevation: 8,
-  },
-  carta: {
-    flex: 1,
-    borderWidth: 1.5,
-    borderColor: 'rgba(212,175,55,0.72)',
-  },
   moldura: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'space-around',
+    overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(212,175,55,0.28)',
+    borderColor: Cores.cardBorda,
+    // Fundo escuro por baixo: enquanto a imagem carrega, um retângulo claro piscaria
+    // branco no meio de uma tela de oráculo.
+    backgroundColor: '#0C0714',
   },
-  arco: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    backgroundColor: 'rgba(88,117,101,0.07)',
-  },
-  canto: {
-    position: 'absolute',
-    width: 8,
-    height: 8,
-    borderColor: Cores.acento,
-  },
-  cantoSuperiorEsquerdo: { top: 5, left: 5, borderTopWidth: 1, borderLeftWidth: 1 },
-  cantoSuperiorDireito: { top: 5, right: 5, borderTopWidth: 1, borderRightWidth: 1 },
-  cantoInferiorEsquerdo: { bottom: 5, left: 5, borderBottomWidth: 1, borderLeftWidth: 1 },
-  cantoInferiorDireito: { bottom: 5, right: 5, borderBottomWidth: 1, borderRightWidth: 1 },
+  arte: { width: '100%', height: '100%' },
+  deCabecaParaBaixo: { transform: [{ rotate: '180deg' }] },
 });

@@ -24,6 +24,7 @@ import { Espacamento, RaioBorda } from '../constants/spacing';
 import { Hapticos } from '../utils/haptics';
 import { SomMistico } from '../services/somMistico';
 import { ARCANOS_MAIORES, type CartaTarot } from '../data/tarot';
+import { sortearUm } from '../data/corteDoBaralho';
 
 const CHAVE_LEITURA_DIA = '@oraculo:leitura_dia';
 
@@ -46,8 +47,10 @@ function obterDataHoje(): string {
 }
 
 function sortearCartaDoDia(): CartaTarot {
-  const idx = Math.floor(Math.random() * ARCANOS_MAIORES.length);
-  return ARCANOS_MAIORES[idx];
+  // Uma função só, usada em todo sorteio do app. Antes era `Math.random` cru aqui:
+  // funciona, mas espalha a mesma decisão por vários arquivos, e foi assim que o
+  // embaralhamento enviesado de `sortearCartas` passou tanto tempo sem ser visto.
+  return sortearUm(ARCANOS_MAIORES);
 }
 
 function obterMensagemDia(): string {
@@ -174,7 +177,7 @@ export default function TelaLeituraDia() {
                     colors={[carta.cor + '18', 'rgba(255,252,246,0.96)'] as const}
                     style={estilos.cartaFrente}
                   >
-                    <CartaTarotVisual icone={carta.icone} cor={carta.cor} largura={104} />
+                    <CartaTarotVisual cartaId={carta.id} nome={carta.nomeCompleto} largura={104} />
                     <Text style={[estilos.cartaNome, { color: carta.cor }]}>{carta.nomeCompleto}</Text>
                     <View style={estilos.divisorCarta} />
 

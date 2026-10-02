@@ -1,86 +1,59 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
+  AccessibilityInfo,
   Animated,
   Pressable,
-  Dimensions,
-  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Rect, Polygon, Circle, Path, G, Line } from 'react-native-svg';
 import { Button } from '../../components/Button';
+import { LequeDeCorte } from '../../components/taro/LequeDeCorte';
+import { MonteParaDistribuir, type MedidaDaVaga } from '../../components/taro/MonteParaDistribuir';
+import { Recolhimento } from '../../components/taro/Recolhimento';
+import { VagaDaTiragem } from '../../components/taro/VagaDaTiragem';
 import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
 import { Hapticos } from '../../utils/haptics';
 import { voltarOuIr } from '../../utils/navegacao';
-import { sortearCartas, type CartaTarot } from '../../data/tarot';
+import { ARCANOS_MAIORES, type CartaTarot } from '../../data/tarot';
+import { cortar, embaralhar, recolher } from '../../data/corteDoBaralho';
 
-const { width: LARGURA_TELA, height: ALTURA_TELA } = Dimensions.get('window');
-const LARGURA_CARTA = Math.min((LARGURA_TELA - 80) / 3, 108);
-const ALTURA_CARTA = LARGURA_CARTA * 1.7;
-const POSICOES = ['Passado', 'Presente', 'Futuro'];
+/**
+ * O rito do tarô: a pessoa corta, junta, puxa e vira.
+ *
+ * Até 01/10 esta tela sorteava três cartas sozinha e pedia um toque para revelar cada
+ * uma. O sorteio continuava sendo do app; o gesto era enfeite. Agora a ordem sai dos
+ * cortes que a pessoa dá — `cortar` e `recolher`, em `data/corteDoBaralho.ts`, são as
+ * únicas donas dessa conta, e esta tela só as chama.
+ *
+ * O que sobreviveu da tela antiga, de propósito: o verso ornamentado (agora em
+ * `components/taro/VersoDaCarta.tsx`), o brilho sob o monte, as partículas e a virada com
+ * mola e clarão. O que morreu: a frente desenhada com ícone do Ionicons, que era
+ * justamente o que fazia a leitura virar recitação de significado.
+ */
 
-// SVG do verso da carta — ornamentado com bordas duplas e estrela
-function VersoCartaSVG({ largura, altura }: { largura: number; altura: number }) {
-  const mx = largura / 2;
-  const my = altura / 2;
-  const margem = 6;
-  const margemInterna = 11;
-  const raio = 7;
-  const estrelaR = Math.min(largura, altura) * 0.16;
-  // Pontos de estrela de 8 pontas
-  const pontosEstrela = Array.from({ length: 16 }, (_, i) => {
-    const ang = (i * Math.PI) / 8 - Math.PI / 2;
-    const r = i % 2 === 0 ? estrelaR : estrelaR * 0.45;
-    return `${mx + r * Math.cos(ang)},${my + r * Math.sin(ang)}`;
-  }).join(' ');
+const POSICOES = [
+  { nome: 'Passado', regra: 'o que já se consumou e ainda pesa' },
+  { nome: 'Presente', regra: 'o que está em jogo agora' },
+  { nome: 'Futuro', regra: 'o que tende a se formar se nada mudar' },
+];
 
+/** Dez cortes foi o teto escolhido no protótipo: além disso é teimosia, não rito. */
+const MAX_CORTES = 10;
+const ROTULO_INTENCAO = 'Se quiser, diga o que te trouxe aqui';
+
+// Glow animado abaixo do monte: é ele que diz "é daqui que se pega".
+function Glow({ cor, anim }: { cor: string; anim: Animated.Value }) {
   return (
-    <Svg width={largura} height={altura}>
-      {/* Fundo */}
-      <Rect x={0} y={0} width={largura} height={altura} rx={raio} ry={raio} fill="#365247" />
-      {/* Borda externa dourada */}
-      <Rect x={margem} y={margem} width={largura - margem * 2} height={altura - margem * 2}
-        rx={raio - 1} ry={raio - 1} fill="none" stroke="#C5A365" strokeWidth={1.2} />
-      {/* Borda interna dourada */}
-      <Rect x={margemInterna} y={margemInterna} width={largura - margemInterna * 2} height={altura - margemInterna * 2}
-        rx={raio - 3} ry={raio - 3} fill="none" stroke="rgba(212,175,55,0.35)" strokeWidth={0.7} />
-      {/* Linha horizontal central sutil */}
-      <Line x1={margemInterna + 4} y1={my} x2={mx - estrelaR - 4} y2={my}
-        stroke="rgba(212,175,55,0.2)" strokeWidth={0.5} />
-      <Line x1={mx + estrelaR + 4} y1={my} x2={largura - margemInterna - 4} y2={my}
-        stroke="rgba(212,175,55,0.2)" strokeWidth={0.5} />
-      {/* Estrela de 8 pontas central */}
-      <Polygon points={pontosEstrela} fill="none" stroke="#C5A365" strokeWidth={0.9} />
-      {/* Círculo no centro da estrela */}
-      <Circle cx={mx} cy={my} r={estrelaR * 0.2} fill="rgba(212,175,55,0.5)" />
-      {/* Ornamentos nos cantos */}
-      {[[margem + 4, margem + 4], [largura - margem - 4, margem + 4],
-        [margem + 4, altura - margem - 4], [largura - margem - 4, altura - margem - 4]].map(([cx, cy], i) => (
-        <G key={i}>
-          <Circle cx={cx} cy={cy} r={3.5} fill="none" stroke="rgba(212,175,55,0.6)" strokeWidth={0.8} />
-          <Circle cx={cx} cy={cy} r={1.2} fill="rgba(212,175,55,0.7)" />
-        </G>
-      ))}
-      {/* Número oculto topo */}
-      <Polygon
-        points={`${mx},${margemInterna + 6} ${mx + 5},${margemInterna + 14} ${mx - 5},${margemInterna + 14}`}
-        fill="rgba(212,175,55,0.3)"
-      />
-    </Svg>
-  );
-}
-
-// Glow animado abaixo da carta
-function GlowCarta({ cor, anim }: { cor: string; anim: Animated.Value }) {
-  return (
-    <Animated.View style={[estilos.glowCarta, { opacity: anim }]}>
+    <Animated.View style={[estilos.glow, { opacity: anim }]} pointerEvents="none">
       <LinearGradient
         colors={[cor + '60', cor + '00'] as const}
         start={{ x: 0.5, y: 0 }}
@@ -91,11 +64,13 @@ function GlowCarta({ cor, anim }: { cor: string; anim: Animated.Value }) {
   );
 }
 
-// Partícula flutuante
-function Particula({ x, delay }: { x: number; delay: number }) {
+// Partícula flutuante. `ligado` existe porque o laço é infinito: sem ele quem pediu
+// "reduzir movimento" ganhava a animação, e o Jest não conseguia encerrar o processo.
+function Particula({ x, delay, ligado }: { x: number; delay: number; ligado: boolean }) {
   const yAnim = useRef(new Animated.Value(0)).current;
   const opAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
+    if (!ligado) return;
     const loop = Animated.loop(
       Animated.sequence([
         Animated.delay(delay),
@@ -111,105 +86,152 @@ function Particula({ x, delay }: { x: number; delay: number }) {
     );
     loop.start();
     return () => loop.stop();
-  }, []);
+  }, [ligado, delay, yAnim, opAnim]);
   return (
-    <Animated.View style={{
-      position: 'absolute',
-      left: x,
-      bottom: 0,
-      width: 3,
-      height: 3,
-      borderRadius: 1.5,
-      backgroundColor: Cores.acento,
-      opacity: opAnim,
-      transform: [{ translateY: yAnim }],
-    }} />
+    <Animated.View
+      style={[estilos.particula, { left: x, opacity: opAnim, transform: [{ translateY: yAnim }] }]}
+    />
   );
 }
 
 export default function TelaCartas() {
-  const [cartasSorteadas] = useState<CartaTarot[]>(() => sortearCartas(3));
-  const [cartasReveladas, setCartasReveladas] = useState<boolean[]>([false, false, false]);
-  const [todasReveladas, setTodasReveladas] = useState(false);
-  const flipAnims = useRef([new Animated.Value(0), new Animated.Value(0), new Animated.Value(0)]).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
-  const brilhoAnims = useRef([new Animated.Value(0), new Animated.Value(0), new Animated.Value(0)]).current;
-  const glowAnims = useRef([
-    new Animated.Value(0.6), new Animated.Value(0.6), new Animated.Value(0.6),
-  ]).current;
-  const resumoAnim = useRef(new Animated.Value(0)).current;
+  const [intencao, setIntencao] = useState('');
+  const [leque, setLeque] = useState<CartaTarot[]>(() => embaralhar(ARCANOS_MAIORES));
+  const [montes, setMontes] = useState<CartaTarot[][]>([]);
+  const [baralho, setBaralho] = useState<CartaTarot[] | null>(null);
+  const [tiragem, setTiragem] = useState<(CartaTarot | null)[]>([null, null, null]);
+  const [reveladas, setReveladas] = useState([false, false, false]);
+  const [recolhendo, setRecolhendo] = useState(false);
+  const [medidas, setMedidas] = useState<MedidaDaVaga[]>([]);
+  // `null` enquanto não se sabe: começar em `true` deixaria os laços partirem antes da
+  // resposta do sistema, e aí não há como desligá-los sem piscar.
+  const [movimento, setMovimento] = useState<boolean | null>(null);
+
+  const fade = useRef(new Animated.Value(0)).current;
+  const desliza = useRef(new Animated.Value(30)).current;
+  const pulso = useRef(new Animated.Value(0.6)).current;
+
+  useEffect(() => {
+    let vivo = true;
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((reduz) => { if (vivo) setMovimento(!reduz); })
+      .catch(() => { if (vivo) setMovimento(false); });
+    return () => { vivo = false; };
+  }, []);
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: 0, duration: 800, useNativeDriver: true }),
+      Animated.timing(fade, { toValue: 1, duration: 800, useNativeDriver: true }),
+      Animated.timing(desliza, { toValue: 0, duration: 800, useNativeDriver: true }),
     ]).start();
+  }, [fade, desliza]);
 
-    // Pulso do glow nas cartas não reveladas
-    glowAnims.forEach((a, i) => {
-      const loop = Animated.loop(
-        Animated.sequence([
-          Animated.delay(i * 400),
-          Animated.timing(a, { toValue: 1, duration: 1500, useNativeDriver: true }),
-          Animated.timing(a, { toValue: 0.4, duration: 1500, useNativeDriver: true }),
-        ])
-      );
-      loop.start();
+  useEffect(() => {
+    if (movimento !== true) return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulso, { toValue: 1, duration: 1500, useNativeDriver: true }),
+        Animated.timing(pulso, { toValue: 0.4, duration: 1500, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [movimento, pulso]);
+
+  const cortes = montes.length;
+  const podeCortar = leque.length >= 2 && cortes < MAX_CORTES;
+  const distribuindo = baralho !== null;
+  const tudoPuxado = tiragem.every((c) => c !== null);
+  const prontas = tudoPuxado && reveladas.every(Boolean);
+
+  const aoCortar = useCallback((indice: number) => {
+    Hapticos.impactoLeve();
+    const { monte, resto } = cortar(leque, indice);
+    setMontes((anteriores) => [...anteriores, monte]);
+    setLeque(resto);
+  }, [leque]);
+
+  const juntar = useCallback(() => {
+    Hapticos.impactoMedio();
+    setRecolhendo(true);
+  }, []);
+
+  // A ordem ja foi decidida por `recolher` no instante do corte; o riffle so a mostra.
+  // Por isso ele nao recebe nem devolve cartas, e o baralho e montado aqui no fim dele.
+  const terminarRecolhimento = useCallback(() => {
+    setBaralho(recolher(montes, leque));
+    setRecolhendo(false);
+  }, [montes, leque]);
+
+  const puxarPara = useCallback((vaga: number) => {
+    if (vaga < 0 || vaga >= tiragem.length || tiragem[vaga]) return;
+    if (!baralho || baralho.length === 0) return;
+    Hapticos.impactoLeve();
+    const [topo, ...resto] = baralho;
+    const nova = [...tiragem];
+    nova[vaga] = topo;
+    setTiragem(nova);
+    setBaralho(resto);
+  }, [tiragem, baralho]);
+
+  // O toque cai na primeira vaga vazia; o arraste cai onde a pessoa soltou.
+  const puxar = useCallback(() => {
+    puxarPara(tiragem.findIndex((c) => c === null));
+  }, [puxarPara, tiragem]);
+
+  const medirVaga = useCallback((indice: number, medida: { topo: number; base: number }) => {
+    setMedidas((anteriores) => {
+      const sem = anteriores.filter((m) => m.indice !== indice);
+      return [...sem, { indice, ...medida }];
     });
   }, []);
 
-  const revelarCarta = useCallback((index: number) => {
-    if (cartasReveladas[index]) return;
+  const virar = useCallback((indice: number) => {
+    if (!tiragem[indice] || reveladas[indice]) return;
     Hapticos.impactoMedio();
-
-    Animated.spring(flipAnims[index], {
-      toValue: 1,
-      damping: 14,
-      stiffness: 120,
-      useNativeDriver: true,
-    }).start();
-
-    Animated.sequence([
-      Animated.timing(brilhoAnims[index], { toValue: 1, duration: 200, useNativeDriver: true }),
-      Animated.timing(brilhoAnims[index], { toValue: 0, duration: 600, useNativeDriver: true }),
-    ]).start();
-
-    const novasReveladas = [...cartasReveladas];
-    novasReveladas[index] = true;
-    setCartasReveladas(novasReveladas);
-
-    if (novasReveladas.every(r => r)) {
-      setTimeout(() => {
-        setTodasReveladas(true);
-        Animated.timing(resumoAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
-      }, 700);
-    }
-  }, [cartasReveladas, flipAnims, brilhoAnims]);
+    setReveladas((anteriores) => {
+      const novas = [...anteriores];
+      novas[indice] = true;
+      return novas;
+    });
+  }, [tiragem, reveladas]);
 
   const verResultado = useCallback(() => {
     Hapticos.impactoMedio();
+    const cartas = tiragem.filter((c): c is CartaTarot => c !== null);
     router.push({
       pathname: '/consulta/resultado',
-      params: { cartas: JSON.stringify(cartasSorteadas) },
+      params: { cartas: JSON.stringify(cartas), intencao: intencao.trim() },
     });
-  }, [cartasSorteadas]);
+  }, [tiragem, intencao]);
+
+  let subtitulo: string;
+  if (recolhendo) {
+    subtitulo = 'Recolhendo o baralho';
+  } else if (!distribuindo) {
+    subtitulo = cortes === 0
+      ? 'Corte o baralho'
+      : `${cortes} ${cortes === 1 ? 'corte' : 'cortes'} — corte de novo ou junte`;
+  } else if (!tudoPuxado) {
+    subtitulo = 'Pegue do monte e ponha nas posições';
+  } else if (!prontas) {
+    subtitulo = 'Toque nas cartas para virar';
+  } else {
+    subtitulo = 'Todas reveladas';
+  }
 
   return (
-    <LinearGradient
-      colors={['#F7F3EA', '#F1EEE5', '#F7F3EA']}
-      style={{ flex: 1 }}
-    >
+    <LinearGradient colors={['#F7F3EA', '#F1EEE5', '#F7F3EA']} style={estilos.fundo}>
       <SafeAreaView style={estilos.safeArea}>
-        {/* Partículas de fundo */}
         <View style={estilos.particulasContainer} pointerEvents="none">
           {[30, 80, 140, 200, 260, 310].map((x, i) => (
-            <Particula key={i} x={x} delay={i * 600} />
+            <Particula key={i} x={x} delay={i * 600} ligado={movimento === true} />
           ))}
         </View>
 
-        {/* Header */}
-        <Animated.View style={[estilos.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+        <Animated.View
+          style={[estilos.header, { opacity: fade, transform: [{ translateY: desliza }] }]}
+        >
           {/* Saída da leitura: sem ela, quem desistia no meio ficava preso na tela. */}
           <Pressable
             onPress={() => voltarOuIr()}
@@ -226,167 +248,79 @@ export default function TelaCartas() {
           {/* Mesma largura do botão, para o título continuar centralizado. */}
           <View style={estilos.espacoVoltar} />
         </Animated.View>
-        <Animated.View style={[estilos.subtituloContainer, { opacity: fadeAnim }]}>
-          <Text style={estilos.subtitulo}>
-            {todasReveladas ? '✦ Todas reveladas ✦' : '✦ Toque para revelar ✦'}
-          </Text>
+
+        <Animated.View style={[estilos.subtituloContainer, { opacity: fade }]}>
+          <Text style={estilos.subtitulo}>{'✦ ' + subtitulo + ' ✦'}</Text>
         </Animated.View>
 
-        {/* Mesa de tarot */}
-        <Animated.View style={[estilos.mesaWrapper, { opacity: fadeAnim }]}>
-          <LinearGradient
-            colors={['#E7EEE5', '#DCE7DE', '#E7EEE5']}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
-            style={estilos.mesa}
-          >
-            <LinearGradient
-              colors={['rgba(54,82,71,0.10)', 'transparent', 'rgba(54,82,71,0.08)']}
-              start={{ x: 0.5, y: 0 }}
-              end={{ x: 0.5, y: 1 }}
-              style={StyleSheet.absoluteFillObject}
-            />
-            {/* Ornamento central da mesa */}
-            <View style={estilos.mesaOrnamento} pointerEvents="none">
-              <View style={estilos.mesaLinhaH} />
-              <View style={estilos.mesaLinhaV} />
-            </View>
+        <ScrollView
+          style={estilos.rolagem}
+          contentContainerStyle={estilos.rolagemConteudo}
+          keyboardShouldPersistTaps="handled"
+        >
+          {recolhendo ? (
+            <Recolhimento ligado={movimento === true} aoTerminar={terminarRecolhimento} />
+          ) : !distribuindo ? (
+            <>
+              {/* O campo vive só nesta etapa: é a preparação, antes de tocar no baralho. */}
+              <View style={estilos.campoBloco}>
+                <Text style={estilos.campoRotulo}>{ROTULO_INTENCAO}</Text>
+                <TextInput
+                  accessibilityLabel={ROTULO_INTENCAO}
+                  value={intencao}
+                  onChangeText={setIntencao}
+                  placeholder="Uma pergunta, uma situação, ou nada"
+                  placeholderTextColor={Cores.textoSecundario}
+                  multiline
+                  maxLength={160}
+                  style={estilos.campo}
+                />
+              </View>
 
-            {/* Cartas */}
-            <View style={estilos.cartasContainer}>
-              {cartasSorteadas.map((carta, index) => {
-                const revelada = cartasReveladas[index];
-                const flipInterpolado = flipAnims[index].interpolate({
-                  inputRange: [0, 0.5, 1],
-                  outputRange: ['0deg', '90deg', '0deg'],
-                });
-                const escalaFlip = flipAnims[index].interpolate({
-                  inputRange: [0, 0.5, 1],
-                  outputRange: [1, 0.88, 1],
-                });
+              <LequeDeCorte
+                quantidade={leque.length}
+                aoCortar={aoCortar}
+                desligado={!podeCortar}
+              />
+              {cortes >= MAX_CORTES && (
+                <Text style={estilos.aviso}>
+                  Dez cortes é o bastante. Junte o baralho para seguir.
+                </Text>
+              )}
+            </>
+          ) : (
+            <View style={estilos.mesa}>
+              <View style={estilos.vagas}>
+                {POSICOES.map((posicao, i) => (
+                  <VagaDaTiragem
+                    key={posicao.nome}
+                    posicao={posicao}
+                    carta={tiragem[i]}
+                    revelada={reveladas[i]}
+                    aoReceber={() => puxarPara(i)}
+                    aoVirar={() => virar(i)}
+                    aoMedir={(medida) => medirVaga(i, medida)}
+                  />
+                ))}
+              </View>
 
-                return (
-                  <View key={carta.id} style={estilos.cartaWrapper}>
-                    {/* Label posição */}
-                    <View style={estilos.posicaoBadge}>
-                      <Text style={estilos.posicaoTexto}>{POSICOES[index]}</Text>
-                    </View>
-
-                    {/* Glow abaixo da carta */}
-                    {!revelada && (
-                      <GlowCarta cor={Cores.acento} anim={glowAnims[index]} />
-                    )}
-                    {revelada && (
-                      <GlowCarta cor={carta.cor} anim={new Animated.Value(0.5)} />
-                    )}
-
-                    {/* Área da carta na mesa */}
-                    <View style={[
-                      estilos.posicaoMarca,
-                      revelada && { borderColor: carta.cor + '50' },
-                    ]} />
-
-                    <Pressable
-                      onPress={() => revelarCarta(index)}
-                      disabled={revelada}
-                      style={({ pressed }) => ({
-                        transform: [{ scale: pressed ? 0.94 : 1 }],
-                      })}
-                    >
-                      <Animated.View style={[
-                        estilos.carta,
-                        revelada && {
-                          ...Platform.select({
-                            ios: { shadowColor: carta.cor, shadowOpacity: 0.6 },
-                            android: { elevation: 12 },
-                            default: { shadowColor: carta.cor, shadowOpacity: 0.6 },
-                          }),
-                        },
-                        {
-                          transform: [
-                            { rotateY: flipInterpolado },
-                            { scale: escalaFlip },
-                          ],
-                        },
-                      ]}>
-                        {/* Flash de revelação */}
-                        <Animated.View style={[
-                          StyleSheet.absoluteFillObject,
-                          {
-                            backgroundColor: 'rgba(212,175,55,0.9)',
-                            borderRadius: RaioBorda.md,
-                            opacity: brilhoAnims[index],
-                            zIndex: 20,
-                          },
-                        ]} />
-
-                        {revelada ? (
-                          // Carta revelada — frente
-                          <LinearGradient
-                            colors={[carta.cor + '24', '#FFFCF6', carta.cor + '12'] as const}
-                            start={{ x: 0.5, y: 0 }}
-                            end={{ x: 0.5, y: 1 }}
-                            style={estilos.cartaFrente}
-                          >
-                            {/* Número romano no topo */}
-                            <Text style={[estilos.cartaNumeroRomano, { color: carta.cor + 'BB' }]}>
-                              {carta.nomeCompleto.split(' - ')[0]}
-                            </Text>
-                            {/* Borda ornamentada */}
-                            <View style={[estilos.cartaBordaOrnam, { borderColor: carta.cor + '50' }]} />
-                            {/* Ícone */}
-                            <View style={[estilos.cartaIconeCirculo, { backgroundColor: carta.cor + '20' }]}>
-                              <Ionicons name={carta.icone as any} size={28} color={carta.cor} />
-                            </View>
-                            {/* Nome */}
-                            <Text style={[estilos.cartaNome, { color: carta.cor }]} numberOfLines={2}>
-                              {carta.nome}
-                            </Text>
-                            {/* Divisor */}
-                            <View style={[estilos.cartaDivisor, { backgroundColor: carta.cor + '40' }]} />
-                            {/* Palavra-chave */}
-                            <Text style={estilos.cartaEssencia} numberOfLines={2}>
-                              {carta.conselho.split('.')[0]}
-                            </Text>
-                          </LinearGradient>
-                        ) : (
-                          // Carta virada — verso ornamentado
-                          <VersoCartaSVG largura={LARGURA_CARTA} altura={ALTURA_CARTA} />
-                        )}
-                      </Animated.View>
-                    </Pressable>
-
-                    {/* Indicador de toque */}
-                    {!revelada && (
-                      <Animated.View style={[estilos.toqueIndicador, { opacity: glowAnims[index] }]}>
-                        <Ionicons name="hand-right-outline" size={12} color={Cores.acento} />
-                      </Animated.View>
-                    )}
-                  </View>
-                );
-              })}
-            </View>
-          </LinearGradient>
-        </Animated.View>
-
-        {/* Resumo */}
-        {todasReveladas && (
-          <Animated.View style={[estilos.resumoContainer, { opacity: resumoAnim }]}>
-            <View style={estilos.resumoInner}>
-              {cartasSorteadas.map((carta, i) => (
-                <View key={carta.id} style={estilos.resumoLinha}>
-                  <View style={[estilos.resumoPonto, { backgroundColor: carta.cor }]} />
-                  <Text style={estilos.resumoPosicao}>{POSICOES[i]}</Text>
-                  <Text style={[estilos.resumoNome, { color: carta.cor }]}>{carta.nome}</Text>
+              {!tudoPuxado && (
+                <View style={estilos.monteBloco}>
+                  <Glow cor={Cores.acento} anim={pulso} />
+                  <MonteParaDistribuir
+                    restantes={baralho.length}
+                    aoPuxar={puxar}
+                    aoSoltarEm={puxarPara}
+                    vagas={medidas}
+                  />
                 </View>
-              ))}
+              )}
             </View>
-          </Animated.View>
-        )}
+          )}
+        </ScrollView>
 
-        {/* Footer */}
-        <Animated.View style={[estilos.footer, { opacity: fadeAnim }]}>
-          {todasReveladas ? (
+        <Animated.View style={[estilos.footer, { opacity: fade }]}>
+          {prontas ? (
             <Button
               variante="primary"
               label="Ver Leitura Completa"
@@ -395,10 +329,26 @@ export default function TelaCartas() {
               larguraTotal
               onPress={verResultado}
             />
+          ) : !distribuindo && !recolhendo && cortes > 0 ? (
+            <Button
+              variante="primary"
+              label="Juntar e seguir"
+              icone="layers-outline"
+              larguraTotal
+              onPress={juntar}
+            />
           ) : (
             <View style={estilos.dicaContainer}>
               <View style={estilos.dicaDivisor} />
-              <Text style={estilos.dicaTexto}>Toque em cada carta para revelar</Text>
+              <Text style={estilos.dicaTexto}>
+                {recolhendo
+                  ? 'As duas metades voltando a ser um baralho'
+                  : distribuindo
+                    ? (tudoPuxado
+                      ? 'Toque em cada carta para virar'
+                      : 'Arraste a carta de cima, ou toque')
+                    : 'Toque no leque onde quiser cortar'}
+              </Text>
               <View style={estilos.dicaDivisor} />
             </View>
           )}
@@ -409,278 +359,76 @@ export default function TelaCartas() {
 }
 
 const estilos = StyleSheet.create({
+  fundo: { flex: 1 },
   safeArea: { flex: 1 },
 
   particulasContainer: {
-    position: 'absolute',
-    bottom: 100,
-    left: 0,
-    right: 0,
-    height: 100,
+    position: 'absolute', bottom: 100, left: 0, right: 0, height: 100,
+  },
+  particula: {
+    position: 'absolute', bottom: 0, width: 3, height: 3, borderRadius: 1.5,
+    backgroundColor: Cores.acento,
   },
 
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: Espacamento.md,
-    paddingHorizontal: Espacamento.lg,
-    gap: Espacamento.md,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    paddingTop: Espacamento.md, paddingHorizontal: Espacamento.lg, gap: Espacamento.md,
   },
-  headerDivisor: {
-    flex: 1,
-    height: 1,
-    backgroundColor: 'rgba(212,175,55,0.25)',
-  },
+  headerDivisor: { flex: 1, height: 1, backgroundColor: 'rgba(212,175,55,0.25)' },
   voltarBotao: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Cores.cardFundo,
-    borderWidth: 1,
-    borderColor: Cores.cardBorda,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 40, height: 40, borderRadius: 20, backgroundColor: Cores.cardFundo,
+    borderWidth: 1, borderColor: Cores.cardBorda, alignItems: 'center', justifyContent: 'center',
   },
-  espacoVoltar: {
-    width: 40,
-  },
+  espacoVoltar: { width: 40 },
   titulo: {
-    fontFamily: Fontes.titulo,
-    fontSize: 26,
-    fontWeight: '700',
-    color: Cores.textoClaro,
-    letterSpacing: 2,
+    fontFamily: Fontes.titulo, fontSize: 26, fontWeight: '700',
+    color: Cores.textoClaro, letterSpacing: 2,
   },
 
-  subtituloContainer: {
-    alignItems: 'center',
-    paddingBottom: Espacamento.sm,
-  },
+  subtituloContainer: { alignItems: 'center', paddingVertical: Espacamento.sm },
   subtitulo: {
-    fontFamily: Fontes.corpo,
-    fontSize: 13,
-    color: Cores.acento,
-    letterSpacing: 1.5,
-    opacity: 0.8,
+    fontFamily: Fontes.corpo, fontSize: 13, color: Cores.acento,
+    letterSpacing: 1.5, opacity: 0.8, textAlign: 'center',
   },
 
-  mesaWrapper: {
-    flex: 1,
-    marginHorizontal: Espacamento.md,
-    marginBottom: Espacamento.sm,
-    borderRadius: 28,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(88,117,101,0.22)',
-    ...Platform.select({
-      ios: { shadowColor: '#365247', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.10, shadowRadius: 18 },
-      android: { elevation: 10 },
-      default: { shadowColor: '#365247', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.10, shadowRadius: 18 },
-    }),
-  },
-  mesa: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  mesaOrnamento: {
-    position: 'absolute',
-    top: 0, left: 0, right: 0, bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  mesaLinhaH: {
-    position: 'absolute',
-    left: 24,
-    right: 24,
-    height: 1,
-    backgroundColor: 'rgba(212,175,55,0.06)',
-  },
-  mesaLinhaV: {
-    position: 'absolute',
-    top: 24,
-    bottom: 24,
-    width: 1,
-    backgroundColor: 'rgba(212,175,55,0.06)',
+  rolagem: { flex: 1 },
+  rolagemConteudo: {
+    paddingHorizontal: Espacamento.md, paddingBottom: Espacamento.lg,
+    gap: Espacamento.lg, alignItems: 'center',
   },
 
-  cartasContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-evenly',
-    alignItems: 'flex-end',
-    width: '100%',
-    paddingHorizontal: Espacamento.md,
-    paddingBottom: Espacamento.lg,
+  campoBloco: { width: '100%', gap: Espacamento.xs },
+  campoRotulo: {
+    fontFamily: Fontes.corpo, fontSize: 12, color: Cores.textoSecundario, letterSpacing: 0.5,
+  },
+  campo: {
+    minHeight: 58, borderRadius: RaioBorda.md, borderWidth: 1, borderColor: Cores.cardBorda,
+    backgroundColor: Cores.cardFundo, paddingHorizontal: Espacamento.sm,
+    paddingVertical: Espacamento.sm, fontFamily: Fontes.corpo, fontSize: 14,
+    color: Cores.textoClaro, textAlignVertical: 'top',
+  },
+  aviso: {
+    fontFamily: Fontes.corpo, fontSize: 12, color: Cores.textoSecundario, textAlign: 'center',
   },
 
-  cartaWrapper: {
-    alignItems: 'center',
-    position: 'relative',
+  mesa: { width: '100%', alignItems: 'center', gap: Espacamento.lg },
+  vagas: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'flex-start', width: '100%', gap: Espacamento.xs,
   },
+  monteBloco: { position: 'relative', alignItems: 'center' },
 
-  posicaoBadge: {
-    backgroundColor: 'rgba(212,175,55,0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(212,175,55,0.2)',
-    borderRadius: RaioBorda.full,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    marginBottom: Espacamento.sm,
-  },
-  posicaoTexto: {
-    fontFamily: Fontes.corpoSemibold,
-    fontSize: 10,
-    color: Cores.acento,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-  },
-
-  glowCarta: {
-    position: 'absolute',
-    bottom: -8,
-    left: -10,
-    right: -10,
-    height: 40,
-    zIndex: 0,
-  },
-  glowGradiente: {
-    flex: 1,
-    borderRadius: 20,
-  },
-
-  posicaoMarca: {
-    position: 'absolute',
-    bottom: -4,
-    left: -4,
-    right: -4,
-    height: ALTURA_CARTA + 8,
-    borderWidth: 1,
-    borderColor: 'rgba(212,175,55,0.15)',
-    borderRadius: RaioBorda.md + 2,
-    zIndex: 0,
-  },
-
-  carta: {
-    width: LARGURA_CARTA,
-    height: ALTURA_CARTA,
-    borderRadius: RaioBorda.md,
-    overflow: 'hidden',
-    zIndex: 1,
-    ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.5, shadowRadius: 12 },
-      android: { elevation: 10 },
-      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.5, shadowRadius: 12 },
-    }),
-  },
-
-  cartaFrente: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: Espacamento.xs,
-    gap: 4,
-  },
-  cartaBordaOrnam: {
-    position: 'absolute',
-    top: 4, left: 4, right: 4, bottom: 4,
-    borderWidth: 1,
-    borderRadius: RaioBorda.sm,
-  },
-  cartaNumeroRomano: {
-    fontFamily: Fontes.titulo,
-    fontSize: 11,
-    letterSpacing: 1,
-  },
-  cartaIconeCirculo: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cartaNome: {
-    fontFamily: Fontes.corpoNegrito,
-    fontSize: 11,
-    textAlign: 'center',
-    lineHeight: 15,
-  },
-  cartaDivisor: {
-    width: 24,
-    height: 1,
-  },
-  cartaEssencia: {
-    fontFamily: Fontes.corpo,
-    fontSize: 9,
-    color: Cores.textoSecundario,
-    textAlign: 'center',
-    lineHeight: 12,
-    paddingHorizontal: 4,
-  },
-
-  toqueIndicador: {
-    marginTop: Espacamento.xs,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-
-  resumoContainer: {
-    marginHorizontal: Espacamento.lg,
-    marginBottom: Espacamento.sm,
-  },
-  resumoInner: {
-    backgroundColor: 'rgba(255,252,246,0.94)',
-    borderWidth: 1,
-    borderColor: 'rgba(88,117,101,0.18)',
-    borderRadius: RaioBorda.lg,
-    paddingHorizontal: Espacamento.md,
-    paddingVertical: Espacamento.sm,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  resumoLinha: {
-    alignItems: 'center',
-    gap: 4,
-  },
-  resumoPonto: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  resumoPosicao: {
-    fontFamily: Fontes.corpo,
-    fontSize: 9,
-    color: Cores.textoSecundario,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-  resumoNome: {
-    fontFamily: Fontes.corpoNegrito,
-    fontSize: 11,
-    textAlign: 'center',
-  },
+  glow: { position: 'absolute', bottom: -8, left: -10, right: -10, height: 40, zIndex: 0 },
+  glowGradiente: { flex: 1, borderRadius: 20 },
 
   footer: {
-    paddingHorizontal: Espacamento.lg,
-    paddingVertical: Espacamento.md,
+    paddingHorizontal: Espacamento.lg, paddingVertical: Espacamento.md,
     paddingBottom: Espacamento.lg,
   },
-  dicaContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Espacamento.sm,
-  },
-  dicaDivisor: {
-    flex: 1,
-    height: 1,
-    backgroundColor: 'rgba(212,175,55,0.2)',
-  },
+  dicaContainer: { flexDirection: 'row', alignItems: 'center', gap: Espacamento.sm },
+  dicaDivisor: { flex: 1, height: 1, backgroundColor: 'rgba(212,175,55,0.2)' },
   dicaTexto: {
-    fontFamily: Fontes.corpo,
-    fontSize: 13,
-    color: Cores.textoSecundario,
-    textAlign: 'center',
-    letterSpacing: 0.5,
+    fontFamily: Fontes.corpo, fontSize: 13, color: Cores.textoSecundario,
+    textAlign: 'center', letterSpacing: 0.5,
   },
 });

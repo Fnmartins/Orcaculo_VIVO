@@ -44,7 +44,10 @@ const FORMATOS_ENTREGA = [
 ];
 
 export default function TelaResultado() {
-  const { cartas: cartasParam = '[]' } = useLocalSearchParams<{ cartas?: string }>();
+  const { cartas: cartasParam = '[]', intencao = '' } = useLocalSearchParams<{
+    cartas?: string;
+    intencao?: string;
+  }>();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
   const [interpretacaoIA, setInterpretacaoIA] = useState<InterpretacaoTarot | null>(null);
@@ -77,7 +80,8 @@ export default function TelaResultado() {
           nome: c.nomeCompleto,
           posicao: POSICOES[i] ?? `Carta ${i + 1}`,
           significado: c.significado,
-        }))
+        })),
+        intencao
       );
       setInterpretacaoIA(resultado);
     } catch (e) {
@@ -182,7 +186,7 @@ export default function TelaResultado() {
                   <View style={estilos.posicaoBadge}>
                     <Text style={estilos.posicaoTexto}>{POSICOES[index]}</Text>
                   </View>
-                  <CartaTarotVisual icone={carta.icone} cor={carta.cor} largura={68} />
+                  <CartaTarotVisual cartaId={carta.id} nome={carta.nomeCompleto} largura={68} />
                 </View>
 
                 {/* Nome da carta */}

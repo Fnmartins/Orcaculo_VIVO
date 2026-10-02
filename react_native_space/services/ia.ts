@@ -134,13 +134,13 @@ export interface InterpretacaoTarot {
  * daqui, qualquer pessoa usaria a chave paga do projeto para gerar o que
  * quisesse. O app manda só as cartas sorteadas.
  */
-export async function gerarInterpretacaoTarot(cartas: {
-  nome: string;
-  posicao: string;
-  significado: string;
-}[]): Promise<InterpretacaoTarot> {
+export async function gerarInterpretacaoTarot(
+  cartas: { nome: string; posicao: string; significado: string }[],
+  /** O que a pessoa escreveu antes de cortar o baralho. Vazio quando não escreveu. */
+  intencao = '',
+): Promise<InterpretacaoTarot> {
   const { data, error } = await supabase.functions.invoke('ia-interpretacao', {
-    body: { oraculo: 'tarot', cartas },
+    body: { oraculo: 'tarot', cartas, intencao: intencao.trim() },
   });
   if (error) throw await erroDeInterpretacao(error);
 

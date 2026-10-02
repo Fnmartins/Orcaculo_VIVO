@@ -122,7 +122,10 @@ function dadosDoTarot(body: Record<string, unknown>): string {
     if (!nome || !posicao) throw new Error('Carta sem nome ou posição');
     return `- ${posicao}: ${nome}${significado ? ` (${significado})` : ''}`;
   });
-  return `<dados>\n${linhas.join('\n')}\n</dados>`;
+  // Mesma frase e mesma escolha de `dadosDosBuzios`: dizer que nao houve pergunta, em
+  // vez de calar. Calando, o modelo adivinha se houve uma, e passa a inventar contexto.
+  const intencao = `Intenção de quem consultou: ${texto(body.intencao, 300) || 'não informada'}`;
+  return `<dados>\n${linhas.join('\n')}\n${intencao}\n</dados>`;
 }
 
 function dadosDosBuzios(body: Record<string, unknown>): string {
