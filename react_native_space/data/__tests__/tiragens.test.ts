@@ -130,8 +130,20 @@ describe('ordemDasPosicoes', () => {
   });
 
   it('regra que devolve lixo não derruba a leitura', () => {
-    // Índice fora da faixa ou repetido deixaria uma posição de fora e outra duas vezes.
-    const falsa = { ...TIRAGENS[0], ordemDeLeitura: () => [9, 1, 1] };
-    expect(ordemDasPosicoes(falsa)).toEqual([0, 1, 2]);
+    // Cada caso isola UM modo de lixo: se o validador perder a checagem
+    // correspondente, exatamente este caso falha. Uma entrada que quebrasse duas
+    // regras ao mesmo tempo passaria com o validador pela metade.
+    const casos: Array<[string, number[]]> = [
+      ['comprida demais', [0, 1, 2, 2]],
+      ['curta demais', [0, 1]],
+      ['indice repetido', [1, 1, 2]],
+      ['fora da faixa, no limite', [0, 1, 3]],
+      ['indice negativo', [-1, 1, 2]],
+      ['indice fracionario', [0.5, 1, 2]],
+    ];
+    for (const [motivo, pedida] of casos) {
+      const falsa = { ...TIRAGENS[0], ordemDeLeitura: () => pedida };
+      expect(ordemDasPosicoes(falsa)).toEqual([0, 1, 2]);
+    }
   });
 });
