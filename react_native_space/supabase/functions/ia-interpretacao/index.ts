@@ -139,7 +139,23 @@ function dadosDoTarot(body: Record<string, unknown>): { dados: string; posicoes:
     // de pé e escreve o significado trocado — sem nada quebrar.
     const orientacao = c.invertida === true ? ' [invertida]' : '';
     const pergunta = regra ? ` — a posição pergunta: ${regra}` : '';
-    return `- ${posicao}${pergunta}: ${nome}${orientacao}${significado ? ` (${significado})` : ''}`;
+    // O material da carta: é o que a IA deve tecer, no lugar de inventar o que a carta
+    // significa. Cada campo é opcional (a estrutura sobe antes do conteúdo), então o que
+    // vier vazio simplesmente não ganha linha.
+    const palavras = Array.isArray(c.palavrasChave)
+      ? c.palavrasChave.map((p) => texto(p, 40)).filter(Boolean).slice(0, 6).join(', ')
+      : '';
+    const frases = Array.isArray(c.frasesChave)
+      ? c.frasesChave.map((f) => texto(f, 80)).filter(Boolean).slice(0, 8).join(' · ')
+      : '';
+    const nota = texto(c.nota, 400);
+    return [
+      `- ${posicao}${pergunta}: ${nome}${orientacao}`,
+      significado ? `  o que diz: ${significado}` : '',
+      palavras ? `  palavras-chave: ${palavras}` : '',
+      frases ? `  frases-chave: ${frases}` : '',
+      nota ? `  nesta posição: ${nota}` : '',
+    ].filter(Boolean).join('\n');
   });
   // Mesma frase e mesma escolha de `dadosDosBuzios`: dizer que nao houve pergunta, em
   // vez de calar. Calando, o modelo adivinha se houve uma, e passa a inventar contexto.

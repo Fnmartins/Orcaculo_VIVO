@@ -180,3 +180,13 @@ describe('a leitura de taro nao e mais fixa em tres posicoes', () => {
     expect(fonte).toMatch(/posicoes/);
   });
 });
+
+describe('o payload do taro carrega o material da carta', () => {
+  const fonte = readFileSync(join(RAIZ, 'ia-interpretacao', 'index.ts'), 'utf8');
+
+  it('a function le as palavras-chave, as frases-chave e a nota de posicao', () => {
+    for (const campo of ['palavrasChave', 'frasesChave', 'nota']) {
+      expect(fonte).toMatch(new RegExp(`c\\.${campo}`));
+    }
+  });
+});

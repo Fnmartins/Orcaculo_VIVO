@@ -191,4 +191,28 @@ describe('InterpretacaoTarot com numero livre de posicoes', () => {
 
     expect(mockInvoke.mock.calls[0][1].body.cartas[0].invertida).toBe(true);
   });
+
+  it('manda o material da carta, não só o rótulo', async () => {
+    // A IA deixa de inventar o que a carta significa e passa a tecer material humano.
+    // Esquecer de repassar um campo aqui é o defeito que já custou um dia com as áreas
+    // do mapa: o servidor recebe menos do que existe, e nada reclama.
+    mockInvoke.mockResolvedValue({ data: TAROT_COMPLETO, error: null });
+
+    await gerarInterpretacaoTarot([{
+      nome: 'XVI - A Torre',
+      posicao: 'O que atravessa',
+      regra: 'o que ajuda ou atrapalha',
+      chave: 'obstaculo',
+      significado: 'Ruptura.',
+      palavrasChave: ['ruptura', 'revelação'],
+      frasesChave: ['estrutura falsa que cai'],
+      nota: 'A mesma força, travada.',
+    }]);
+
+    const enviada = mockInvoke.mock.calls[0][1].body.cartas[0];
+    expect(enviada.palavrasChave).toEqual(['ruptura', 'revelação']);
+    expect(enviada.frasesChave).toEqual(['estrutura falsa que cai']);
+    expect(enviada.nota).toBe('A mesma força, travada.');
+    expect(enviada.chave).toBe('obstaculo');
+  });
 });

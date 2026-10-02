@@ -1,4 +1,5 @@
 import type { TipoAnalise, AnaliseIA } from '../data/ia-analise';
+import type { PosicaoChave } from '../data/tarot';
 import { obterImagem } from './imagemCache';
 import { supabase } from './supabase';
 import { erroDaFuncao } from './erroFuncao';
@@ -149,8 +150,15 @@ export interface CartaParaLeitura {
   posicao: string;
   /** A pergunta que a posição faz. É dela que sai a leitura, não da carta sozinha. */
   regra?: string;
+  /** Qual das quatro posições-chave esta posição é, quando é alguma. */
+  chave?: PosicaoChave;
   significado: string;
   invertida?: boolean;
+  /** Âncora curta: é o que impede a IA de divagar sobre o que a carta significa. */
+  palavrasChave?: string[];
+  frasesChave?: string[];
+  /** A nota desta carta para esta posição, quando o conteúdo já existir. */
+  nota?: string;
 }
 
 export async function gerarInterpretacaoTarot(
