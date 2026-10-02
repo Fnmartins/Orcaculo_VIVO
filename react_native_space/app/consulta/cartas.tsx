@@ -216,6 +216,7 @@ export default function TelaCartas() {
       carta={tiragem[i]}
       revelada={reveladas[i]}
       compacta={emTabuleiro}
+      deitada={POSICOES[i].deitada}
       aoReceber={() => puxarPara(i)}
       aoVirar={() => virar(i)}
       aoMedir={(medida) => medirVaga(i, medida)}

@@ -1,6 +1,6 @@
 // components/taro/Tabuleiro.tsx
 import React, { useCallback, useState, type ReactNode } from 'react';
-import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Espacamento } from '../../constants/spacing';
 import type { PosicaoDaTiragem } from '../../data/tiragens';
 
@@ -13,10 +13,10 @@ interface Props {
 /**
  * Abaixo disto a mesa não cabe sem cortar as pontas, e a tiragem vai em coluna.
  *
- * Medido na Cruz Celta, que é a tiragem mais larga: quatro colunas de vaga compacta
- * (158) e a da carta deitada (197, a altura da vaga girada), com o vão entre elas, dão
- * 893; mais 32 de margem da tela e uns 15 da barra de rolagem, que a largura da janela
- * conta e o conteúdo não tem. Com 760 a cruz saía cortada dos dois lados.
+ * Medido na Cruz Celta, que é a tiragem mais larga: cinco colunas de vaga compacta (158)
+ * com o vão entre elas (16) dão 854; mais 32 de margem da tela e uns 15 da barra de
+ * rolagem, que a largura da janela conta e o conteúdo não tem, são uns 900. Fica em 950
+ * para sobrar folga. Com 760 a cruz saía cortada dos dois lados.
  */
 export const LARGURA_MINIMA_DO_TABULEIRO = 950;
 
@@ -47,8 +47,8 @@ export function Tabuleiro({ posicoes, vaga }: Props) {
   const ocupante = new Map<string, number>();
   posicoes.forEach((p, i) => ocupante.set(`${p.lugar.coluna},${p.lugar.linha}`, i));
 
-  // A coluna tem a largura da sua célula mais larga. Numa coluna com carta deitada, é a
-  // largura da carta deitada — e as vizinhas de cima e de baixo ficam centradas nela.
+  // A coluna tem a largura da sua célula mais larga, e as outras da coluna ficam
+  // centradas nela.
   const larguraDaColuna = (coluna: number) => Math.max(
     0, ...Array.from({ length: linhas }, (_, linha) => larguras[`${coluna},${linha}`] ?? 0),
   );
@@ -70,11 +70,14 @@ export function Tabuleiro({ posicoes, vaga }: Props) {
                   <View
                     onLayout={({ nativeEvent }) => medirCelula(chave, nativeEvent.layout.width)}
                   >
-                    {posicoes[indice].deitada ? (
-                      <Deitada indice={indice}>{vaga(indice)}</Deitada>
-                    ) : (
-                      <View testID={`vaga-${indice}`}>{vaga(indice)}</View>
-                    )}
+                    {/* A posição deitada só é marcada aqui. Quem gira a carta é a própria
+                        vaga (`deitada` em `VagaDaTiragem`): girar este invólucro viraria de
+                        lado também o nome da posição e a pergunta. A carta que atravessa
+                        fica ao lado da primeira, e não sobre ela: sobrepostas, as duas
+                        vagas ficariam impossíveis de escolher. */}
+                    <View testID={`${posicoes[indice].deitada ? 'deitada' : 'vaga'}-${indice}`}>
+                      {vaga(indice)}
+                    </View>
                   </View>
                 )}
               </View>
@@ -82,49 +85,6 @@ export function Tabuleiro({ posicoes, vaga }: Props) {
           })}
         </View>
       ))}
-    </View>
-  );
-}
-
-interface PropsDaDeitada {
-  indice: number;
-  children: ReactNode;
-}
-
-/**
- * A vaga girada um quarto de volta, com a mesa avisada do espaço que ela passa a ocupar.
- *
- * O giro (`transform`) não mexe no layout: a vaga continua ocupando na grade a caixa de
- * antes do giro, e gira por cima dela. Como a vaga é mais alta do que larga, deitada ela
- * fica mais larga do que a coluna — e invade a coluna vizinha, escondendo o que estiver lá.
- * A caixa de verdade só se conhece depois de medida; com ela, a margem troca largura por
- * altura em volta da vaga, e a coluna passa a ter a largura que a carta deitada tem.
- */
-function Deitada({ indice, children }: PropsDaDeitada) {
-  const [margem, setMargem] = useState({ horizontal: 0, vertical: 0 });
-
-  function medir({ nativeEvent: { layout } }: LayoutChangeEvent) {
-    // A margem não muda a caixa da própria vaga, só o que a cerca: medir de novo não
-    // realimenta. O arredondamento evita remedir por fração de pixel.
-    const horizontal = Math.round((layout.height - layout.width) / 2);
-    const vertical = -horizontal;
-    setMargem((antes) => (
-      antes.horizontal === horizontal && antes.vertical === vertical
-        ? antes
-        : { horizontal, vertical }
-    ));
-  }
-
-  return (
-    <View
-      testID={`deitada-${indice}`}
-      onLayout={medir}
-      style={[
-        estilos.deitada,
-        { marginHorizontal: margem.horizontal, marginVertical: margem.vertical },
-      ]}
-    >
-      {children}
     </View>
   );
 }
@@ -141,7 +101,4 @@ const estilos = StyleSheet.create({
   grade: { gap: Espacamento.sm, alignItems: 'center' },
   linha: { flexDirection: 'row', gap: VAO_ENTRE_COLUNAS, alignItems: 'center' },
   celula: { alignItems: 'center', justifyContent: 'center' },
-  // A carta que atravessa é posta cruzada sobre a primeira na mesa de verdade. Aqui ela
-  // fica ao lado e girada: sobreposta, as duas vagas ficariam impossíveis de escolher.
-  deitada: { transform: [{ rotate: '90deg' }] },
 });

@@ -26,27 +26,15 @@ describe('Tabuleiro', () => {
     expect(screen.getAllByTestId('celula-do-tabuleiro')).toHaveLength(4 * 3);
   });
 
-  it('a posição deitada é girada um quarto de volta', () => {
+  it('a posição deitada é marcada, mas o invólucro dela não gira', () => {
+    // O giro de um quarto de volta mora na vaga (`VagaDaTiragem`, prop `deitada`), e só
+    // na lâmina da carta. Girar aqui, no invólucro, viraria de lado também o nome da
+    // posição e a pergunta — e o tabuleiro não sabe o que é carta para poupar o texto.
     render(<Tabuleiro posicoes={POSICOES} vaga={(i) => <Text>vaga {i}</Text>} />);
     const deitada = screen.getByTestId('deitada-2');
-    const estilo = [deitada.props.style].flat(5).find(
-      (e) => e && Array.isArray((e as { transform?: unknown }).transform),
-    ) as { transform: { rotate: string }[] };
-    expect(estilo.transform[0].rotate).toBe('90deg');
-  });
-
-  it('a coluna da carta deitada ganha a largura que a carta tem deitada', () => {
-    // Girar não mexe no layout: a vaga continua ocupando a caixa de antes do giro. Sem
-    // trocar largura por altura na margem, a carta deitada — mais larga do que a coluna —
-    // passa por cima das colunas vizinhas.
-    render(<Tabuleiro posicoes={POSICOES} vaga={(i) => <Text>vaga {i}</Text>} />);
-    const deitada = screen.getByTestId('deitada-2');
-    fireEvent(deitada, 'layout', {
-      nativeEvent: { layout: { x: 0, y: 0, width: 158, height: 200 } },
-    });
-    const estilo = StyleSheet.flatten(screen.getByTestId('deitada-2').props.style);
-    expect(158 + 2 * estilo.marginHorizontal).toBe(200);
-    expect(200 + 2 * estilo.marginVertical).toBe(158);
+    expect(screen.queryByTestId('vaga-2')).toBeNull();
+    const estilo = StyleSheet.flatten(deitada.props.style);
+    expect(estilo?.transform).toBeUndefined();
   });
 
   it('a coluna tem a largura da célula mais larga, em todas as linhas', () => {

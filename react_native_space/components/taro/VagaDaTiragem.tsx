@@ -25,6 +25,14 @@ interface Props {
   versaoDaMedida?: number;
   /** Cartao menor, para a Cruz Celta caber em forma de cruz na tela larga. */
   compacta?: boolean;
+  /**
+   * Carta posta de lado, como a que atravessa na Cruz Celta.
+   *
+   * Gira só a lâmina, que é onde a carta está. O nome da posição e a pergunta ficam na
+   * horizontal: na mesa de verdade quem se põe cruzada é a carta, não o cartão, e a
+   * posição de lado é a que ninguém consegue ler — justo a que a pessoa mais precisa.
+   */
+  deitada?: boolean;
 }
 
 /** 13rem no protótipo. A carta encaixa dentro pela proporção, como no baralho real. */
@@ -47,7 +55,7 @@ const larguraDaCarta = (altura: number) => Math.round(altura / PROPORCAO);
  */
 export function VagaDaTiragem({
   posicao, carta, revelada = false, aoReceber, aoVirar, aoMedir, versaoDaMedida = 0,
-  compacta = false,
+  compacta = false, deitada = false,
 }: Props) {
   const alturaDaLamina = compacta ? ALTURA_COMPACTA : ALTURA_LAMINA;
   const larguraCarta = larguraDaCarta(alturaDaLamina);
@@ -108,41 +116,50 @@ export function VagaDaTiragem({
       </Text>
 
       <View style={[estilos.lamina, { height: alturaDaLamina }]}>
-        {carta ? (
-          <Animated.View
-            style={{
-              transform: [
-                {
-                  rotateY: giro.interpolate({
-                    inputRange: [0, 0.5, 1], outputRange: ['0deg', '90deg', '0deg'],
-                  }),
-                },
-                { scale: giro.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 0.88, 1] }) },
-              ],
-            }}
-          >
-            {revelada
-              ? (
-                <CartaTarotVisual
-                  cartaId={carta.id}
-                  nome={carta.nomeCompleto}
-                  largura={larguraCarta}
-                />
-              )
-              : <VersoDaCarta largura={larguraCarta} altura={alturaDaLamina} />}
+        {/* Gira-se a caixa da carta, e não a da lâmina inteira: sobre o próprio centro ela
+            fica de lado no meio da lâmina. Deitada, a carta passa a ter a altura da lâmina
+            de largura — 124 na compacta, contra os 142 que o cartão tem por dentro — e não
+            encosta em nada. */}
+        <View
+          testID={deitada ? 'lamina-deitada' : undefined}
+          style={deitada ? estilos.deitada : undefined}
+        >
+          {carta ? (
             <Animated.View
-              pointerEvents="none"
-              style={[
-                StyleSheet.absoluteFillObject, estilos.clarao,
-                { opacity: clarao, borderRadius: larguraCarta * 0.1 },
-              ]}
+              style={{
+                transform: [
+                  {
+                    rotateY: giro.interpolate({
+                      inputRange: [0, 0.5, 1], outputRange: ['0deg', '90deg', '0deg'],
+                    }),
+                  },
+                  { scale: giro.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 0.88, 1] }) },
+                ],
+              }}
+            >
+              {revelada
+                ? (
+                  <CartaTarotVisual
+                    cartaId={carta.id}
+                    nome={carta.nomeCompleto}
+                    largura={larguraCarta}
+                  />
+                )
+                : <VersoDaCarta largura={larguraCarta} altura={alturaDaLamina} />}
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  StyleSheet.absoluteFillObject, estilos.clarao,
+                  { opacity: clarao, borderRadius: larguraCarta * 0.1 },
+                ]}
+              />
+            </Animated.View>
+          ) : (
+            <View
+              style={[estilos.vazia, { width: larguraCarta, height: alturaDaLamina }]}
             />
-          </Animated.View>
-        ) : (
-          <View
-            style={[estilos.vazia, { width: larguraCarta, height: alturaDaLamina }]}
-          />
-        )}
+          )}
+        </View>
       </View>
 
       {revelada && carta ? (
@@ -176,6 +193,7 @@ const estilos = StyleSheet.create({
   posicao: { fontFamily: Fontes.titulo, fontSize: 17, color: Cores.acento },
   posicaoCompacta: { fontSize: 13 },
   lamina: { alignItems: 'center', justifyContent: 'center' },
+  deitada: { transform: [{ rotate: '90deg' }] },
   vazia: {
     borderRadius: RaioBorda.md,
     borderWidth: 1, borderColor: Cores.cardBorda, borderStyle: 'dashed',
