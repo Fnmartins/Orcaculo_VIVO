@@ -1,7 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import {
-  Animated, Pressable, StyleSheet, Text, View, useWindowDimensions,
-} from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
@@ -12,7 +10,7 @@ import type { CartaTarot } from '../../data/tarot';
 interface Props {
   posicao: { nome: string; regra: string };
   carta: CartaTarot | null;
-  /** No rito a carta pousa de costas: a cena só aparece quando a pessoa vira. */
+  /** No rito a carta pousa de costas: a cena só aparece quando ela vira. */
   revelada?: boolean;
   aoReceber: () => void;
   aoVirar?: () => void;
@@ -20,38 +18,25 @@ interface Props {
   aoMedir?: (medida: { topo: number; base: number }) => void;
 }
 
-const LARGURA_MAXIMA = 104;
+/** 13rem no protótipo. A carta encaixa dentro pela proporção, como no baralho real. */
+const ALTURA_LAMINA = 208;
 const PROPORCAO = 1.58;
-/** Folga da coluna mais os vãos entre três colunas. */
-const FOLGA_DA_LINHA = 56;
+const LARGURA_CARTA = Math.round(ALTURA_LAMINA / PROPORCAO);
 
 /**
- * Três cabem numa linha em qualquer celular.
+ * Uma posição da tiragem, como cartão.
  *
- * Largura fixa estourava a tela de 320; `flex: 1` resolvia isso numa linha só, mas a
- * Cruz Celta precisa de uma linha que envolve, e aí `flex` faz cada item tentar ocupar
- * a linha inteira. Calculada, a largura é previsível nos dois casos.
- */
-export function larguraDaVaga(larguraDaTela: number): number {
-  return Math.max(76, Math.min(LARGURA_MAXIMA, (larguraDaTela - FOLGA_DA_LINHA) / 3));
-}
-
-/**
- * Uma das três posições da tiragem.
+ * É o `.vaga` do protótipo: um painel com o nome da posição em dourado, a lâmina que
+ * vira, e embaixo o nome da carta com o significado. Vazia, mostra a pergunta da
+ * posição — e é só por isso que a tiragem se explica sozinha, porque as perguntas são
+ * lidas antes de qualquer resposta.
  *
- * Vazia, ela mostra a pergunta que faz — e é só por isso que a tiragem se explica
- * sozinha. Guardar a regra até a carta cair gasta o único momento em que a pessoa
- * ainda está disposta a ler.
- *
- * Com carta, ela tem dois lados. A carta pousa de costas e vira ao toque, com a mola e
- * o clarão dourado que a tela antiga usava: o clarão não é enfeite, é o que cobre a
- * troca das duas faces no meio do giro.
+ * O clarão dourado no meio do giro não é enfeite: é o que cobre a troca das duas faces,
+ * já que no React Native não há `backface-visibility` para fazer o giro de verdade.
  */
 export function VagaDaTiragem({
   posicao, carta, revelada = false, aoReceber, aoVirar, aoMedir,
 }: Props) {
-  const { width } = useWindowDimensions();
-  const largura = larguraDaVaga(width);
   const caixa = useRef<View>(null);
   const giro = useRef(new Animated.Value(0)).current;
   const clarao = useRef(new Animated.Value(0)).current;
@@ -90,58 +75,79 @@ export function VagaDaTiragem({
       accessibilityLabel={rotulo}
       accessibilityHint={carta ? undefined : 'Põe aqui a carta de cima do monte'}
       onPress={tocar}
-      style={[estilos.vaga, { width: largura }]}
+      style={estilos.vaga}
       ref={caixa}
-      // `measureInWindow` e nao o layout do `onLayout`: o layout vem relativo ao pai, e o
-      // dedo chega em coordenada de tela. Misturar os dois acerta por acaso e so no topo.
+      // `measureInWindow` e não o layout do `onLayout`: o layout vem relativo ao pai, e
+      // o dedo chega em coordenada de tela. Misturar os dois acerta por acaso.
       onLayout={() => {
         caixa.current?.measureInWindow((_x, y, _largura, altura) => {
           aoMedir?.({ topo: y, base: y + altura });
         });
       }}
     >
-      <Text style={estilos.nome}>{posicao.nome}</Text>
-      {carta ? (
-        <Animated.View
-          style={{
-            transform: [
-              {
-                rotateY: giro.interpolate({
-                  inputRange: [0, 0.5, 1], outputRange: ['0deg', '90deg', '0deg'],
-                }),
-              },
-              { scale: giro.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 0.88, 1] }) },
-            ],
-          }}
-        >
-          {revelada
-            ? <CartaTarotVisual cartaId={carta.id} nome={carta.nomeCompleto} largura={largura} />
-            : <VersoDaCarta largura={largura} altura={largura * PROPORCAO} />}
+      <Text style={estilos.posicao}>{posicao.nome}</Text>
+
+      <View style={estilos.lamina}>
+        {carta ? (
           <Animated.View
-            pointerEvents="none"
-            style={[
-              StyleSheet.absoluteFillObject, estilos.clarao,
-              { opacity: clarao, borderRadius: largura * 0.1 },
-            ]}
-          />
-        </Animated.View>
+            style={{
+              transform: [
+                {
+                  rotateY: giro.interpolate({
+                    inputRange: [0, 0.5, 1], outputRange: ['0deg', '90deg', '0deg'],
+                  }),
+                },
+                { scale: giro.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 0.88, 1] }) },
+              ],
+            }}
+          >
+            {revelada
+              ? (
+                <CartaTarotVisual
+                  cartaId={carta.id}
+                  nome={carta.nomeCompleto}
+                  largura={LARGURA_CARTA}
+                />
+              )
+              : <VersoDaCarta largura={LARGURA_CARTA} altura={ALTURA_LAMINA} />}
+            <Animated.View
+              pointerEvents="none"
+              style={[StyleSheet.absoluteFillObject, estilos.clarao, { opacity: clarao }]}
+            />
+          </Animated.View>
+        ) : (
+          <View style={estilos.vazia} />
+        )}
+      </View>
+
+      {revelada && carta ? (
+        <View style={estilos.corpo}>
+          <Text style={estilos.nome}>{carta.nomeCompleto}</Text>
+          <Text style={estilos.texto}>{carta.significado}</Text>
+        </View>
       ) : (
-        <View
-          style={[estilos.vazia, { width: largura, height: largura * PROPORCAO }]}
-        />
+        <Text style={estilos.texto}>{posicao.regra}</Text>
       )}
-      <Text style={estilos.regra}>{revelada && carta ? carta.nome : posicao.regra}</Text>
     </Pressable>
   );
 }
 
 const estilos = StyleSheet.create({
-  vaga: { alignItems: 'center', gap: Espacamento.sm },
-  nome: { fontFamily: Fontes.titulo, fontSize: 15, color: Cores.acento },
+  vaga: {
+    width: '100%', gap: Espacamento.sm, padding: Espacamento.md,
+    backgroundColor: Cores.cardFundo, borderWidth: 1, borderColor: Cores.cardBorda,
+    borderRadius: 14,
+  },
+  posicao: { fontFamily: Fontes.titulo, fontSize: 17, color: Cores.acento },
+  lamina: { height: ALTURA_LAMINA, alignItems: 'center', justifyContent: 'center' },
   vazia: {
-    borderRadius: RaioBorda.md,
+    width: LARGURA_CARTA, height: ALTURA_LAMINA, borderRadius: RaioBorda.md,
     borderWidth: 1, borderColor: Cores.cardBorda, borderStyle: 'dashed',
   },
-  clarao: { backgroundColor: 'rgba(212,175,55,0.9)' },
-  regra: { fontFamily: Fontes.corpo, fontSize: 12, color: Cores.textoSecundario, textAlign: 'center' },
+  clarao: {
+    backgroundColor: 'rgba(212,175,55,0.9)', borderRadius: LARGURA_CARTA * 0.1,
+  },
+  corpo: { gap: 4 },
+  nome: { fontFamily: Fontes.titulo, fontSize: 18, color: Cores.textoClaro, lineHeight: 23 },
+  texto: { fontFamily: Fontes.corpo, fontSize: 14, lineHeight: 22, color: Cores.textoSecundario },
 });

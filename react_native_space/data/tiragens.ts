@@ -39,17 +39,20 @@ const CRUZ_CELTA: Tiragem = {
   id: 'cruz-celta',
   nome: 'Cruz Celta',
   quando: 'Para uma situação enroscada, quando a pergunta direta não dá conta.',
+  // Copiadas do protótipo aprovado (`Camadas do Tarô`), palavra por palavra. Não são
+  // para reescrever: foram lidas e aceitas lá, e trocá-las por redação nova aqui é
+  // exatamente o retrabalho que o protótipo existia para evitar.
   posicoes: [
-    { nome: 'A situação', regra: 'o assunto como ele se apresenta, no centro de tudo' },
-    { nome: 'O que atravessa', regra: 'o que cruza o caminho — ajudando ou atrapalhando' },
-    { nome: 'O que você busca', regra: 'o melhor que pode vir disto, ou o que você espera dele' },
-    { nome: 'A base', regra: 'o que já está dado e sustenta a situação por baixo' },
-    { nome: 'O que ficou para trás', regra: 'o que acabou de passar e ainda deixa marca' },
-    { nome: 'O que se aproxima', regra: 'o que vem a seguir, no tempo curto' },
-    { nome: 'Você nisto', regra: 'como você se vê e se coloca diante do assunto' },
-    { nome: 'O entorno', regra: 'o que as pessoas e o ambiente ao redor trazem para dentro' },
-    { nome: 'Esperança e medo', regra: 'o que você quer e o que você teme — que costumam ser a mesma coisa' },
-    { nome: 'Para onde tende', regra: 'a direção que isto aponta se nada mudar' },
+    { nome: 'A situação', regra: 'o assunto como ele está' },
+    { nome: 'O que atravessa', regra: 'o que ajuda ou atrapalha, de lado' },
+    { nome: 'A raiz', regra: 'o que sustenta isso por baixo, muitas vezes antigo' },
+    { nome: 'O que passou', regra: 'o que já saiu de cena e ainda ecoa' },
+    { nome: 'O que se busca', regra: 'o que você quer que aconteça, dito ou não' },
+    { nome: 'O que vem', regra: 'o próximo movimento, não o desfecho' },
+    { nome: 'Você nisso', regra: 'como você está se portando dentro do assunto' },
+    { nome: 'Os outros', regra: 'o ambiente e as pessoas ao redor' },
+    { nome: 'Esperança e medo', regra: 'a mesma coisa vista pelos dois lados' },
+    { nome: 'Para onde caminha', regra: 'o desfecho provável se o caminho seguir assim' },
   ],
 };
 

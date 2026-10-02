@@ -1,7 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { ARCANOS_MAIORES } from '../../../data/tarot';
-import { VagaDaTiragem, larguraDaVaga } from '../VagaDaTiragem';
+import { VagaDaTiragem } from '../VagaDaTiragem';
 
 const PASSADO = { nome: 'Passado', regra: 'o que já se consumou e ainda pesa' };
 const TORRE = ARCANOS_MAIORES[16];
@@ -48,28 +48,17 @@ describe('VagaDaTiragem', () => {
     expect(aoVirar).not.toHaveBeenCalled();
   });
 
-  it('revelada, troca a pergunta pelo nome da carta', () => {
+  it('revelada, a pergunta da posição dá lugar à carta', () => {
+    // Enquanto vazia a vaga faz a pergunta; com a carta virada, quem fala é a carta.
     render(<VagaDaTiragem posicao={PASSADO} carta={TORRE} revelada aoReceber={jest.fn()} />);
-    expect(screen.getByText(TORRE.nome)).toBeTruthy();
     expect(screen.queryByText(PASSADO.regra)).toBeNull();
   });
 });
 
-describe('larguraDaVaga', () => {
-  it('tres vagas cabem numa linha, do celular estreito ao navegador', () => {
-    // Largura fixa estourava a tela de 320. `flex: 1` resolvia numa linha so, mas a
-    // Cruz Celta precisa de uma linha que envolve, e ai `flex` faz cada item tentar
-    // ocupar a linha inteira — foi por isso que a conta veio para ca.
-    for (const tela of [320, 360, 375, 414, 768, 1400]) {
-      const largura = larguraDaVaga(tela);
-      const linha = largura * 3 + 8 * 2 + 32; // tres vagas, dois vaos e o respiro lateral
-      expect(linha).toBeLessThanOrEqual(Math.max(tela, 620));
-      expect(largura).toBeGreaterThanOrEqual(76);
-    }
-  });
-
-  it('nao cresce alem da carta desenhada', () => {
-    expect(larguraDaVaga(1400)).toBe(104);
-  });
+it('revelada, mostra o nome completo e o significado da carta', () => {
+  // No prototipo a vaga mostra `c.n` e `c.s`. Eu tinha posto so o nome curto, e com
+  // isso a tiragem virava quatro palavras soltas por carta.
+  render(<VagaDaTiragem posicao={PASSADO} carta={TORRE} revelada aoReceber={jest.fn()} />);
+  expect(screen.getByText(TORRE.nomeCompleto)).toBeTruthy();
+  expect(screen.getByText(TORRE.significado)).toBeTruthy();
 });
-

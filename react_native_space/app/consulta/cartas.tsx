@@ -15,6 +15,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Button } from '../../components/Button';
 import { LequeDeCorte } from '../../components/taro/LequeDeCorte';
+import { MontesCortados } from '../../components/taro/MontesCortados';
 import { MonteParaDistribuir, type MedidaDaVaga } from '../../components/taro/MonteParaDistribuir';
 import { Recolhimento } from '../../components/taro/Recolhimento';
 import { VagaDaTiragem } from '../../components/taro/VagaDaTiragem';
@@ -28,66 +29,26 @@ import { cortar, embaralhar, recolher } from '../../data/corteDoBaralho';
 import { TIRAGENS, TIRAGEM_PADRAO, type Tiragem } from '../../data/tiragens';
 
 /**
- * O rito do tarô: a pessoa corta, junta, puxa e vira.
+ * O rito do tarô, portado do protótipo `Camadas do Tarô`.
  *
- * Até 01/10 esta tela sorteava três cartas sozinha e pedia um toque para revelar cada
- * uma. O sorteio continuava sendo do app; o gesto era enfeite. Agora a ordem sai dos
- * cortes que a pessoa dá — `cortar` e `recolher`, em `data/corteDoBaralho.ts`, são as
- * únicas donas dessa conta, e esta tela só as chama.
+ * Esta tela é a tradução daquele protótipo para React Native — mesma ordem, mesmos
+ * painéis, mesmos textos de estado. Mudou só o necessário para rodar aqui: cores e
+ * tipografia saem de `constants/`, o giro da carta usa um clarão porque o RN não tem
+ * `backface-visibility`, e o realce do monte responde ao toque em vez do ponteiro, já
+ * que no celular não existe passar o dedo sem encostar.
  *
- * O que sobreviveu da tela antiga, de propósito: o verso ornamentado (agora em
- * `components/taro/VersoDaCarta.tsx`), o brilho sob o monte, as partículas e a virada com
- * mola e clarão. O que morreu: a frente desenhada com ícone do Ionicons, que era
- * justamente o que fazia a leitura virar recitação de significado.
+ * O que ficou de fora de propósito: as chaves "Baralho de 78", "Cartas invertidas" e
+ * "Posição como regra", e o painel de custo. Aquilo é instrumento do protótipo — existe
+ * para medir quanto texto cada camada obriga a escrever —, não função do produto.
  */
 
-/** Dez cortes foi o teto escolhido no protótipo: além disso é teimosia, não rito. */
+/** Dez cortes é o teto do protótipo: além disso é brinquedo, não rito. */
 const MAX_CORTES = 10;
-const ROTULO_INTENCAO = 'Se quiser, diga o que te trouxe aqui';
+const ROTULO_INTENCAO = 'O que te trouxe aqui?';
+/** O tempo entre a carta pousar e virar. No protótipo são 320 ms. */
+const ESPERA_DA_VIRADA = 320;
 
-// Glow animado abaixo do monte: é ele que diz "é daqui que se pega".
-function Glow({ cor, anim }: { cor: string; anim: Animated.Value }) {
-  return (
-    <Animated.View style={[estilos.glow, { opacity: anim }]} pointerEvents="none">
-      <LinearGradient
-        colors={[cor + '60', cor + '00'] as const}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={estilos.glowGradiente}
-      />
-    </Animated.View>
-  );
-}
-
-// Partícula flutuante. `ligado` existe porque o laço é infinito: sem ele quem pediu
-// "reduzir movimento" ganhava a animação, e o Jest não conseguia encerrar o processo.
-function Particula({ x, delay, ligado }: { x: number; delay: number; ligado: boolean }) {
-  const yAnim = useRef(new Animated.Value(0)).current;
-  const opAnim = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    if (!ligado) return;
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.delay(delay),
-        Animated.parallel([
-          Animated.timing(yAnim, { toValue: -40, duration: 3000, useNativeDriver: true }),
-          Animated.sequence([
-            Animated.timing(opAnim, { toValue: 0.7, duration: 800, useNativeDriver: true }),
-            Animated.timing(opAnim, { toValue: 0, duration: 2200, useNativeDriver: true }),
-          ]),
-        ]),
-        Animated.timing(yAnim, { toValue: 0, duration: 0, useNativeDriver: true }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [ligado, delay, yAnim, opAnim]);
-  return (
-    <Animated.View
-      style={[estilos.particula, { left: x, opacity: opAnim, transform: [{ translateY: yAnim }] }]}
-    />
-  );
-}
+type Etapa = 'cortar' | 'distribuindo' | 'lido';
 
 export default function TelaCartas() {
   const [intencao, setIntencao] = useState('');
@@ -103,56 +64,43 @@ export default function TelaCartas() {
   );
   const [recolhendo, setRecolhendo] = useState(false);
   const [medidas, setMedidas] = useState<MedidaDaVaga[]>([]);
-  // `null` enquanto não se sabe: começar em `true` deixaria os laços partirem antes da
-  // resposta do sistema, e aí não há como desligá-los sem piscar.
+  // `null` enquanto não se sabe: começar em `true` deixaria a animação partir antes da
+  // resposta do sistema a quem pediu "reduzir movimento".
   const [movimento, setMovimento] = useState<boolean | null>(null);
 
   const fade = useRef(new Animated.Value(0)).current;
-  const desliza = useRef(new Animated.Value(30)).current;
-  const pulso = useRef(new Animated.Value(0.6)).current;
+  const relogios = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   useEffect(() => {
     let vivo = true;
     AccessibilityInfo.isReduceMotionEnabled()
       .then((reduz) => { if (vivo) setMovimento(!reduz); })
       .catch(() => { if (vivo) setMovimento(false); });
-    return () => { vivo = false; };
-  }, []);
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fade, { toValue: 1, duration: 800, useNativeDriver: true }),
-      Animated.timing(desliza, { toValue: 0, duration: 800, useNativeDriver: true }),
-    ]).start();
-  }, [fade, desliza]);
-
-  useEffect(() => {
-    if (movimento !== true) return;
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulso, { toValue: 1, duration: 1500, useNativeDriver: true }),
-        Animated.timing(pulso, { toValue: 0.4, duration: 1500, useNativeDriver: true }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [movimento, pulso]);
+    Animated.timing(fade, { toValue: 1, duration: 600, useNativeDriver: true }).start();
+    const marcados = relogios.current;
+    return () => {
+      vivo = false;
+      for (const r of marcados) clearTimeout(r);
+    };
+  }, [fade]);
 
   const POSICOES = modelo.posicoes;
   const cortes = montes.length;
-  const podeCortar = leque.length >= 2 && cortes < MAX_CORTES;
   const distribuindo = baralho !== null;
   const tudoPuxado = tiragem.every((c) => c !== null);
   const prontas = tudoPuxado && reveladas.every(Boolean);
-  // Trocar de tiragem só antes do primeiro corte. Depois, os cortes já foram dados
-  // sobre uma tiragem — mudá-la ali embaixo transformaria o rito em outra coisa.
+  const faltam = tiragem.filter((c) => c === null).length;
+  const semLequeParaCortar = cortes >= MAX_CORTES || leque.length <= 1;
+  const podeCortar = !distribuindo && !recolhendo && !semLequeParaCortar;
   const podeTrocarDeTiragem = cortes === 0 && !distribuindo && !recolhendo;
+
+  const etapa: Etapa = prontas ? 'lido' : distribuindo ? 'distribuindo' : 'cortar';
 
   const escolherTiragem = useCallback((escolhida: Tiragem) => {
     Hapticos.selecao();
     setModelo(escolhida);
-    // As vagas e as viradas são redimensionadas junto: guardar três `null` numa Cruz
-    // Celta faria `tudoPuxado` virar verdadeiro com sete posições ainda vazias.
+    // Vagas e viradas são redimensionadas junto: guardar três `null` numa Cruz Celta
+    // faria o rito se dar por completo com sete posições ainda vazias.
     setTiragem(escolhida.posicoes.map(() => null));
     setReveladas(escolhida.posicoes.map(() => false));
     setMedidas([]);
@@ -165,13 +113,13 @@ export default function TelaCartas() {
     setLeque(resto);
   }, [leque]);
 
-  const juntar = useCallback(() => {
+  const irParaLeitura = useCallback(() => {
     Hapticos.impactoMedio();
     setRecolhendo(true);
   }, []);
 
-  // A ordem ja foi decidida por `recolher` no instante do corte; o riffle so a mostra.
-  // Por isso ele nao recebe nem devolve cartas, e o baralho e montado aqui no fim dele.
+  // A ordem já foi decidida por `recolher` no instante do corte; o riffle só a mostra.
+  // Por isso ele não recebe nem devolve cartas, e o baralho é montado aqui no fim dele.
   const terminarRecolhimento = useCallback(() => {
     setBaralho(recolher(montes, leque));
     setRecolhendo(false);
@@ -186,23 +134,24 @@ export default function TelaCartas() {
     nova[vaga] = topo;
     setTiragem(nova);
     setBaralho(resto);
+    // Pousa de costas e vira sozinha, como no protótipo. A espera é o ponto: sem ela a
+    // carta aparece pronta e não acontece nada.
+    const relogio = setTimeout(() => {
+      setReveladas((anteriores) => {
+        const novas = [...anteriores];
+        novas[vaga] = true;
+        return novas;
+      });
+    }, ESPERA_DA_VIRADA);
+    relogios.current.push(relogio);
   }, [tiragem, baralho]);
 
-  // O toque cai na primeira vaga vazia; o arraste cai onde a pessoa soltou.
   const puxar = useCallback(() => {
     puxarPara(tiragem.findIndex((c) => c === null));
   }, [puxarPara, tiragem]);
 
-  const medirVaga = useCallback((indice: number, medida: { topo: number; base: number }) => {
-    setMedidas((anteriores) => {
-      const sem = anteriores.filter((m) => m.indice !== indice);
-      return [...sem, { indice, ...medida }];
-    });
-  }, []);
-
   const virar = useCallback((indice: number) => {
     if (!tiragem[indice] || reveladas[indice]) return;
-    Hapticos.impactoMedio();
     setReveladas((anteriores) => {
       const novas = [...anteriores];
       novas[indice] = true;
@@ -210,11 +159,17 @@ export default function TelaCartas() {
     });
   }, [tiragem, reveladas]);
 
-  // A intencao fica: a pergunta que trouxe a pessoa continua a mesma, e faze-la digitar
-  // de novo seria castigo por querer outra tiragem. O resto volta ao zero, com baralho
-  // novo — repetir o mesmo embaralhamento daria a mesma leitura e tiraria o sentido.
-  const recomeçar = useCallback(() => {
+  const medirVaga = useCallback((indice: number, medida: { topo: number; base: number }) => {
+    setMedidas((anteriores) => [
+      ...anteriores.filter((m) => m.indice !== indice),
+      { indice, ...medida },
+    ]);
+  }, []);
+
+  const recomecar = useCallback(() => {
     Hapticos.impactoMedio();
+    for (const r of relogios.current) clearTimeout(r);
+    relogios.current = [];
     setLeque(embaralhar(ARCANOS_MAIORES));
     setMontes([]);
     setBaralho(null);
@@ -237,35 +192,45 @@ export default function TelaCartas() {
         posicoes: JSON.stringify(POSICOES),
       },
     });
-  }, [tiragem, intencao]);
+  }, [tiragem, intencao, POSICOES]);
 
-  let subtitulo: string;
-  if (recolhendo) {
-    subtitulo = 'Recolhendo o baralho';
-  } else if (!distribuindo) {
-    subtitulo = cortes === 0
-      ? 'Corte o baralho'
-      : `${cortes} ${cortes === 1 ? 'corte' : 'cortes'} — corte de novo ou junte`;
-  } else if (!tudoPuxado) {
-    subtitulo = 'Pegue do monte e ponha nas posições';
-  } else if (!prontas) {
-    subtitulo = 'Toque nas cartas para virar';
+  // Os textos abaixo são do protótipo, palavra por palavra. São eles que contam o que
+  // está acontecendo — sem eles a tela é um monte de cartas sem narração.
+  let passo: string;
+  let contador: string;
+  if (etapa === 'cortar') {
+    if (cortes === 0) {
+      passo = 'Toque numa carta do leque para tirar um monte.';
+      contador = `O baralho tem ${leque.length} cartas, embaralhadas. `
+        + 'Tudo da ponta até onde você tocar sai junto.';
+    } else if (semLequeParaCortar) {
+      passo = cortes >= MAX_CORTES
+        ? 'Dez montes. O baralho já está como tem de estar.'
+        : 'Não sobrou leque para cortar.';
+      contador = 'Siga para a leitura.';
+    } else {
+      passo = 'Cortar de novo, ou seguir para a leitura?';
+      contador = `${cortes} ${cortes === 1 ? 'monte de lado, ' : 'montes de lado, '}`
+        + `${leque.length} cartas ainda no leque.`;
+    }
+  } else if (etapa === 'distribuindo') {
+    passo = 'Montes juntos. Agora as cartas são suas para distribuir.';
+    contador = `${cortes} ${cortes === 1 ? 'corte seu decidiu' : 'cortes seus decidiram'} `
+      + 'a ordem do monte.';
   } else {
-    subtitulo = 'Todas reveladas';
+    passo = 'A leitura está posta.';
+    contador = 'Toque em "Recomeçar o rito" para cortar outra vez.';
   }
+
+  const passoDaDistribuicao = faltam === 0
+    ? 'Todas as posições preenchidas. A leitura é esta.'
+    : 'Arraste a carta de cima do monte para uma posição — ou toque nela, que ela vai '
+      + `para a próxima vaga. Faltam ${faltam} ${faltam === 1 ? 'carta.' : 'cartas.'}`;
 
   return (
     <LinearGradient colors={['#F7F3EA', '#F1EEE5', '#F7F3EA']} style={estilos.fundo}>
       <SafeAreaView style={estilos.safeArea}>
-        <View style={estilos.particulasContainer} pointerEvents="none">
-          {[30, 80, 140, 200, 260, 310].map((x, i) => (
-            <Particula key={i} x={x} delay={i * 600} ligado={movimento === true} />
-          ))}
-        </View>
-
-        <Animated.View
-          style={[estilos.header, { opacity: fade, transform: [{ translateY: desliza }] }]}
-        >
+        <View style={estilos.header}>
           {/* Saída da leitura: sem ela, quem desistia no meio ficava preso na tela. */}
           <Pressable
             onPress={() => voltarOuIr()}
@@ -276,50 +241,37 @@ export default function TelaCartas() {
           >
             <Ionicons name="arrow-back" size={22} color={Cores.textoClaro} />
           </Pressable>
-          <View style={estilos.headerDivisor} />
           <Text style={estilos.titulo}>Suas Cartas</Text>
-          <View style={estilos.headerDivisor} />
           {/* Mesma largura do botão, para o título continuar centralizado. */}
           <View style={estilos.espacoVoltar} />
-        </Animated.View>
-
-        <Animated.View style={[estilos.subtituloContainer, { opacity: fade }]}>
-          <Text style={estilos.subtitulo}>{'✦ ' + subtitulo + ' ✦'}</Text>
-        </Animated.View>
+        </View>
 
         <ScrollView
           style={estilos.rolagem}
           contentContainerStyle={estilos.rolagemConteudo}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Coluna com largura máxima: o app também é servido no navegador, e sem ela o
-              campo de intenção atravessava 1800 pixels de ponta a ponta. */}
-          <View style={estilos.coluna}>
-          {recolhendo ? (
-            <Recolhimento ligado={movimento === true} aoTerminar={terminarRecolhimento} />
-          ) : !distribuindo ? (
-            <>
-              {/* O campo vive só nesta etapa: é a preparação, antes de tocar no baralho. */}
-              <View style={estilos.campoBloco}>
-                <Text style={estilos.campoRotulo}>{ROTULO_INTENCAO}</Text>
+          <Animated.View style={[estilos.coluna, { opacity: fade }]}>
+            {/* ───────── Antes de cortar ───────── */}
+            {!distribuindo && !recolhendo && (
+              <View style={estilos.painel}>
+                <Text style={estilos.rotulo}>Antes de cortar</Text>
+                <Text style={estilos.passo}>{ROTULO_INTENCAO}</Text>
+                <Text style={estilos.nota}>
+                  Escrever é opcional. Quem escreve recebe uma leitura sobre aquilo; quem
+                  não escreve recebe uma leitura que não finge saber o que você pensou.
+                </Text>
                 <TextInput
                   accessibilityLabel={ROTULO_INTENCAO}
                   value={intencao}
                   onChangeText={setIntencao}
-                  placeholder="Uma pergunta, uma situação, ou nada"
+                  placeholder="Ex.: estou decidindo se mudo de trabalho"
                   placeholderTextColor={Cores.textoSecundario}
-                  multiline
-                  maxLength={160}
+                  maxLength={140}
                   style={estilos.campo}
                 />
-              </View>
-
-              {/* O passo 2 do rito na spec. Some depois do primeiro corte: os cortes já
-                  foram dados sobre uma tiragem, e trocá-la ali faria outra coisa. */}
-              {podeTrocarDeTiragem && (
-                <View style={estilos.campoBloco}>
-                  <Text style={estilos.campoRotulo}>Qual tiragem</Text>
-                  <View style={estilos.tiragens}>
+                {podeTrocarDeTiragem && (
+                  <View style={estilos.chaves}>
                     {TIRAGENS.map((opcao) => {
                       const escolhida = opcao.id === modelo.id;
                       return (
@@ -329,46 +281,88 @@ export default function TelaCartas() {
                           accessibilityState={{ selected: escolhida }}
                           accessibilityLabel={`${opcao.nome}, ${opcao.posicoes.length} cartas`}
                           onPress={() => escolherTiragem(opcao)}
-                          style={[estilos.tiragem, escolhida && estilos.tiragemEscolhida]}
+                          style={[estilos.chave, escolhida && estilos.chaveLigada]}
                         >
-                          <Text
-                            style={[estilos.tiragemNome, escolhida && estilos.tiragemNomeEscolhida]}
-                          >
-                            {opcao.nome}
-                          </Text>
-                          <Text style={estilos.tiragemCartas}>
-                            {opcao.posicoes.length} cartas
-                          </Text>
+                          <View style={[estilos.bolinha, escolhida && estilos.bolinhaLigada]} />
+                          <Text style={estilos.chaveTexto}>{opcao.nome}</Text>
                         </Pressable>
                       );
                     })}
                   </View>
-                  <Text style={estilos.tiragemQuando}>{modelo.quando}</Text>
-                </View>
+                )}
+              </View>
+            )}
+
+            {/* ───────── O baralho ───────── */}
+            <View style={estilos.painel}>
+              <Text style={estilos.rotulo}>O baralho</Text>
+              <Text style={estilos.passo}>{passo}</Text>
+              <Text style={estilos.contador}>{contador}</Text>
+
+              {recolhendo ? (
+                <Recolhimento ligado={movimento === true} aoTerminar={terminarRecolhimento} />
+              ) : !distribuindo ? (
+                <LequeDeCorte
+                  quantidade={leque.length}
+                  aoCortar={aoCortar}
+                  desligado={!podeCortar}
+                />
+              ) : null}
+
+              {!distribuindo && !recolhendo && (
+                <MontesCortados tamanhos={montes.map((m) => m.length)} />
               )}
 
-              <LequeDeCorte
-                quantidade={leque.length}
-                aoCortar={aoCortar}
-                desligado={!podeCortar}
-              />
-              {cortes >= MAX_CORTES ? (
-                <Text style={estilos.aviso}>
-                  Dez cortes é o bastante. Junte o baralho para seguir.
+              <View style={estilos.botoes}>
+                {etapa === 'cortar' && cortes > 0 && (
+                  <Button
+                    variante="primary"
+                    label="Ir para a leitura"
+                    icone="arrow-forward"
+                    posicaoIcone="right"
+                    onPress={irParaLeitura}
+                  />
+                )}
+                <Button
+                  variante="ghost"
+                  label="Recomeçar o rito"
+                  icone="refresh-outline"
+                  onPress={recomecar}
+                />
+              </View>
+
+              <Text style={estilos.nota}>
+                O corte é real: onde você toca, o baralho se parte ali e o monte de baixo
+                sobe para cima. A ordem das cartas sai da sua mão, não de um gerador
+                escondido.
+              </Text>
+            </View>
+
+            {/* ───────── A tiragem ───────── */}
+            {distribuindo && (
+              <>
+                <Text style={estilos.sobre}>
+                  {intencao.trim()
+                    ? `Leitura sobre: ${intencao.trim()}`
+                    : 'Você não disse o que trouxe — então a leitura fala das cartas e das '
+                      + 'posições, e deixa a aplicação com você. Nenhuma linha vai fingir '
+                      + 'saber o que você pensou.'}
                 </Text>
-              ) : (
-                /* A frase do protótipo. Ela não é enfeite: é o que diferencia este
-                   baralho de um sorteio, e quem não lê isso não sabe o que ganhou. */
-                <Text style={estilos.aviso}>
-                  O corte é real: onde você toca, o baralho se parte ali e o monte de
-                  baixo sobe para cima. A ordem das cartas sai da sua mão, não de um
-                  gerador escondido.
-                </Text>
-              )}
-            </>
-          ) : (
-            <View style={estilos.mesa}>
-              <View style={estilos.vagas}>
+
+                {!tudoPuxado && (
+                  <View style={estilos.monteCaixa}>
+                    <MonteParaDistribuir
+                      restantes={baralho.length}
+                      aoPuxar={puxar}
+                      aoSoltarEm={puxarPara}
+                      vagas={medidas}
+                    />
+                    <Text style={[estilos.nota, estilos.notaDoMonte]}>
+                      {passoDaDistribuicao}
+                    </Text>
+                  </View>
+                )}
+
                 {POSICOES.map((posicao, i) => (
                   <VagaDaTiragem
                     key={posicao.nome}
@@ -380,37 +374,13 @@ export default function TelaCartas() {
                     aoMedir={(medida) => medirVaga(i, medida)}
                   />
                 ))}
-              </View>
-
-              {!tudoPuxado && (
-                <View style={estilos.monteBloco}>
-                  <Glow cor={Cores.acento} anim={pulso} />
-                  <MonteParaDistribuir
-                    restantes={baralho.length}
-                    aoPuxar={puxar}
-                    aoSoltarEm={puxarPara}
-                    vagas={medidas}
-                  />
-                </View>
-              )}
-            </View>
-          )}
-          </View>
+              </>
+            )}
+          </Animated.View>
         </ScrollView>
 
-        <Animated.View style={[estilos.footer, { opacity: fade }]}>
-          {/* Secundario de proposito: um toque sem querer aqui joga fora uma tiragem que
-              a pessoa acabou de fazer com intencao. */}
-          {(cortes > 0 || distribuindo) && (
-            <Button
-              variante="ghost"
-              label="Recomeçar o rito"
-              icone="refresh-outline"
-              larguraTotal
-              onPress={recomeçar}
-            />
-          )}
-          {prontas ? (
+        {prontas && (
+          <View style={estilos.footer}>
             <Button
               variante="primary"
               label="Ver Leitura Completa"
@@ -419,30 +389,8 @@ export default function TelaCartas() {
               larguraTotal
               onPress={verResultado}
             />
-          ) : !distribuindo && !recolhendo && cortes > 0 ? (
-            <Button
-              variante="primary"
-              label="Juntar e seguir"
-              icone="layers-outline"
-              larguraTotal
-              onPress={juntar}
-            />
-          ) : (
-            <View style={estilos.dicaContainer}>
-              <View style={estilos.dicaDivisor} />
-              <Text style={estilos.dicaTexto}>
-                {recolhendo
-                  ? 'As duas metades voltando a ser um baralho'
-                  : distribuindo
-                    ? (tudoPuxado
-                      ? 'Toque em cada carta para virar'
-                      : 'Arraste a carta de cima, ou toque')
-                    : 'Toque no leque onde quiser cortar'}
-              </Text>
-              <View style={estilos.dicaDivisor} />
-            </View>
-          )}
-        </Animated.View>
+          </View>
+        )}
       </SafeAreaView>
     </LinearGradient>
   );
@@ -452,19 +400,11 @@ const estilos = StyleSheet.create({
   fundo: { flex: 1 },
   safeArea: { flex: 1 },
 
-  particulasContainer: {
-    position: 'absolute', bottom: 100, left: 0, right: 0, height: 100,
-  },
-  particula: {
-    position: 'absolute', bottom: 0, width: 3, height: 3, borderRadius: 1.5,
-    backgroundColor: Cores.acento,
-  },
-
   header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    paddingTop: Espacamento.md, paddingHorizontal: Espacamento.lg, gap: Espacamento.md,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingTop: Espacamento.md, paddingHorizontal: Espacamento.lg,
+    paddingBottom: Espacamento.sm,
   },
-  headerDivisor: { flex: 1, height: 1, backgroundColor: 'rgba(212,175,55,0.25)' },
   voltarBotao: {
     width: 40, height: 40, borderRadius: 20, backgroundColor: Cores.cardFundo,
     borderWidth: 1, borderColor: Cores.cardBorda, alignItems: 'center', justifyContent: 'center',
@@ -475,71 +415,60 @@ const estilos = StyleSheet.create({
     color: Cores.textoClaro, letterSpacing: 2,
   },
 
-  subtituloContainer: { alignItems: 'center', paddingVertical: Espacamento.sm },
-  subtitulo: {
-    fontFamily: Fontes.corpo, fontSize: 13, color: Cores.acento,
-    letterSpacing: 1.5, opacity: 0.8, textAlign: 'center',
-  },
-
   rolagem: { flex: 1 },
   rolagemConteudo: {
-    paddingHorizontal: Espacamento.md, paddingBottom: Espacamento.lg,
-    alignItems: 'center',
+    paddingHorizontal: Espacamento.md, paddingBottom: Espacamento.lg, alignItems: 'center',
   },
-  coluna: { width: '100%', maxWidth: 620, gap: Espacamento.lg, alignItems: 'center' },
+  // O protótipo usa uma coluna de 62rem. Sem ela, no navegador o campo de intenção
+  // atravessa a tela inteira.
+  coluna: { width: '100%', maxWidth: 620, gap: Espacamento.md },
 
-  campoBloco: { width: '100%', gap: Espacamento.xs },
-  campoRotulo: {
-    fontFamily: Fontes.corpo, fontSize: 12, color: Cores.textoSecundario, letterSpacing: 0.5,
+  painel: {
+    backgroundColor: Cores.cardFundo, borderWidth: 1, borderColor: Cores.cardBorda,
+    borderRadius: 14, padding: Espacamento.md, gap: Espacamento.sm,
   },
+  rotulo: {
+    fontFamily: Fontes.corpoNegrito, fontSize: 11, letterSpacing: 1.4,
+    textTransform: 'uppercase', color: Cores.textoSecundario,
+  },
+  passo: { fontFamily: Fontes.titulo, fontSize: 19, color: Cores.textoClaro, lineHeight: 25 },
+  contador: { fontFamily: Fontes.corpo, fontSize: 13, color: Cores.textoSecundario, lineHeight: 19 },
+  nota: { fontFamily: Fontes.corpo, fontSize: 13, color: Cores.textoSecundario, lineHeight: 21 },
+  notaDoMonte: { flex: 1, minWidth: 180 },
+
   campo: {
-    minHeight: 58, borderRadius: RaioBorda.md, borderWidth: 1, borderColor: Cores.cardBorda,
-    backgroundColor: Cores.cardFundo, paddingHorizontal: Espacamento.sm,
-    paddingVertical: Espacamento.sm, fontFamily: Fontes.corpo, fontSize: 14,
-    color: Cores.textoClaro, textAlignVertical: 'top',
-  },
-  aviso: {
-    fontFamily: Fontes.corpo, fontSize: 12, color: Cores.textoSecundario, textAlign: 'center',
-  },
-
-  mesa: { width: '100%', alignItems: 'center', gap: Espacamento.lg },
-  // Envolve de proposito: a Cruz Celta tem dez posicoes, e dez numa linha so nao cabem
-  // em tela nenhuma. A forma de cruz do baralho classico precisa de cinco colunas de
-  // largura; num celular ela sai ilegivel, e o que carrega o sentido da posicao e o
-  // nome dela com a pergunta, que continuam visiveis.
-  vagas: {
-    flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center',
-    alignItems: 'flex-start', width: '100%', gap: Espacamento.sm,
-  },
-  tiragens: { flexDirection: 'row', gap: Espacamento.sm },
-  tiragem: {
-    flex: 1, alignItems: 'center', gap: 2, paddingVertical: Espacamento.sm,
     borderRadius: RaioBorda.md, borderWidth: 1, borderColor: Cores.cardBorda,
-    backgroundColor: Cores.cardFundo,
+    backgroundColor: '#F7F3EA', paddingHorizontal: Espacamento.sm,
+    paddingVertical: Espacamento.sm, fontFamily: Fontes.corpo, fontSize: 14,
+    color: Cores.textoClaro,
   },
-  tiragemEscolhida: { borderColor: Cores.acento, borderWidth: 2 },
-  tiragemNome: { fontFamily: Fontes.corpo, fontSize: 14, color: Cores.textoClaro },
-  tiragemNomeEscolhida: { fontFamily: Fontes.corpoNegrito, color: Cores.acento },
-  tiragemCartas: {
-    fontFamily: Fontes.corpo, fontSize: 11, color: Cores.textoSecundario,
-    letterSpacing: 0.5, textTransform: 'uppercase',
-  },
-  tiragemQuando: {
-    fontFamily: Fontes.corpo, fontSize: 12, color: Cores.textoSecundario,
-  },
-  monteBloco: { position: 'relative', alignItems: 'center' },
 
-  glow: { position: 'absolute', bottom: -8, left: -10, right: -10, height: 40, zIndex: 0 },
-  glowGradiente: { flex: 1, borderRadius: 20 },
+  chaves: { flexDirection: 'row', flexWrap: 'wrap', gap: Espacamento.sm },
+  chave: {
+    flexDirection: 'row', alignItems: 'center', gap: 7,
+    borderWidth: 1, borderColor: Cores.cardBorda, borderRadius: 999,
+    paddingVertical: 8, paddingHorizontal: 14, backgroundColor: '#F7F3EA',
+  },
+  chaveLigada: { borderColor: Cores.acento },
+  bolinha: {
+    width: 13, height: 13, borderRadius: 7,
+    borderWidth: 1.5, borderColor: Cores.cardBorda,
+  },
+  bolinhaLigada: { borderColor: Cores.acento, backgroundColor: Cores.acento },
+  chaveTexto: { fontFamily: Fontes.corpo, fontSize: 14, color: Cores.textoClaro },
+
+  botoes: { flexDirection: 'row', flexWrap: 'wrap', gap: Espacamento.sm, alignItems: 'center' },
+
+  sobre: {
+    fontFamily: Fontes.corpo, fontSize: 14, lineHeight: 22, color: Cores.textoSecundario,
+  },
+  monteCaixa: {
+    flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center',
+    gap: Espacamento.md, width: '100%',
+  },
 
   footer: {
     paddingHorizontal: Espacamento.lg, paddingVertical: Espacamento.md,
-    paddingBottom: Espacamento.lg, gap: Espacamento.sm,
-  },
-  dicaContainer: { flexDirection: 'row', alignItems: 'center', gap: Espacamento.sm },
-  dicaDivisor: { flex: 1, height: 1, backgroundColor: 'rgba(212,175,55,0.2)' },
-  dicaTexto: {
-    fontFamily: Fontes.corpo, fontSize: 13, color: Cores.textoSecundario,
-    textAlign: 'center', letterSpacing: 0.5,
+    paddingBottom: Espacamento.lg,
   },
 });

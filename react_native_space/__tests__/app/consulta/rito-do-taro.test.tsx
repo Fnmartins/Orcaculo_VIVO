@@ -1,6 +1,6 @@
 import React from 'react';
 import { AccessibilityInfo } from 'react-native';
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 const mockPush = jest.fn();
 jest.mock('expo-router', () => ({
@@ -19,9 +19,8 @@ jest.mock('../../../utils/haptics', () => ({
 
 import TelaCartas from '../../../app/consulta/cartas';
 
-// "Reduzir movimento" ligado: as particulas e o pulso do monte sao lacos infinitos, e
-// com eles de pe o Jest nao encerra o processo. Ligado aqui, o fluxo do rito e testado
-// sem depender do tempo de nenhuma animacao.
+// "Reduzir movimento" ligado: o riffle entrega o baralho na hora, e o fluxo do rito é
+// testado sem depender do tempo de nenhuma animação.
 beforeEach(() => {
   jest.clearAllMocks();
   jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(true);
@@ -29,45 +28,82 @@ beforeEach(() => {
 
 afterEach(() => jest.restoreAllMocks());
 
-// A leitura do "reduzir movimento" e assincrona: sem este ato, cada teste reclama de um
+// A leitura do "reduzir movimento" é assíncrona: sem este ato, cada teste reclama de um
 // setState fora do act quando a promessa resolve.
 const abrir = async () => {
   render(<TelaCartas />);
   await act(async () => {});
 };
 
+const CAMPO_INTENCAO = 'O que te trouxe aqui?';
 const cortar = () => fireEvent.press(screen.getByLabelText('Cortar aqui, carta 8 de 22'));
-const juntar = () => fireEvent.press(screen.getByText('Juntar e seguir'));
+const irParaLeitura = () => fireEvent.press(screen.getByText('Ir para a leitura'));
 const puxar = () => fireEvent.press(screen.getByLabelText('Carta de cima do monte, pegue daqui'));
-const virar = (posicao: string) =>
-  fireEvent.press(screen.getByLabelText(`Posição ${posicao}, carta de costas, toque para virar`));
-const virarAsTres = () => { virar('Passado'); virar('Presente'); virar('Futuro'); };
 const seguir = () => fireEvent.press(screen.getByText('Ver Leitura Completa'));
-const recomecar = () => fireEvent.press(screen.getByText('Recomeçar o rito'));
+const escolherCruzCelta = () => fireEvent.press(screen.getByLabelText('Cruz Celta, 10 cartas'));
+
+/** Puxa `quantas` cartas e espera elas virarem sozinhas, como no protótipo. */
+const distribuir = async (quantas: number) => {
+  for (let i = 0; i < quantas; i++) puxar();
+  await waitFor(() => expect(screen.getByText('Ver Leitura Completa')).toBeTruthy());
+};
 
 describe('o rito do tarô', () => {
-  it('começa pedindo o corte, não a tiragem', async () => {
+  it('começa pedindo o corte, e conta o que há na mesa', async () => {
     await abrir();
     expect(screen.getAllByLabelText(/Cortar aqui/)).toHaveLength(22);
+    expect(screen.getByText('Toque numa carta do leque para tirar um monte.')).toBeTruthy();
+    expect(screen.getByText(/O baralho tem 22 cartas, embaralhadas/)).toBeTruthy();
+    // "Ir para a leitura" só aparece quando já há um corte dado.
+    expect(screen.queryByText('Ir para a leitura')).toBeNull();
     expect(screen.queryByText('Pegue daqui')).toBeNull();
-    // "Juntar e seguir" antes do primeiro corte deixaria passar sem cortar nada.
-    expect(screen.queryByText('Juntar e seguir')).toBeNull();
   });
 
-  it('depois de cortar e juntar, as três posições aparecem vazias', async () => {
+  it('o corte deixa rastro: o monte aparece e a narração muda', async () => {
+    // Sem os montes na tela o corte não registra nada, e a pessoa não vê que fez algo.
     await abrir();
-    cortar(); juntar();
+    cortar();
+    expect(screen.getByText(/^1º · \d+ cartas?$/)).toBeTruthy();
+    expect(screen.getByText('Cortar de novo, ou seguir para a leitura?')).toBeTruthy();
+    expect(screen.getByText(/1 monte de lado, \d+ cartas ainda no leque\./)).toBeTruthy();
+  });
+
+  it('depois de juntar, as posições aparecem vazias com a pergunta de cada uma', async () => {
+    await abrir();
+    cortar(); irParaLeitura();
     expect(screen.getByLabelText('Posição Passado, vazia')).toBeTruthy();
     expect(screen.getByLabelText('Posição Presente, vazia')).toBeTruthy();
     expect(screen.getByLabelText('Posição Futuro, vazia')).toBeTruthy();
-    expect(screen.getByText('Pegue daqui')).toBeTruthy();
+    expect(screen.getByText('o que já se consumou e ainda pesa')).toBeTruthy();
+    expect(
+      screen.getByText('Montes juntos. Agora as cartas são suas para distribuir.')
+    ).toBeTruthy();
   });
 
-  it('as três cartas puxadas, viradas, levam ao resultado', async () => {
+  it('a carta pousa de costas e vira sozinha', async () => {
+    // É a espera que faz a leitura acontecer. No protótipo são 320 ms entre pousar e
+    // virar; sem isso a carta aparece pronta e não acontece nada.
     await abrir();
-    cortar(); juntar();
-    puxar(); puxar(); puxar();
-    virarAsTres();
+    cortar(); irParaLeitura();
+    puxar();
+    expect(screen.getByLabelText(/^Posição Passado, carta de costas/)).toBeTruthy();
+    await waitFor(() =>
+      expect(screen.queryByLabelText(/^Posição Passado, carta de costas/)).toBeNull()
+    );
+  });
+
+  it('a distribuição conta quantas faltam', async () => {
+    await abrir();
+    cortar(); irParaLeitura();
+    expect(screen.getByText(/Faltam 3 cartas\./)).toBeTruthy();
+    puxar();
+    await waitFor(() => expect(screen.getByText(/Faltam 2 cartas\./)).toBeTruthy());
+  });
+
+  it('as três cartas distribuídas levam ao resultado', async () => {
+    await abrir();
+    cortar(); irParaLeitura();
+    await distribuir(3);
     seguir();
     expect(mockPush).toHaveBeenCalledTimes(1);
     const destino = mockPush.mock.calls[0][0];
@@ -78,17 +114,10 @@ describe('o rito do tarô', () => {
   it('não oferece a leitura com posição vazia', async () => {
     // A regressão mais provável: liberar a leitura assim que a primeira carta cai.
     await abrir();
-    cortar(); juntar(); puxar();
-    expect(screen.queryByText('Ver Leitura Completa')).toBeNull();
-  });
-
-  it('não oferece a leitura com carta sem virar', async () => {
-    // A spec manda a carta pousar de costas. Liberar a leitura antes da virada deixaria
-    // a pessoa seguir sem nunca ter visto as três cenas.
-    await abrir();
-    cortar(); juntar(); puxar(); puxar(); puxar();
-    expect(screen.queryByText('Ver Leitura Completa')).toBeNull();
-    virar('Passado'); virar('Presente');
+    cortar(); irParaLeitura(); puxar();
+    await waitFor(() =>
+      expect(screen.queryByLabelText(/^Posição Passado, carta de costas/)).toBeNull()
+    );
     expect(screen.queryByText('Ver Leitura Completa')).toBeNull();
   });
 
@@ -96,130 +125,110 @@ describe('o rito do tarô', () => {
     // `puxar` tira do topo do baralho recolhido e encurta o monte. Se ele lesse sempre
     // a mesma lista, a tiragem sairia com a mesma carta três vezes.
     await abrir();
-    cortar(); juntar(); puxar(); puxar(); puxar(); virarAsTres(); seguir();
+    cortar(); irParaLeitura();
+    await distribuir(3);
+    seguir();
     const cartas = JSON.parse(mockPush.mock.calls[0][0].params.cartas) as { id: number }[];
     expect(new Set(cartas.map((c) => c.id)).size).toBe(3);
   });
 
-
-  it('tocar numa vaga poe a carta naquela vaga, nao na primeira', async () => {
-    // Desde o arraste a posicao e escolhida, nao sorteada pela ordem. Se o toque numa
-    // vaga caisse sempre na primeira vazia, o arraste e o toque diriam coisas
-    // diferentes sobre a mesma tela — e a posicao e metade do significado da leitura.
+  it('tocar numa vaga põe a carta naquela vaga, não na primeira', async () => {
+    // Desde o arraste a posição é escolhida, não sorteada pela ordem. Se o toque numa
+    // vaga caísse sempre na primeira vazia, o arraste e o toque diriam coisas
+    // diferentes sobre a mesma tela.
     await abrir();
-    cortar(); juntar();
+    cortar(); irParaLeitura();
     fireEvent.press(screen.getByLabelText('Posição Futuro, vazia'));
     expect(screen.getByLabelText('Posição Passado, vazia')).toBeTruthy();
-    expect(
-      screen.getByLabelText('Posição Futuro, carta de costas, toque para virar')
-    ).toBeTruthy();
+    await waitFor(() =>
+      expect(screen.queryByLabelText('Posição Futuro, vazia')).toBeNull()
+    );
   });
 
-
-  it('antes de cortar, nao oferece recomecar', async () => {
-    // Nao ha nada a desfazer: o botao so confundiria quem acabou de chegar.
+  it('recomeçar está sempre à mão, e devolve o baralho inteiro', async () => {
+    // No protótipo o botão vive no painel do baralho desde o começo. Quem cortou errado
+    // na primeira carta não precisa sair da tela para recomeçar.
     await abrir();
-    expect(screen.queryByText('Recomeçar o rito')).toBeNull();
-  });
-
-  it('recomecar devolve o baralho inteiro e desfaz os cortes', async () => {
-    await abrir();
-    cortar(); juntar();
+    expect(screen.getByText('Recomeçar o rito')).toBeTruthy();
+    cortar(); irParaLeitura();
     expect(screen.getByText('Pegue daqui')).toBeTruthy();
-    recomecar();
+    fireEvent.press(screen.getByText('Recomeçar o rito'));
     expect(screen.getAllByLabelText(/Cortar aqui/)).toHaveLength(22);
     expect(screen.queryByText('Pegue daqui')).toBeNull();
-    expect(screen.queryByText('Juntar e seguir')).toBeNull();
   });
 
-  it('com a tiragem pronta, recomecar limpa as tres vagas', async () => {
-    // O defeito que isto pega: zerar o baralho e esquecer as cartas ja postas. A tela
-    // voltaria ao leque com a tiragem velha guardada, e a proxima leitura sairia com
-    // cartas da anterior.
-    await abrir();
-    cortar(); juntar(); puxar(); puxar(); puxar(); virarAsTres();
-    recomecar();
-    cortar(); juntar();
-    expect(screen.getByLabelText('Posição Passado, vazia')).toBeTruthy();
-    expect(screen.getByLabelText('Posição Presente, vazia')).toBeTruthy();
-    expect(screen.getByLabelText('Posição Futuro, vazia')).toBeTruthy();
-  });
-
-  it('recomecar nao apaga a intencao escrita', async () => {
-    // A pergunta que trouxe a pessoa continua a mesma. Fazer ela digitar de novo e
+  it('recomeçar não apaga a intenção escrita', async () => {
+    // A pergunta que trouxe a pessoa continua a mesma. Fazê-la digitar de novo é
     // castigo por querer outra tiragem.
     await abrir();
-    const campo = screen.getByLabelText('Se quiser, diga o que te trouxe aqui');
-    fireEvent.changeText(campo, 'devo aceitar a proposta');
+    fireEvent.changeText(screen.getByLabelText(CAMPO_INTENCAO), 'devo aceitar a proposta');
     cortar();
-    recomecar();
-    expect(
-      screen.getByLabelText('Se quiser, diga o que te trouxe aqui').props.value
-    ).toBe('devo aceitar a proposta');
+    fireEvent.press(screen.getByText('Recomeçar o rito'));
+    expect(screen.getByLabelText(CAMPO_INTENCAO).props.value).toBe('devo aceitar a proposta');
   });
-
 
   it('oferece as duas tiragens antes de cortar', async () => {
     await abrir();
-    expect(screen.getByLabelText(/Tr.s cartas, 3 cartas/)).toBeTruthy();
+    expect(screen.getByLabelText(/Três cartas, 3 cartas/)).toBeTruthy();
     expect(screen.getByLabelText('Cruz Celta, 10 cartas')).toBeTruthy();
   });
 
-  it('a Cruz Celta abre dez posicoes, cada uma com a sua pergunta', async () => {
-    await abrir();
-    fireEvent.press(screen.getByLabelText('Cruz Celta, 10 cartas'));
-    cortar(); juntar();
-    expect(screen.getAllByLabelText(/^Posição .*, vazia$/)).toHaveLength(10);
-    expect(screen.getByLabelText('Posição A situação, vazia')).toBeTruthy();
-    expect(screen.getByLabelText('Posição Para onde tende, vazia')).toBeTruthy();
-  });
-
-  it('trocar de tiragem redimensiona a tiragem inteira', async () => {
-    // O defeito que isto pega: guardar tres vagas e trocar para a Cruz Celta. Com tres
-    // cartas puxadas o rito se daria por completo, e a leitura sairia com sete posicoes
-    // vazias que a pessoa nunca viu.
-    await abrir();
-    fireEvent.press(screen.getByLabelText('Cruz Celta, 10 cartas'));
-    cortar(); juntar();
-    for (let i = 0; i < 3; i++) puxar();
-    expect(screen.queryByText('Ver Leitura Completa')).toBeNull();
-  });
-
-  it('depois do primeiro corte nao da mais para trocar de tiragem', async () => {
-    // Os cortes ja foram dados sobre uma tiragem. Trocar ali embaixo faria outra coisa.
+  it('depois do primeiro corte não dá mais para trocar de tiragem', async () => {
+    // Os cortes já foram dados sobre uma tiragem. Trocar ali embaixo faria outra coisa.
     await abrir();
     cortar();
     expect(screen.queryByLabelText('Cruz Celta, 10 cartas')).toBeNull();
   });
 
-  it('a tiragem escolhida viaja ate o resultado, com a pergunta de cada posicao', async () => {
+  it('a Cruz Celta abre dez posições, com as perguntas do protótipo', async () => {
     await abrir();
-    fireEvent.press(screen.getByLabelText('Cruz Celta, 10 cartas'));
-    cortar(); juntar();
-    for (let i = 0; i < 10; i++) puxar();
-    for (const vaga of screen.getAllByLabelText(/carta de costas, toque para virar$/)) {
-      fireEvent.press(vaga);
-    }
+    escolherCruzCelta();
+    cortar(); irParaLeitura();
+    expect(screen.getAllByLabelText(/^Posição .*, vazia$/)).toHaveLength(10);
+    expect(screen.getByText('o assunto como ele está')).toBeTruthy();
+    expect(screen.getByText('o desfecho provável se o caminho seguir assim')).toBeTruthy();
+  });
+
+  it('trocar de tiragem redimensiona a tiragem inteira', async () => {
+    // O defeito que isto pega: guardar três vagas e trocar para a Cruz Celta. Com três
+    // cartas puxadas o rito se daria por completo, e a leitura sairia com sete posições
+    // vazias que a pessoa nunca viu.
+    await abrir();
+    escolherCruzCelta();
+    cortar(); irParaLeitura();
+    for (let i = 0; i < 3; i++) puxar();
+    await waitFor(() => expect(screen.getByText(/Faltam 7 cartas\./)).toBeTruthy());
+    expect(screen.queryByText('Ver Leitura Completa')).toBeNull();
+  });
+
+  it('a tiragem escolhida viaja até o resultado, com a pergunta de cada posição', async () => {
+    await abrir();
+    escolherCruzCelta();
+    cortar(); irParaLeitura();
+    await distribuir(10);
     seguir();
     const enviadas = JSON.parse(mockPush.mock.calls[0][0].params.posicoes);
     expect(enviadas).toHaveLength(10);
     expect(enviadas[0].nome).toBe('A situação');
-    expect(enviadas[0].regra.length).toBeGreaterThan(0);
+    expect(enviadas[0].regra).toBe('o assunto como ele está');
   });
 
   it('sem intenção escrita, nada é afirmado sobre ela', async () => {
     await abrir();
-    cortar(); juntar(); puxar(); puxar(); puxar(); virarAsTres(); seguir();
+    cortar(); irParaLeitura();
+    expect(screen.getByText(/Você não disse o que trouxe/)).toBeTruthy();
+    await distribuir(3);
+    seguir();
     expect(mockPush.mock.calls[0][0].params.intencao).toBe('');
   });
 
-  it('a intenção escrita chega inteira ao resultado', async () => {
+  it('a intenção escrita aparece na tela e chega inteira ao resultado', async () => {
     await abrir();
-    fireEvent.changeText(
-      screen.getByLabelText('Se quiser, diga o que te trouxe aqui'),
-      '  devo aceitar a proposta  '
-    );
-    cortar(); juntar(); puxar(); puxar(); puxar(); virarAsTres(); seguir();
+    fireEvent.changeText(screen.getByLabelText(CAMPO_INTENCAO), '  devo aceitar a proposta  ');
+    cortar(); irParaLeitura();
+    expect(screen.getByText('Leitura sobre: devo aceitar a proposta')).toBeTruthy();
+    await distribuir(3);
+    seguir();
     expect(mockPush.mock.calls[0][0].params.intencao).toBe('devo aceitar a proposta');
   });
 });
