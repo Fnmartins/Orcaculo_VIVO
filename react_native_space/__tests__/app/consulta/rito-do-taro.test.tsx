@@ -36,6 +36,9 @@ const abrir = async () => {
 };
 
 const CAMPO_INTENCAO = 'O que te trouxe aqui?';
+const campo = () => screen.getByLabelText(CAMPO_INTENCAO);
+// A linha precisa dizer as duas coisas: que a pergunta já entrou, e como mudá-la.
+const AVISO_DA_PERGUNTA = /A pergunta já entrou com o embaralhamento.*Recomeçar o rito/;
 const embaralharCartas = () => fireEvent.press(screen.getByText('Embaralhar'));
 const cortar = () => fireEvent.press(screen.getByLabelText('Cortar aqui, carta 8 de 22'));
 const irParaLeitura = () => fireEvent.press(screen.getByText('Ir para a leitura'));
@@ -232,6 +235,54 @@ describe('o rito do tarô', () => {
     embaralharCartas(); cortar();
     fireEvent.press(screen.getByText('Recomeçar o rito'));
     expect(screen.getByLabelText(CAMPO_INTENCAO).props.value).toBe('devo aceitar a proposta');
+  });
+
+  it('depois de embaralhar a pergunta já vale: o campo não aceita edição, e o texto fica à vista', async () => {
+    // Quem embaralha e só então digita reproduz a falsidade que fez a tela de preparo
+    // antiga ser removida: o gesto antes, a pergunta depois. Se a pergunta ainda pode
+    // entrar, o embaralhamento não a carregou. O campo não some: o que foi escrito é a
+    // pergunta da leitura e continua à vista durante o corte.
+    await abrir();
+    expect(campo().props.editable).toBe(true);
+    fireEvent.changeText(campo(), 'devo aceitar a proposta');
+    expect(campo().props.value).toBe('devo aceitar a proposta');
+    expect(screen.queryByText(AVISO_DA_PERGUNTA)).toBeNull();
+
+    embaralharCartas();
+    expect(campo().props.editable).toBe(false);
+    fireEvent.changeText(campo(), 'outra pergunta, pensada tarde');
+    expect(campo().props.value).toBe('devo aceitar a proposta');
+    expect(screen.getByText(AVISO_DA_PERGUNTA)).toBeTruthy();
+  });
+
+  it('sem pergunta escrita, embaralhar não afirma que uma pergunta entrou', async () => {
+    // Dizer que a pergunta entrou quando não houve pergunta é o que esta tela evita em
+    // todo lugar. Só espaços também não é pergunta.
+    await abrir();
+    embaralharCartas();
+    expect(screen.queryByText(AVISO_DA_PERGUNTA)).toBeNull();
+
+    fireEvent.press(screen.getByText('Recomeçar o rito'));
+    fireEvent.changeText(campo(), '   ');
+    embaralharCartas();
+    expect(screen.queryByText(AVISO_DA_PERGUNTA)).toBeNull();
+  });
+
+  it('recomeçar devolve a edição ao campo, e a pergunta escrita continua lá', async () => {
+    // Recomeçar é o único caminho para mudar a pergunta depois do embaralhamento: o
+    // campo volta a aceitar texto, sem castigar a pessoa com a digitação de novo.
+    await abrir();
+    fireEvent.changeText(campo(), 'devo aceitar a proposta');
+    embaralharCartas();
+    expect(campo().props.editable).toBe(false);
+
+    fireEvent.press(screen.getByText('Recomeçar o rito'));
+    expect(campo().props.editable).toBe(true);
+    expect(campo().props.value).toBe('devo aceitar a proposta');
+    expect(screen.queryByText(AVISO_DA_PERGUNTA)).toBeNull();
+
+    fireEvent.changeText(campo(), 'devo recusar a proposta');
+    expect(campo().props.value).toBe('devo recusar a proposta');
   });
 
   it('oferece as duas tiragens antes de cortar', async () => {

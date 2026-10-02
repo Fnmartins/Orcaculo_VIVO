@@ -314,15 +314,26 @@ export default function TelaCartas() {
                   Escrever é opcional. Quem escreve recebe uma leitura sobre aquilo; quem
                   não escreve recebe uma leitura que não finge saber o que você pensou.
                 </Text>
+                {/* Depois do embaralhamento a pergunta já está valendo: o campo fica à vista,
+                    porque é a pergunta da leitura, mas não aceita mais edição. Quem digita
+                    depois do gesto faz o gesto antes e a pergunta depois — o que o torna
+                    falso. Mudar a pergunta é recomeçar o rito. */}
                 <TextInput
                   accessibilityLabel={ROTULO_INTENCAO}
                   value={intencao}
                   onChangeText={setIntencao}
+                  editable={!embaralhado}
                   placeholder="Ex.: estou decidindo se mudo de trabalho"
                   placeholderTextColor={Cores.textoSecundario}
                   maxLength={140}
-                  style={estilos.campo}
+                  style={[estilos.campo, embaralhado && estilos.campoValendo]}
                 />
+                {embaralhado && intencao.trim() ? (
+                  <Text style={estilos.nota}>
+                    {'A pergunta já entrou com o embaralhamento. Para mudá-la, toque em '
+                      + '"Recomeçar o rito".'}
+                  </Text>
+                ) : null}
                 {podeTrocarDeTiragem && (
                   <View style={estilos.chaves}>
                     {TIRAGENS.map((opcao) => {
@@ -506,6 +517,9 @@ const estilos = StyleSheet.create({
     paddingVertical: Espacamento.sm, fontFamily: Fontes.corpo, fontSize: 14,
     color: Cores.textoClaro,
   },
+
+  // Já valendo: sai o fundo de campo, que convida a escrever, e entra o da superfície.
+  campoValendo: { backgroundColor: Cores.cardFundo },
 
   chaves: { flexDirection: 'row', flexWrap: 'wrap', gap: Espacamento.sm },
   chave: {
