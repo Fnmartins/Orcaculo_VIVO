@@ -1,3 +1,5 @@
+import { embaralhar } from './corteDoBaralho';
+
 // Dados simplificados do Tarot (22 Arcanos Maiores)
 export interface CartaTarot {
   id: number;
@@ -212,6 +214,9 @@ export const ARCANOS_MAIORES: CartaTarot[] = [
 
 // Embaralhar e pegar N cartas aleat\u00f3rias
 export function sortearCartas(quantidade: number): CartaTarot[] {
-  const embaralhado = [...ARCANOS_MAIORES].sort(() => Math.random() - 0.5);
+  // Fisher-Yates, em `corteDoBaralho`. O que havia aqui era
+  // `sort(() => Math.random() - 0.5)`, que não produz permutação uniforme: num
+  // produto em que o sorteio É o produto, isso é honestidade, não detalhe.
+  const embaralhado = embaralhar(ARCANOS_MAIORES);
   return embaralhado.slice(0, quantidade);
 }

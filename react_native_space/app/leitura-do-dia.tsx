@@ -24,6 +24,7 @@ import { Espacamento, RaioBorda } from '../constants/spacing';
 import { Hapticos } from '../utils/haptics';
 import { SomMistico } from '../services/somMistico';
 import { ARCANOS_MAIORES, type CartaTarot } from '../data/tarot';
+import { sortearUm } from '../data/corteDoBaralho';
 
 const CHAVE_LEITURA_DIA = '@oraculo:leitura_dia';
 
@@ -46,8 +47,10 @@ function obterDataHoje(): string {
 }
 
 function sortearCartaDoDia(): CartaTarot {
-  const idx = Math.floor(Math.random() * ARCANOS_MAIORES.length);
-  return ARCANOS_MAIORES[idx];
+  // Uma função só, usada em todo sorteio do app. Antes era `Math.random` cru aqui:
+  // funciona, mas espalha a mesma decisão por vários arquivos, e foi assim que o
+  // embaralhamento enviesado de `sortearCartas` passou tanto tempo sem ser visto.
+  return sortearUm(ARCANOS_MAIORES);
 }
 
 function obterMensagemDia(): string {
