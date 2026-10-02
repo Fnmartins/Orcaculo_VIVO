@@ -16,6 +16,22 @@ describe('tiragens', () => {
     }
   });
 
+  it('nenhuma tiragem tem mais posições do que o servidor lê', () => {
+    // Este é outro teto, não o do baralho: é `MAX_POSICOES` (10), em
+    // `supabase/functions/ia-interpretacao/index.ts`, onde a função faz
+    // `body.cartas.slice(0, MAX_POSICOES)`. O defeito que isto pega: uma tiragem de 11
+    // posições. O servidor leria só as 10 primeiras, `validarResultado` ficaria
+    // satisfeita (ela só confere as posições que recebeu) e a tela do resultado
+    // desenharia 11 cartas para 10 leituras — uma carta sem leitura, e nada avisando.
+    // Acrescentar tiragem é uma entrada em `TIRAGENS`, então é aqui que o número é
+    // vigiado. Se o teto subir na função, sobe junto.
+    const TETO_DO_SERVIDOR = 10;
+    const acima = TIRAGENS
+      .filter((t) => t.posicoes.length > TETO_DO_SERVIDOR)
+      .map((t) => `${t.id}: ${t.posicoes.length} posições`);
+    expect(acima).toEqual([]);
+  });
+
   it('toda posição tem nome e pergunta, e nenhum nome se repete', () => {
     // Nome repetido quebra a leitura de verdade: a Edge Function casa as respostas da
     // IA pelo nome da posição, e duas iguais fariam uma sobrescrever a outra.

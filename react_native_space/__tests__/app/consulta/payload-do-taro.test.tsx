@@ -91,8 +91,8 @@ const CARTAS_COM_MATERIAL = JSON.stringify([
     significado: 'escuta do que não se diz',
     palavrasChave: ['silêncio'],
     frasesChave: ['o que se sabe sem dizer'],
-    // Sem `porPosicao.obstaculo`: a nota tem de cair em `invertida`.
-    invertida: 'A mesma escuta, travada.',
+    // Sem `porPosicao.obstaculo`: a nota tem de cair em `leituraInvertida`.
+    leituraInvertida: 'A mesma escuta, travada.',
   },
   {
     id: 3,
@@ -100,7 +100,7 @@ const CARTAS_COM_MATERIAL = JSON.stringify([
     significado: 'esperança com direção',
     palavrasChave: ['esperança'],
     frasesChave: ['a água volta a correr'],
-    // Sem nota para `futuro` e sem `invertida`: nada a repassar.
+    // Sem nota para `futuro` e sem `leituraInvertida`: nada a repassar.
   },
 ]);
 
@@ -167,7 +167,7 @@ describe('o que a tela do resultado manda para a IA', () => {
       expect(cartas[0].nota).toBe('Aqui o Mago pede que se comece.');
     });
 
-    it('na posição de obstáculo, a nota cai em `invertida` quando não há nota própria', () => {
+    it('na posição de obstáculo, a nota cai em `leituraInvertida` quando não há nota própria', () => {
       // É a regra de `notaDaPosicao`: as fontes tratam "revertida" e "obstáculo" como
       // a mesma leitura. Se o mapeador deixar de passar a chave, ou de chamar a função,
       // a IA fica sem a única frase que diz o que esta carta faz nesta posição.

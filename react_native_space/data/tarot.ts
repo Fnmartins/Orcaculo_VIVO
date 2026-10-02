@@ -25,8 +25,13 @@ export interface CartaTarot {
    * Parcial de propósito: o livro escreve uma ou duas, não quatro.
    */
   porPosicao?: Partial<Record<PosicaoChave, string>>;
-  /** A carta de cabeça para baixo. Serve também à posição `obstaculo`. */
-  invertida?: string;
+  /**
+   * A leitura da carta de cabeça para baixo. Serve também à posição `obstaculo`.
+   *
+   * É o texto da leitura invertida, não a afirmação de que esta carta ESTÁ invertida:
+   * essa é a orientação, o booleano `invertida` que viaja no payload da leitura.
+   */
+  leituraInvertida?: string;
 
   // ─── Só nos Menores, que chegam na Fase 3. ───
   naipe?: 'espadas' | 'paus' | 'copas' | 'ouros';
@@ -38,9 +43,9 @@ export interface CartaTarot {
 /**
  * A nota desta carta para esta posição, se houver.
  *
- * `obstaculo` cai em `invertida` quando não houver nota própria: as fontes tratam
- * "revertido" e "posição de obstáculo" como a mesma leitura, e escrever os dois seria
- * escrever duas vezes a mesma coisa — que depois divergem.
+ * `obstaculo` cai em `leituraInvertida` quando não houver nota própria: as fontes
+ * tratam "revertido" e "posição de obstáculo" como a mesma leitura, e escrever os dois
+ * seria escrever duas vezes a mesma coisa — que depois divergem.
  */
 export function notaDaPosicao(
   carta: CartaTarot,
@@ -49,7 +54,7 @@ export function notaDaPosicao(
   if (!chave) return undefined;
   const propria = carta.porPosicao?.[chave];
   if (propria) return propria;
-  return chave === 'obstaculo' ? carta.invertida : undefined;
+  return chave === 'obstaculo' ? carta.leituraInvertida : undefined;
 }
 
 export const ARCANOS_MAIORES: CartaTarot[] = [

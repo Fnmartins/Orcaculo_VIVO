@@ -17,12 +17,28 @@ jest.mock('../../../utils/haptics', () => ({
   Hapticos: { impactoLeve: jest.fn(), impactoMedio: jest.fn(), selecao: jest.fn() },
 }));
 
+// O embaralhamento de verdade, com um observador: a tela segue usando o `embaralhar`
+// real, e os testes do gesto conseguem ver quando ele é chamado e o que a tela faz com
+// o que ele devolve.
+const mockEmbaralhar = jest.fn();
+jest.mock('../../../data/corteDoBaralho', () => ({
+  ...jest.requireActual('../../../data/corteDoBaralho'),
+  embaralhar: (...a: unknown[]) => mockEmbaralhar(...a),
+}));
+
 import TelaCartas from '../../../app/consulta/cartas';
+import { ARCANOS_MAIORES, type CartaTarot } from '../../../data/tarot';
+
+const corteReal = jest.requireActual<typeof import('../../../data/corteDoBaralho')>(
+  '../../../data/corteDoBaralho',
+);
 
 // "Reduzir movimento" ligado: o riffle entrega o baralho na hora, e o fluxo do rito é
 // testado sem depender do tempo de nenhuma animação.
 beforeEach(() => {
   jest.clearAllMocks();
+  // O `embaralhar` de verdade é o padrão; os testes do gesto trocam por uma ordem conhecida.
+  mockEmbaralhar.mockImplementation(corteReal.embaralhar);
   jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(true);
 });
 
@@ -68,6 +84,42 @@ describe('o rito do tarô', () => {
     embaralharCartas();
     expect(screen.getAllByLabelText(/Cortar aqui/)).toHaveLength(22);
     expect(screen.queryByText('Embaralhar')).toBeNull();
+  });
+
+  it('o gesto embaralha: a ordem das cartas sai dele, com a pergunta já escrita', async () => {
+    // É esta chamada que torna verdadeira a frase da tela, "O que você está pensando
+    // entra agora, com o gesto". Se a ordem saísse só de quando a tela monta, estaria
+    // fixa antes de a pergunta existir, e a frase seria falsa sem erro em lugar nenhum.
+    // O teste de `recomeçar` não cobre isto: `recomeçar` restaura o baralho por conta
+    // própria, e ele confere o baralho antes do gesto.
+    await abrir();
+    fireEvent.changeText(campo(), 'devo aceitar a proposta');
+    // O sorteio de quando a tela monta não conta: só vale o que o gesto fizer.
+    mockEmbaralhar.mockClear();
+
+    embaralharCartas();
+
+    expect(mockEmbaralhar).toHaveBeenCalledTimes(1);
+    expect(mockEmbaralhar).toHaveBeenCalledWith(ARCANOS_MAIORES);
+  });
+
+  it('a carta que a pessoa recebe vem da ordem que o gesto produziu, não da de antes', async () => {
+    // Chamar `embaralhar` e jogar o resultado fora passaria no teste acima. Aqui a ordem
+    // de antes do gesto é a natural e a do gesto é a inversa: se as cartas da mesa
+    // vierem da natural, o embaralhamento não chegou até elas.
+    let aoContrario = false;
+    mockEmbaralhar.mockImplementation((lista: CartaTarot[]) =>
+      (aoContrario ? [...lista].reverse() : [...lista])
+    );
+    await abrir();
+    aoContrario = true;
+    embaralharCartas(); cortar(); irParaLeitura();
+    await distribuir(3);
+    seguir();
+
+    const cartas = JSON.parse(mockPush.mock.calls[0][0].params.cartas) as { id: number }[];
+    const esperadas = [...ARCANOS_MAIORES].reverse().slice(0, 3).map((c) => c.id);
+    expect(cartas.map((c) => c.id)).toEqual(esperadas);
   });
 
   it('antes de embaralhar, a tela pede a pergunta na cabeça e não fala de corte', async () => {
