@@ -96,8 +96,20 @@ describe('geometria das tiragens', () => {
   it('a posição que atravessa é um obstáculo, e o passado é passado', () => {
     // É a chave que liga a posição à nota da carta. Sem ela, a nota nunca é usada.
     const cruz = TIRAGENS.find((t) => t.id === 'cruz-celta');
-    expect(cruz?.posicoes[1].chave).toBe('obstaculo');
+    // As dez, na ordem do array: apagar uma chave de qualquer posição tem de quebrar aqui.
+    expect(cruz?.posicoes.map((p) => p.chave)).toEqual([
+      'agora', 'obstaculo', undefined, 'passado', undefined, 'futuro',
+      undefined, undefined, undefined, undefined,
+    ]);
     const tres = TIRAGENS.find((t) => t.id === 'tres-cartas');
     expect(tres?.posicoes.map((p) => p.chave)).toEqual(['passado', 'agora', 'futuro']);
+  });
+
+  it('uma posicao-chave nao se repete dentro da mesma tiragem', () => {
+    // Duas posicoes com a mesma chave tornariam ambigua a busca da nota da carta.
+    for (const tiragem of TIRAGENS) {
+      const chaves = tiragem.posicoes.map((p) => p.chave).filter(Boolean);
+      expect(new Set(chaves).size).toBe(chaves.length);
+    }
   });
 });
