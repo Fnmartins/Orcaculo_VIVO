@@ -51,6 +51,8 @@ const abrir = async () => {
 
 const escolherCruzCelta = () => fireEvent.press(screen.getByLabelText('Cruz Celta, 10 cartas'));
 const cortarEIrParaALeitura = () => {
+  // O leque só abre depois do gesto de embaralhar.
+  fireEvent.press(screen.getByText('Embaralhar'));
   fireEvent.press(screen.getByLabelText('Cortar aqui, carta 8 de 22'));
   fireEvent.press(screen.getByText('Ir para a leitura'));
 };

@@ -56,6 +56,10 @@ export default function TelaCartas() {
   const [intencao, setIntencao] = useState('');
   const [modelo, setModelo] = useState<Tiragem>(TIRAGEM_PADRAO);
   const [leque, setLeque] = useState<CartaTarot[]>(() => embaralhar(ARCANOS_MAIORES));
+  // O leque só abre depois do gesto. Nas fontes a pergunta é segurada na cabeça DURANTE
+  // o embaralhamento — é isso que liga a pergunta à tiragem. Embaralhar invisível, num
+  // instante, é sorteio com outro nome.
+  const [embaralhado, setEmbaralhado] = useState(false);
   const [montes, setMontes] = useState<CartaTarot[][]>([]);
   const [baralho, setBaralho] = useState<CartaTarot[] | null>(null);
   const [tiragem, setTiragem] = useState<(CartaTarot | null)[]>(
@@ -114,6 +118,12 @@ export default function TelaCartas() {
     setTiragem(escolhida.posicoes.map(() => null));
     setReveladas(escolhida.posicoes.map(() => false));
     setMedidas([]);
+  }, []);
+
+  const embaralharAgora = useCallback(() => {
+    Hapticos.impactoMedio();
+    setLeque(embaralhar(ARCANOS_MAIORES));
+    setEmbaralhado(true);
   }, []);
 
   const aoCortar = useCallback((indice: number) => {
@@ -181,6 +191,7 @@ export default function TelaCartas() {
     for (const r of relogios.current) clearTimeout(r);
     relogios.current = [];
     setLeque(embaralhar(ARCANOS_MAIORES));
+    setEmbaralhado(false);
     setMontes([]);
     setBaralho(null);
     setTiragem(POSICOES.map(() => null));
@@ -229,7 +240,11 @@ export default function TelaCartas() {
   let passo: string;
   let contador: string;
   if (etapa === 'cortar') {
-    if (cortes === 0) {
+    if (!embaralhado) {
+      passo = 'Segure a sua pergunta e embaralhe as cartas.';
+      contador = `O baralho tem ${leque.length} cartas. `
+        + 'O que você está pensando entra agora, com o gesto.';
+    } else if (cortes === 0) {
       passo = 'Toque numa carta do leque para tirar um monte.';
       contador = `O baralho tem ${leque.length} cartas, embaralhadas. `
         + 'Tudo da ponta até onde você tocar sai junto.';
@@ -342,9 +357,18 @@ export default function TelaCartas() {
                   : contador}
               </Text>
 
+              {!embaralhado && !distribuindo && !recolhendo ? (
+                <Button
+                  variante="primary"
+                  label="Embaralhar"
+                  icone="shuffle-outline"
+                  onPress={embaralharAgora}
+                />
+              ) : null}
+
               {recolhendo ? (
                 <Recolhimento ligado={movimento === true} aoTerminar={terminarRecolhimento} />
-              ) : !distribuindo ? (
+              ) : !distribuindo && embaralhado ? (
                 <LequeDeCorte
                   quantidade={leque.length}
                   aoCortar={aoCortar}
