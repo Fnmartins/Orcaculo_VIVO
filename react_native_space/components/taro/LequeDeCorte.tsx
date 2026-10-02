@@ -1,6 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { VersoDaCarta } from './VersoDaCarta';
+import { Cores } from '../../constants/colors';
 
 interface Props {
   quantidade: number;
@@ -68,6 +69,10 @@ export function LequeDeCorte({ quantidade, aoCortar, desligado = false }: Props)
     () => geometriaDoLeque(width, quantidade),
     [width, quantidade],
   );
+  // O monte inteiro que sairia se o corte fosse aqui. Acende antes do toque soltar,
+  // porque a escolha é de um monte e não de uma carta solta — e sem ver o monte a
+  // pessoa acha que está escolhendo a carta em que encostou.
+  const [apontado, setApontado] = useState<number | null>(null);
 
   return (
     <View style={[estilos.mesa, { height: altura }]}>
@@ -86,10 +91,23 @@ export function LequeDeCorte({ quantidade, aoCortar, desligado = false }: Props)
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Cortar aqui, carta ${i + 1} de ${quantidade}`}
+            onPressIn={() => { if (!desligado) setApontado(i); }}
+            onPressOut={() => setApontado(null)}
             onPress={() => { if (!desligado) aoCortar(i); }}
             style={estilos.lamina}
           >
-            <VersoDaCarta largura={LARGURA_LAMINA} altura={ALTURA_LAMINA} />
+            {/* O realce vive aqui dentro, e não no Pressable: no Pressable ele seria o
+                primeiro transform que o teste do pivô encontra, e o teste passaria sem
+                olhar a composição que faz o arco abrir. */}
+            <View
+              style={[
+                estilos.realce,
+                apontado !== null && i <= apontado && estilos.levantada,
+              ]}
+            >
+              <VersoDaCarta largura={LARGURA_LAMINA} altura={ALTURA_LAMINA} />
+              {apontado !== null && i <= apontado && <View style={estilos.contorno} />}
+            </View>
           </Pressable>
         </View>
       ))}
@@ -108,4 +126,10 @@ const estilos = StyleSheet.create({
   },
   // O verso traz a própria borda dourada e os cantos arredondados; a lâmina só o segura.
   lamina: { width: '100%', height: '100%' },
+  realce: { width: '100%', height: '100%' },
+  levantada: { transform: [{ translateY: -12 }] },
+  contorno: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 5, borderWidth: 1.5, borderColor: Cores.acento,
+  },
 });
