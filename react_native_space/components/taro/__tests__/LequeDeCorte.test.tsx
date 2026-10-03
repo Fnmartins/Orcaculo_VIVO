@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, within } from '@testing-library/react-native';
 import { LequeDeCorte, geometriaDoLeque, MEIA_ABERTURA } from '../LequeDeCorte';
 
 /** O estilo já achatado de uma lâmina. */
@@ -67,6 +67,27 @@ describe('LequeDeCorte', () => {
     }
     // Vinte e duas posições horizontais distintas: nenhuma empilhada sobre a outra.
     expect(margens.size).toBe(22);
+  });
+
+  it('apertar acende o desenho, mas a área de toque fica onde estava', () => {
+    // Defeito de 03/10, achado pelo dono com o mouse: o clique humano demora uns 100 ms
+    // entre apertar e soltar, e nesse meio a lâmina acendia — a caixa subia 12 pixels e
+    // ganhava um contorno por cima. O soltar caía noutro elemento (ou fora da caixa), o
+    // navegador não gerava `click`, e no react-native-web o `onPress` só nasce do `click`.
+    // O teste automático clicava em 0 ms e passava.
+    //
+    // A regra: o que se mexe ao apertar é só o desenho, numa camada que não recebe toque.
+    render(<LequeDeCorte quantidade={22} aoCortar={jest.fn()} />);
+    const lamina = screen.getByLabelText('Cortar aqui, carta 7 de 22');
+    const antes = estiloDa(lamina);
+
+    fireEvent(lamina, 'pressIn');
+
+    expect(estiloDa(lamina)).toEqual(antes);
+    const desenho = within(lamina).getByTestId('desenho-da-lamina');
+    expect(desenho.props.pointerEvents).toBe('none');
+    const subida = (estiloDa(desenho).transform as unknown as { translateY: number }[])[0];
+    expect(subida.translateY).toBeLessThan(0);
   });
 
   it('o arco é simétrico, e a lâmina do meio é a mais alta', () => {
