@@ -123,13 +123,22 @@ export function LequeDeCorte({
             style={[estilos.lamina, {
               left: '50%',
               marginLeft: -LARGURA_LAMINA / 2 + x,
-              top: y + (aceso ? -12 : 0),
+              top: y,
               zIndex: i,
               transform: [{ rotate: `${giro.toFixed(2)}deg` }],
             }]}
           >
-            <VersoDaCarta largura={LARGURA_LAMINA} altura={ALTURA_LAMINA} />
-            {aceso && <View style={estilos.contorno} />}
+            {/* Acender mexe só no desenho, e o desenho não recebe toque. Se a caixa subisse
+                ou ganhasse um contorno por cima no meio do aperto, o soltar cairia noutro
+                elemento e o navegador não geraria o `click` de que o `onPress` depende. */}
+            <View
+              testID="desenho-da-lamina"
+              pointerEvents="none"
+              style={{ transform: [{ translateY: aceso ? -12 : 0 }] }}
+            >
+              <VersoDaCarta largura={LARGURA_LAMINA} altura={ALTURA_LAMINA} />
+              {aceso && <View style={estilos.contorno} />}
+            </View>
           </Pressable>
         );
       })}
