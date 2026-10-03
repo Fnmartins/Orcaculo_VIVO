@@ -100,6 +100,22 @@ describe('geometria das tiragens', () => {
     expect(atravessa.deitada).toBe(true);
   });
 
+  it('a Cruz Celta é distribuída na ordem dos livros', () => {
+    // A carta vai para a posição da vez, então a ordem do array é a ordem em que as
+    // cartas caem. Burke (O Livro Completo do Tarô, p. 162) e o livreto Rider-Waite
+    // (p. 53) numeram igual: 3 acima, 4 abaixo, 5 atrás (o passado). O defeito que isto
+    // pega: a 3ª carta ir para a raiz, como ia antes.
+    const cruz = TIRAGENS.find((t) => t.id === 'cruz-celta');
+    expect(cruz?.posicoes.map((p) => p.nome)).toEqual([
+      'A situação', 'O que atravessa', 'O que se busca', 'A raiz', 'O que passou',
+      'O que vem', 'Você nisso', 'Os outros', 'Esperança e medo', 'Para onde caminha',
+    ]);
+    const [, , acima, abaixo] = cruz?.posicoes ?? [];
+    const situacao = cruz?.posicoes[0];
+    expect(acima.lugar.linha).toBeLessThan(situacao!.lugar.linha);
+    expect(abaixo.lugar.linha).toBeGreaterThan(situacao!.lugar.linha);
+  });
+
   it('as posições-chave declaradas são das quatro válidas', () => {
     const validas = new Set(['agora', 'passado', 'futuro', 'obstaculo']);
     for (const tiragem of TIRAGENS) {
@@ -114,7 +130,7 @@ describe('geometria das tiragens', () => {
     const cruz = TIRAGENS.find((t) => t.id === 'cruz-celta');
     // As dez, na ordem do array: apagar uma chave de qualquer posição tem de quebrar aqui.
     expect(cruz?.posicoes.map((p) => p.chave)).toEqual([
-      'agora', 'obstaculo', undefined, 'passado', undefined, 'futuro',
+      'agora', 'obstaculo', undefined, undefined, 'passado', 'futuro',
       undefined, undefined, undefined, undefined,
     ]);
     const tres = TIRAGENS.find((t) => t.id === 'tres-cartas');

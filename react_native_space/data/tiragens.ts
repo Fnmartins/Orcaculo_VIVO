@@ -67,17 +67,22 @@ const CRUZ_CELTA: Tiragem = {
   // Copiadas do protótipo aprovado (`Camadas do Tarô`), palavra por palavra. Não são
   // para reescrever: foram lidas e aceitas lá, e trocá-las por redação nova aqui é
   // exatamente o retrabalho que o protótipo existia para evitar.
+  //
+  // A ORDEM do array é a ordem em que as cartas caem, e segue a dos livros — Burke (O
+  // Livro Completo do Tarô, p. 162) e o livreto Rider-Waite (p. 53) numeram igual:
+  // 1 presente, 2 o que cruza, 3 acima, 4 abaixo, 5 atrás (passado), 6 adiante, e o
+  // bastão de baixo para cima. Antes a raiz vinha em 3º e o que se busca em 5º.
   posicoes: [
     { nome: 'A situação', regra: 'o assunto como ele está',
       chave: 'agora', lugar: { coluna: 1, linha: 1 } },
     { nome: 'O que atravessa', regra: 'o que ajuda ou atrapalha, de lado',
       chave: 'obstaculo', lugar: { coluna: 2, linha: 1 }, deitada: true },
+    { nome: 'O que se busca', regra: 'o que você quer que aconteça, dito ou não',
+      lugar: { coluna: 1, linha: 0 } },
     { nome: 'A raiz', regra: 'o que sustenta isso por baixo, muitas vezes antigo',
       lugar: { coluna: 1, linha: 2 } },
     { nome: 'O que passou', regra: 'o que já saiu de cena e ainda ecoa',
       chave: 'passado', lugar: { coluna: 0, linha: 1 } },
-    { nome: 'O que se busca', regra: 'o que você quer que aconteça, dito ou não',
-      lugar: { coluna: 1, linha: 0 } },
     { nome: 'O que vem', regra: 'o próximo movimento, não o desfecho',
       chave: 'futuro', lugar: { coluna: 3, linha: 1 } },
     { nome: 'Você nisso', regra: 'como você está se portando dentro do assunto',
