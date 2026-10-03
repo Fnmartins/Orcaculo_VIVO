@@ -6,9 +6,11 @@ import { Fontes } from '../../constants/typography';
 
 export interface MedidaDaVaga {
   indice: number;
-  /** Topo e base em coordenadas de tela, como chegam no `pageY` do toque. */
+  /** Os quatro lados em coordenadas de tela, como chegam no `pageX`/`pageY` do toque. */
   topo: number;
   base: number;
+  esquerda: number;
+  direita: number;
 }
 
 interface Props {
@@ -30,11 +32,16 @@ const FOLGA = 8;
 /**
  * Onde o dedo soltou a carta, ou -1.
  *
- * Fora de qualquer faixa devolve -1 em vez da vaga mais próxima: chutar poria a carta
- * numa posição que a pessoa não apontou, e a posição é metade do significado da leitura.
+ * Fora de qualquer vaga devolve -1 em vez da mais próxima: chutar poria a carta numa
+ * posição que a pessoa não apontou, e a posição é metade do significado da leitura.
+ *
+ * Olha os dois eixos porque no tabuleiro várias vagas dividem a mesma altura. Só com o y,
+ * soltar em 'O que vem' achava 'O que passou', a primeira da linha.
  */
-export function vagaSob(y: number, vagas: readonly MedidaDaVaga[]): number {
-  const achada = vagas.find((v) => y >= v.topo && y <= v.base);
+export function vagaSob(x: number, y: number, vagas: readonly MedidaDaVaga[]): number {
+  const achada = vagas.find(
+    (v) => y >= v.topo && y <= v.base && x >= v.esquerda && x <= v.direita,
+  );
   return achada ? achada.indice : -1;
 }
 
@@ -50,12 +57,16 @@ export function vagaSob(y: number, vagas: readonly MedidaDaVaga[]): number {
 export function MonteParaDistribuir({ restantes, aoPuxar, aoSoltarEm, vagas = [] }: Props) {
   const vazio = restantes <= 0;
   const podeArrastar = !vazio && Boolean(aoSoltarEm) && vagas.length > 0;
-  const partida = useRef(0);
-  const fantasma = useRef(new Animated.Value(0)).current;
+  const partida = useRef({ x: 0, y: 0 });
+  const fantasma = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
 
-  function soltar(pageY: number) {
-    Animated.spring(fantasma, { toValue: 0, useNativeDriver: true }).start();
-    const alvo = vagaSob(pageY, vagas);
+  function devolver() {
+    Animated.spring(fantasma, { toValue: { x: 0, y: 0 }, useNativeDriver: true }).start();
+  }
+
+  function soltar(pageX: number, pageY: number) {
+    devolver();
+    const alvo = vagaSob(pageX, pageY, vagas);
     if (alvo >= 0) aoSoltarEm?.(alvo);
   }
 
@@ -65,16 +76,21 @@ export function MonteParaDistribuir({ restantes, aoPuxar, aoSoltarEm, vagas = []
         testID="area-de-arraste"
         // `onTouchStart` não reivindica o gesto: só anota de onde o dedo partiu, para o
         // `onMoveShouldSetResponder` saber distinguir um toque de um arraste.
-        onTouchStart={(e) => { partida.current = e.nativeEvent.pageY; }}
-        onMoveShouldSetResponder={(e) =>
-          podeArrastar && Math.abs(e.nativeEvent.pageY - partida.current) > FOLGA}
-        onResponderMove={(e) => fantasma.setValue(e.nativeEvent.pageY - partida.current)}
-        onResponderRelease={(e) => soltar(e.nativeEvent.pageY)}
-        onResponderTerminate={() => {
-          Animated.spring(fantasma, { toValue: 0, useNativeDriver: true }).start();
+        onTouchStart={(e) => {
+          partida.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY };
         }}
+        onMoveShouldSetResponder={(e) => podeArrastar && Math.hypot(
+          e.nativeEvent.pageX - partida.current.x,
+          e.nativeEvent.pageY - partida.current.y,
+        ) > FOLGA}
+        onResponderMove={(e) => fantasma.setValue({
+          x: e.nativeEvent.pageX - partida.current.x,
+          y: e.nativeEvent.pageY - partida.current.y,
+        })}
+        onResponderRelease={(e) => soltar(e.nativeEvent.pageX, e.nativeEvent.pageY)}
+        onResponderTerminate={devolver}
       >
-        <Animated.View style={{ transform: [{ translateY: fantasma }] }}>
+        <Animated.View style={{ transform: fantasma.getTranslateTransform() }}>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Carta de cima do monte, pegue daqui"

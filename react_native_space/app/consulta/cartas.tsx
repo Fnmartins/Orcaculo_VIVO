@@ -70,6 +70,9 @@ export default function TelaCartas() {
   );
   const [recolhendo, setRecolhendo] = useState(false);
   const [medidas, setMedidas] = useState<MedidaDaVaga[]>([]);
+  // A pessoa tentou pôr a carta numa vaga que não é a da vez. Fica até a próxima carta
+  // pousar no lugar certo, para a explicação não sumir antes de ser lida.
+  const [foraDeOrdem, setForaDeOrdem] = useState(false);
   // Sobe a cada rolagem parada: e o sinal para as vagas se medirem de novo. Sem isso,
   // com o monte fixo na tela, soltar a carta depois de rolar usaria medida velha.
   const [versaoDaMedida, setVersaoDaMedida] = useState(0);
@@ -145,9 +148,19 @@ export default function TelaCartas() {
     setRecolhendo(false);
   }, [montes, leque]);
 
+  // As cartas vão para as posições na ordem da tiragem, como nos livros: quem consulta
+  // escolhe a carta (pelo corte), não a posição. Burke tira do topo ou deixa a pessoa
+  // escolher QUAIS cartas, mas a 1ª vai sempre para a posição 1 (O Livro Completo do
+  // Tarô, p. 157 e 162; livreto Rider-Waite, p. 53). O arraste e o toque na vaga ficam,
+  // mas só valem na próxima posição.
   const puxarPara = useCallback((vaga: number) => {
     if (vaga < 0 || vaga >= tiragem.length || tiragem[vaga]) return;
     if (!baralho || baralho.length === 0) return;
+    if (vaga !== tiragem.findIndex((c) => c === null)) {
+      setForaDeOrdem(true);
+      return;
+    }
+    setForaDeOrdem(false);
     Hapticos.impactoLeve();
     const [topo, ...resto] = baralho;
     const nova = [...tiragem];
@@ -179,7 +192,7 @@ export default function TelaCartas() {
     });
   }, [tiragem, reveladas]);
 
-  const medirVaga = useCallback((indice: number, medida: { topo: number; base: number }) => {
+  const medirVaga = useCallback((indice: number, medida: Omit<MedidaDaVaga, 'indice'>) => {
     setMedidas((anteriores) => [
       ...anteriores.filter((m) => m.indice !== indice),
       { indice, ...medida },
@@ -198,6 +211,7 @@ export default function TelaCartas() {
     setReveladas(POSICOES.map(() => false));
     setRecolhendo(false);
     setMedidas([]);
+    setForaDeOrdem(false);
   }, [POSICOES]);
 
   const verResultado = useCallback(() => {
@@ -268,10 +282,14 @@ export default function TelaCartas() {
     contador = 'Toque em "Recomeçar o rito" para embaralhar e cortar outra vez.';
   }
 
-  const passoDaDistribuicao = faltam === 0
+  const proxima = POSICOES[tiragem.findIndex((c) => c === null)];
+  const passoDaDistribuicao = faltam === 0 || !proxima
     ? 'Todas as posições preenchidas. A leitura é esta.'
-    : 'Arraste a carta de cima do monte para uma posição — ou toque nela, que ela vai '
-      + `para a próxima vaga. Faltam ${faltam} ${faltam === 1 ? 'carta.' : 'cartas.'}`;
+    : (foraDeOrdem
+      ? `As cartas vão na ordem da tiragem: esta é de ${proxima.nome}. `
+      : `Próxima posição: ${proxima.nome}. `)
+      + 'Arraste a carta de cima do monte até ela — ou toque no monte. '
+      + `Faltam ${faltam} ${faltam === 1 ? 'carta.' : 'cartas.'}`;
 
   return (
     <LinearGradient colors={['#F7F3EA', '#F1EEE5', '#F7F3EA']} style={estilos.fundo}>

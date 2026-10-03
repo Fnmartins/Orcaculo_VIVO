@@ -256,17 +256,36 @@ describe('o rito do tarô', () => {
     expect(new Set(cartas.map((c) => c.id)).size).toBe(3);
   });
 
-  it('tocar numa vaga põe a carta naquela vaga, não na primeira', async () => {
-    // Desde o arraste a posição é escolhida, não sorteada pela ordem. Se o toque numa
-    // vaga caísse sempre na primeira vazia, o arraste e o toque diriam coisas
-    // diferentes sobre a mesma tela.
+  // As cartas vão para as posições na ordem da tiragem, como nos livros (Burke, p. 157 e
+  // 162; Rider-Waite, p. 53): quem consulta escolhe a carta, não a posição. O arraste e o
+  // toque na vaga continuam — mas só valem na próxima posição.
+  it('a tela diz qual é a próxima posição', async () => {
+    await abrir();
+    embaralharCartas(); cortar(); irParaLeitura();
+    expect(screen.getByText(/Próxima posição: Passado\./)).toBeTruthy();
+    puxar();
+    await waitFor(() => expect(screen.getByText(/Próxima posição: Presente\./)).toBeTruthy());
+  });
+
+  it('tocar numa vaga fora da ordem não põe a carta, e a tela diz qual é a vez', async () => {
     await abrir();
     embaralharCartas(); cortar(); irParaLeitura();
     fireEvent.press(screen.getByLabelText('Posição Futuro, vazia'));
+    expect(screen.getByLabelText('Posição Futuro, vazia')).toBeTruthy();
     expect(screen.getByLabelText('Posição Passado, vazia')).toBeTruthy();
+    expect(screen.getByText(/As cartas vão na ordem da tiragem: esta é de Passado\./)).toBeTruthy();
+    expect(screen.getByText(/Faltam 3 cartas\./)).toBeTruthy();
+  });
+
+  it('tocar na próxima vaga põe a carta nela, e o aviso some', async () => {
+    await abrir();
+    embaralharCartas(); cortar(); irParaLeitura();
+    fireEvent.press(screen.getByLabelText('Posição Futuro, vazia'));
+    fireEvent.press(screen.getByLabelText('Posição Passado, vazia'));
     await waitFor(() =>
-      expect(screen.queryByLabelText('Posição Futuro, vazia')).toBeNull()
+      expect(screen.queryByLabelText('Posição Passado, vazia')).toBeNull()
     );
+    expect(screen.queryByText(/As cartas vão na ordem da tiragem/)).toBeNull();
   });
 
   it('recomeçar está sempre à mão, e devolve o baralho inteiro', async () => {
