@@ -1,14 +1,60 @@
 import { embaralhar } from './corteDoBaralho';
 
 // Dados simplificados do Tarot (22 Arcanos Maiores)
+/** As quatro posições em que a carta lê diferente, segundo as fontes. */
+export type PosicaoChave = 'agora' | 'passado' | 'futuro' | 'obstaculo';
+
 export interface CartaTarot {
   id: number;
   nome: string;
   nomeCompleto: string;
+  /** A interpretação em prosa. É o que a carta diz quando aparece. */
   significado: string;
   conselho: string;
   icone: string; // Ionicons
   cor: string;
+
+  // ─── Camadas do verbete. Opcionais: a estrutura sobe antes do conteúdo. ───
+
+  /** 3 a 5 palavras. Âncora curta — é o que impede a IA de divagar. */
+  palavrasChave?: string[];
+  /** 6 a 8 frases curtíssimas. O "sentimento" da carta. */
+  frasesChave?: string[];
+  /**
+   * Nota curta só nas posições em que a carta lê diferente.
+   * Parcial de propósito: o livro escreve uma ou duas, não quatro.
+   */
+  porPosicao?: Partial<Record<PosicaoChave, string>>;
+  /**
+   * A leitura da carta de cabeça para baixo. Serve também à posição `obstaculo`.
+   *
+   * É o texto da leitura invertida, não a afirmação de que esta carta ESTÁ invertida:
+   * essa é a orientação, o booleano `invertida` que viaja no payload da leitura.
+   */
+  leituraInvertida?: string;
+
+  // ─── Só nos Menores, que chegam na Fase 3. ───
+  naipe?: 'espadas' | 'paus' | 'copas' | 'ouros';
+  elemento?: 'ar' | 'fogo' | 'agua' | 'terra';
+  /** Valete, Cavaleiro, Rainha e Rei: representam gente, não tema. */
+  ehCorte?: boolean;
+}
+
+/**
+ * A nota desta carta para esta posição, se houver.
+ *
+ * `obstaculo` cai em `leituraInvertida` quando não houver nota própria: as fontes
+ * tratam "revertido" e "posição de obstáculo" como a mesma leitura, e escrever os dois
+ * seria escrever duas vezes a mesma coisa — que depois divergem.
+ */
+export function notaDaPosicao(
+  carta: CartaTarot,
+  chave?: PosicaoChave,
+): string | undefined {
+  if (!chave) return undefined;
+  const propria = carta.porPosicao?.[chave];
+  if (propria) return propria;
+  return chave === 'obstaculo' ? carta.leituraInvertida : undefined;
 }
 
 export const ARCANOS_MAIORES: CartaTarot[] = [

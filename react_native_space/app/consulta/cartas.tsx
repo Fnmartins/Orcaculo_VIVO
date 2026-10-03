@@ -17,9 +17,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Button } from '../../components/Button';
 import { LequeDeCorte } from '../../components/taro/LequeDeCorte';
 import { MontesCortados } from '../../components/taro/MontesCortados';
-import { CruzCelta, LARGURA_MINIMA_DA_CRUZ } from '../../components/taro/CruzCelta';
 import { MonteParaDistribuir, type MedidaDaVaga } from '../../components/taro/MonteParaDistribuir';
 import { Recolhimento } from '../../components/taro/Recolhimento';
+import { Tabuleiro, LARGURA_MINIMA_DO_TABULEIRO } from '../../components/taro/Tabuleiro';
 import { VagaDaTiragem } from '../../components/taro/VagaDaTiragem';
 import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
@@ -56,6 +56,10 @@ export default function TelaCartas() {
   const [intencao, setIntencao] = useState('');
   const [modelo, setModelo] = useState<Tiragem>(TIRAGEM_PADRAO);
   const [leque, setLeque] = useState<CartaTarot[]>(() => embaralhar(ARCANOS_MAIORES));
+  // O leque só abre depois do gesto. Nas fontes a pergunta é segurada na cabeça DURANTE
+  // o embaralhamento — é isso que liga a pergunta à tiragem. Embaralhar invisível, num
+  // instante, é sorteio com outro nome.
+  const [embaralhado, setEmbaralhado] = useState(false);
   const [montes, setMontes] = useState<CartaTarot[][]>([]);
   const [baralho, setBaralho] = useState<CartaTarot[] | null>(null);
   const [tiragem, setTiragem] = useState<(CartaTarot | null)[]>(
@@ -114,6 +118,12 @@ export default function TelaCartas() {
     setTiragem(escolhida.posicoes.map(() => null));
     setReveladas(escolhida.posicoes.map(() => false));
     setMedidas([]);
+  }, []);
+
+  const embaralharAgora = useCallback(() => {
+    Hapticos.impactoMedio();
+    setLeque(embaralhar(ARCANOS_MAIORES));
+    setEmbaralhado(true);
   }, []);
 
   const aoCortar = useCallback((indice: number) => {
@@ -181,6 +191,7 @@ export default function TelaCartas() {
     for (const r of relogios.current) clearTimeout(r);
     relogios.current = [];
     setLeque(embaralhar(ARCANOS_MAIORES));
+    setEmbaralhado(false);
     setMontes([]);
     setBaralho(null);
     setTiragem(POSICOES.map(() => null));
@@ -204,9 +215,10 @@ export default function TelaCartas() {
     });
   }, [tiragem, intencao, POSICOES]);
 
-  // A cruz só em tela larga: espremida num celular ela deixa de ser legível, e o que
-  // carrega o sentido da posição é o nome com a pergunta, que some primeiro.
-  const emCruz = modelo.id === 'cruz-celta' && larguraDaTela >= LARGURA_MINIMA_DA_CRUZ;
+  // O tabuleiro só em tela larga: espremida num celular a mesa deixa de ser legível, e o
+  // que carrega o sentido da posição é o nome com a pergunta, que some primeiro. Até três
+  // cartas a lista já é a própria mesa, em linha — não há o que arrumar.
+  const emTabuleiro = POSICOES.length > 3 && larguraDaTela >= LARGURA_MINIMA_DO_TABULEIRO;
 
   const desenharVaga = (i: number) => (
     <VagaDaTiragem
@@ -214,7 +226,8 @@ export default function TelaCartas() {
       posicao={POSICOES[i]}
       carta={tiragem[i]}
       revelada={reveladas[i]}
-      compacta={emCruz}
+      compacta={emTabuleiro}
+      deitada={POSICOES[i].deitada}
       aoReceber={() => puxarPara(i)}
       aoVirar={() => virar(i)}
       aoMedir={(medida) => medirVaga(i, medida)}
@@ -227,7 +240,11 @@ export default function TelaCartas() {
   let passo: string;
   let contador: string;
   if (etapa === 'cortar') {
-    if (cortes === 0) {
+    if (!embaralhado) {
+      passo = 'Segure a sua pergunta e embaralhe as cartas.';
+      contador = `O baralho tem ${leque.length} cartas. `
+        + 'O que você está pensando entra agora, com o gesto.';
+    } else if (cortes === 0) {
       passo = 'Toque numa carta do leque para tirar um monte.';
       contador = `O baralho tem ${leque.length} cartas, embaralhadas. `
         + 'Tudo da ponta até onde você tocar sai junto.';
@@ -247,7 +264,8 @@ export default function TelaCartas() {
       + 'a ordem do monte.';
   } else {
     passo = 'A leitura está posta.';
-    contador = 'Toque em "Recomeçar o rito" para cortar outra vez.';
+    // Recomeçar leva de volta ao embaralhamento, não ao corte.
+    contador = 'Toque em "Recomeçar o rito" para embaralhar e cortar outra vez.';
   }
 
   const passoDaDistribuicao = faltam === 0
@@ -286,7 +304,7 @@ export default function TelaCartas() {
           onMomentumScrollEnd={() => setVersaoDaMedida((v) => v + 1)}
         >
           <Animated.View
-            style={[estilos.coluna, emCruz && estilos.colunaLarga, { opacity: fade }]}
+            style={[estilos.coluna, emTabuleiro && estilos.colunaLarga, { opacity: fade }]}
           >
             {/* ───────── Antes de cortar ───────── */}
             {!distribuindo && !recolhendo && (
@@ -297,15 +315,34 @@ export default function TelaCartas() {
                   Escrever é opcional. Quem escreve recebe uma leitura sobre aquilo; quem
                   não escreve recebe uma leitura que não finge saber o que você pensou.
                 </Text>
+                {/* Depois do embaralhamento a pergunta já está valendo: o campo fica à vista,
+                    porque é a pergunta da leitura, mas não aceita mais edição. Quem digita
+                    depois do gesto faz o gesto antes e a pergunta depois — o que o torna
+                    falso. Mudar a pergunta é recomeçar o rito. */}
                 <TextInput
                   accessibilityLabel={ROTULO_INTENCAO}
                   value={intencao}
                   onChangeText={setIntencao}
-                  placeholder="Ex.: estou decidindo se mudo de trabalho"
+                  editable={!embaralhado}
+                  placeholder={embaralhado
+                    ? 'Nenhuma pergunta escrita'
+                    : 'Ex.: estou decidindo se mudo de trabalho'}
                   placeholderTextColor={Cores.textoSecundario}
                   maxLength={140}
-                  style={estilos.campo}
+                  style={[estilos.campo, embaralhado && estilos.campoValendo]}
                 />
+                {/* Campo travado e vazio seria beco sem saída: a pessoa que segurou a pergunta
+                    na cabeça e quer escrevê-la precisa saber que o caminho é recomeçar. No
+                    caso vazio a linha não afirma pergunta nenhuma. */}
+                {embaralhado ? (
+                  <Text style={estilos.nota}>
+                    {intencao.trim()
+                      ? 'A pergunta já entrou com o embaralhamento. Para mudá-la, toque em '
+                        + '"Recomeçar o rito".'
+                      : 'Você embaralhou sem escrever. Para pôr uma pergunta, toque em '
+                        + '"Recomeçar o rito".'}
+                  </Text>
+                ) : null}
                 {podeTrocarDeTiragem && (
                   <View style={estilos.chaves}>
                     {TIRAGENS.map((opcao) => {
@@ -340,9 +377,18 @@ export default function TelaCartas() {
                   : contador}
               </Text>
 
+              {!embaralhado && !distribuindo && !recolhendo ? (
+                <Button
+                  variante="primary"
+                  label="Embaralhar"
+                  icone="shuffle-outline"
+                  onPress={embaralharAgora}
+                />
+              ) : null}
+
               {recolhendo ? (
                 <Recolhimento ligado={movimento === true} aoTerminar={terminarRecolhimento} />
-              ) : !distribuindo ? (
+              ) : !distribuindo && embaralhado ? (
                 <LequeDeCorte
                   quantidade={leque.length}
                   aoCortar={aoCortar}
@@ -391,8 +437,8 @@ export default function TelaCartas() {
                       + 'saber o que você pensou.'}
                 </Text>
 
-                {emCruz
-                  ? <CruzCelta vaga={desenharVaga} />
+                {emTabuleiro
+                  ? <Tabuleiro posicoes={POSICOES} vaga={desenharVaga} />
                   : POSICOES.map((_, i) => desenharVaga(i))}
               </>
             )}
@@ -458,7 +504,7 @@ const estilos = StyleSheet.create({
   // O protótipo usa uma coluna de 62rem. Sem ela, no navegador o campo de intenção
   // atravessa a tela inteira.
   coluna: { width: '100%', maxWidth: 620, gap: Espacamento.md },
-  // A cruz precisa de mais largura que o resto da tela; a coluna abre só para ela.
+  // O tabuleiro precisa de mais largura que o resto da tela; a coluna abre só para ele.
   colunaLarga: { maxWidth: 1100 },
 
   painel: {
@@ -480,6 +526,9 @@ const estilos = StyleSheet.create({
     paddingVertical: Espacamento.sm, fontFamily: Fontes.corpo, fontSize: 14,
     color: Cores.textoClaro,
   },
+
+  // Já valendo: sai o fundo de campo, que convida a escrever, e entra o da superfície.
+  campoValendo: { backgroundColor: Cores.cardFundo },
 
   chaves: { flexDirection: 'row', flexWrap: 'wrap', gap: Espacamento.sm },
   chave: {

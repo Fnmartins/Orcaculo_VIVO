@@ -22,7 +22,7 @@ import { Cores } from '../../constants/colors';
 import { Fontes } from '../../constants/typography';
 import { Espacamento, RaioBorda } from '../../constants/spacing';
 import { Hapticos } from '../../utils/haptics';
-import type { CartaTarot } from '../../data/tarot';
+import { notaDaPosicao, type CartaTarot, type PosicaoChave } from '../../data/tarot';
 import { gerarInterpretacaoTarot, IA_REMOTA_DISPONIVEL, type InterpretacaoTarot } from '../../services/ia';
 import { compartilharTarot } from '../../services/compartilhar';
 import { RatingConsulta } from '../../components/RatingConsulta';
@@ -87,7 +87,7 @@ export default function TelaResultado() {
   // funcionava só enquanto toda tiragem fosse Passado / Presente / Futuro — numa Cruz
   // Celta, a tela mostraria "Futuro" na quarta carta e a IA receberia a pergunta errada.
   // A lista local fica como recuo para leituras abertas antes deste parâmetro existir.
-  let posicoes: { nome: string; regra?: string }[] = POSICOES.map((nome) => ({ nome }));
+  let posicoes: { nome: string; regra?: string; chave?: PosicaoChave }[] = POSICOES.map((nome) => ({ nome }));
   try {
     if (posicoesParam) {
       const lidas = JSON.parse(posicoesParam);
@@ -115,7 +115,11 @@ export default function TelaResultado() {
           nome: c.nomeCompleto,
           posicao: nomeDaPosicao(i),
           regra: posicoes[i]?.regra,
+          chave: posicoes[i]?.chave,
           significado: c.significado,
+          palavrasChave: c.palavrasChave,
+          frasesChave: c.frasesChave,
+          nota: notaDaPosicao(c, posicoes[i]?.chave),
         })),
         intencao
       );

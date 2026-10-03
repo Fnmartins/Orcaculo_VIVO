@@ -91,3 +91,49 @@ describe('tamanho da vaga', () => {
     expect(larguraDa(false)).toBe('100%');
   });
 });
+
+type No = ReturnType<typeof screen.getByText>;
+
+describe('vaga deitada', () => {
+  // Gira o próprio elemento ou algum de seus ancestrais: é o que decide se, na tela, o
+  // conteúdo dele aparece de lado. Só `rotate` conta; o `rotateY` da virada é outra coisa.
+  const giraPor = (no: No): boolean => {
+    for (let atual: No | null = no; atual; atual = atual.parent) {
+      const estilo = StyleSheet.flatten(atual.props.style) as
+        { transform?: { rotate?: string }[] } | undefined;
+      if (estilo?.transform?.some((t) => t.rotate === '90deg')) return true;
+    }
+    return false;
+  };
+
+  it('a carta é posta de lado: a lâmina gira um quarto de volta', () => {
+    render(<VagaDaTiragem posicao={PASSADO} carta={TORRE} revelada deitada aoReceber={jest.fn()} />);
+    expect(giraPor(screen.getByTestId('lamina-deitada'))).toBe(true);
+    // A carta mora dentro da lâmina, então vai junto.
+    expect(giraPor(screen.getByLabelText(TORRE.nomeCompleto))).toBe(true);
+  });
+
+  it('o nome da posição e a pergunta continuam na horizontal', () => {
+    // O defeito que isto pega: girar o cartão inteiro. Na mesa de verdade quem é posta
+    // cruzada é a carta; "O que atravessa" e a pergunta dela, lidos de lado, tiram a
+    // única coisa que explica a posição.
+    render(<VagaDaTiragem posicao={PASSADO} carta={null} deitada aoReceber={jest.fn()} />);
+    expect(giraPor(screen.getByText(PASSADO.nome))).toBe(false);
+    expect(giraPor(screen.getByText(PASSADO.regra))).toBe(false);
+    // E não é que nada gire: a lâmina vazia gira, só o texto não.
+    expect(giraPor(screen.getByTestId('lamina-deitada'))).toBe(true);
+  });
+
+  it('com a carta virada, o nome e o significado dela também não giram', () => {
+    render(<VagaDaTiragem posicao={PASSADO} carta={TORRE} revelada deitada aoReceber={jest.fn()} />);
+    expect(giraPor(screen.getByText(PASSADO.nome))).toBe(false);
+    expect(giraPor(screen.getByText(TORRE.nomeCompleto))).toBe(false);
+    expect(giraPor(screen.getByText(TORRE.significado))).toBe(false);
+  });
+
+  it('por padrão nada gira', () => {
+    render(<VagaDaTiragem posicao={PASSADO} carta={TORRE} revelada aoReceber={jest.fn()} />);
+    expect(screen.queryByTestId('lamina-deitada')).toBeNull();
+    expect(giraPor(screen.getByLabelText(TORRE.nomeCompleto))).toBe(false);
+  });
+});
