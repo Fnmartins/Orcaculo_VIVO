@@ -15,7 +15,7 @@ interface Props {
   aoReceber: () => void;
   aoVirar?: () => void;
   /** Onde esta vaga está na tela, para o arraste saber o que há debaixo do dedo. */
-  aoMedir?: (medida: { topo: number; base: number }) => void;
+  aoMedir?: (medida: { topo: number; base: number; esquerda: number; direita: number }) => void;
   /**
    * Muda quando a tela rola, para a vaga se medir de novo.
    *
@@ -66,8 +66,8 @@ export function VagaDaTiragem({
   // `measureInWindow` e não o layout do `onLayout`: o layout vem relativo ao pai, e o
   // dedo chega em coordenada de tela. Misturar os dois acerta por acaso.
   const medir = useCallback(() => {
-    caixa.current?.measureInWindow((_x, y, _largura, altura) => {
-      aoMedir?.({ topo: y, base: y + altura });
+    caixa.current?.measureInWindow((x, y, largura, altura) => {
+      aoMedir?.({ topo: y, base: y + altura, esquerda: x, direita: x + largura });
     });
   }, [aoMedir]);
 
