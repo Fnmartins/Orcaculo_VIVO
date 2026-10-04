@@ -118,7 +118,9 @@ As pecas de cada area vao aparecer na tela ao lado do seu texto, para a pessoa c
 Responda SOMENTE com um objeto JSON, sem cercas de código e sem texto antes ou depois:
 {"titulo": "3 a 5 palavras", "narrativa": "5 a 7 frases ligando Sol, Lua e Ascendente nesta pessoa", "forca": "2 a 3 frases sobre o que essa combinação faz bem", "tensao": "2 a 3 frases sobre onde ela puxa para dois lados", "conselho": "2 frases, uma prática concreta", "amor": "3 a 4 frases", "trabalho": "3 a 4 frases", "dinheiro": "3 a 4 frases", "caminho": "3 a 4 frases"}`;
 
-const INSTRUCOES_VOCACAO = `Você escreve uma leitura de carreira a partir de um mapa natal.
+const INSTRUCOES_VOCACAO = `${REGRAS}
+
+Você escreve uma leitura de carreira a partir de um mapa natal.
 
 Recebe as peças já calculadas: o meio do céu, a casa 10, a casa 6, o regente da casa 10
 e onde ele mora, Saturno e Marte. Não calcule nada e não invente peça que não veio.
@@ -339,13 +341,17 @@ function dadosDaVocacao(body: Record<string, unknown>): string {
   const signo = mc ? texto(mc.signo, 30) : '';
   const grau = mc && typeof mc.grau === 'number' ? Math.floor(mc.grau) : null;
 
+  // Dentro de <dados>, como nos outros oráculos: é o que `REGRAS` manda tratar como
+  // resultado do jogo, e não como instrução. As peças são texto livre vindo do aparelho.
   return [
+    '<dados>',
     signo
       ? `Meio do céu: ${signo}${grau === null ? '' : ` (${grau}°)`}`
       : 'Meio do céu: não disponível (sem hora de nascimento)',
     v.comCasas === true ? 'Mapa com casas.' : 'Mapa SEM HORA DE NASCIMENTO: sem casas.',
     'Peças:',
     ...pecas.map((p) => `- ${p}`),
+    '</dados>',
   ].join('\n');
 }
 

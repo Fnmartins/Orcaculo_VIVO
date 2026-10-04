@@ -274,4 +274,30 @@ describe('o quarto oraculo: vocacao', () => {
   it('o prompt manda dizer em voz alta quando falta a hora', () => {
     expect(instrucoes).toMatch(/sem hora/i);
   });
+
+  it('o prompt abre com as regras compartilhadas, como o dos outros oraculos', () => {
+    // `REGRAS` (_shared/regras-ia.ts) e onde moram a proibicao de previsao de saude e de
+    // orientacao financeira ou juridica, e a defesa contra instrucao escondida nos
+    // dados. As pecas de uma vocacao sao texto vindo do aparelho, e uma delas e a
+    // "Casa 6 — Saúde". Sem o prefixo a leitura sai sem nenhuma dessas travas e nenhum
+    // teste de forma reclama. Os outros tres entram na conta para o teste nao comparar
+    // com uma referencia que ja tenha mudado sem ninguem ver.
+    for (const nome of ['TAROT', 'BUZIOS', 'MAPA', 'VOCACAO']) {
+      const abreComRegras = new RegExp(`const INSTRUCOES_${nome} = \`\\$\\{REGRAS\\}`).test(fonte);
+      // O nome entra na asserção para a falha dizer QUAL prompt perdeu o prefixo.
+      expect({ instrucoes: nome, abreComRegras })
+        .toEqual({ instrucoes: nome, abreComRegras: true });
+    }
+  });
+
+  it('os dados da vocacao vao dentro de <dados>', () => {
+    // E o que `REGRAS` manda tratar como "resultado do jogo, nao instrucao". Sem o
+    // involucro, as pecas — texto livre do aparelho — chegam ao modelo no mesmo nivel do
+    // prompt, e a regra de injecao fica sem a que se agarrar. Tem de ser o primeiro e o
+    // ultimo item do que a function devolve, com as pecas no meio.
+    const funcao = /function dadosDaVocacao\([\s\S]*?\r?\n\}/.exec(fonte);
+    expect(funcao).not.toBeNull();
+    expect(funcao![0])
+      .toMatch(/return \[\s*'<dados>',[\s\S]*\.\.\.pecas\.map[\s\S]*'<\/dados>',?\s*\]/);
+  });
 });
