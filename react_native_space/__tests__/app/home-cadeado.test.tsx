@@ -167,13 +167,13 @@ describe('cadeado na home', () => {
  * o que elas ainda podem usar. Por isso o parcial marca o card e abre uma escolha.
  */
 describe('acesso parcial nos oráculos com parte grátis', () => {
-  it('os três marcam o card sem trancá-lo', () => {
+  it('os quatro marcam o card sem trancá-lo', () => {
     comValidade(VENCIDO);
     render(<HomeAurora />);
-    // Três, e não um: tratar só o tarô deixaria a home incoerente, e é o erro mais
-    // provável de quem mexer nisto depois.
-    expect(screen.getAllByText('Parte grátis segue aberta')).toHaveLength(3);
-    expect(screen.getAllByHintText('Abre as opções do seu acesso')).toHaveLength(3);
+    // Quatro: Búzios, Tarot, Mapa Astral e Vocação. Tratar só o tarô deixaria a home
+    // incoerente, e é o erro mais provável de quem mexer nisto depois.
+    expect(screen.getAllByText('Parte grátis segue aberta')).toHaveLength(4);
+    expect(screen.getAllByHintText('Abre as opções do seu acesso')).toHaveLength(4);
   });
 
   it('os dois grátis por inteiro ficam de fora', () => {

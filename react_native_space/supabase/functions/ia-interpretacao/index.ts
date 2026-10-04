@@ -47,7 +47,7 @@ function resposta(body: unknown, status = 200) {
  * escreve diferente, e isso e gosto, nao regressao. Voltar e esta linha de volta.
  */
 const MODELO = 'claude-opus-5-5';
-const ORACULOS = ['tarot', 'buzios', 'mapa'] as const;
+const ORACULOS = ['tarot', 'buzios', 'mapa', 'vocacao'] as const;
 type Oraculo = (typeof ORACULOS)[number];
 
 /** Nada que venha do app entra no prompt sem corte: texto longo é injeção barata. */
@@ -118,10 +118,44 @@ As pecas de cada area vao aparecer na tela ao lado do seu texto, para a pessoa c
 Responda SOMENTE com um objeto JSON, sem cercas de código e sem texto antes ou depois:
 {"titulo": "3 a 5 palavras", "narrativa": "5 a 7 frases ligando Sol, Lua e Ascendente nesta pessoa", "forca": "2 a 3 frases sobre o que essa combinação faz bem", "tensao": "2 a 3 frases sobre onde ela puxa para dois lados", "conselho": "2 frases, uma prática concreta", "amor": "3 a 4 frases", "trabalho": "3 a 4 frases", "dinheiro": "3 a 4 frases", "caminho": "3 a 4 frases"}`;
 
+const INSTRUCOES_VOCACAO = `${REGRAS}
+
+Você escreve uma leitura de carreira a partir de um mapa natal.
+
+Recebe as peças já calculadas: o meio do céu, a casa 10, a casa 6, o regente da casa 10
+e onde ele mora, Saturno e Marte. Não calcule nada e não invente peça que não veio.
+
+NÃO REPITA AS PEÇAS. Dizer "sua casa 10 é em Escorpião" não é leitura: é o que a outra
+tela já mostra. O seu trabalho é dizer o que essa combinação significa para o trabalho
+desta pessoa — direção, ambiente e desgaste.
+
+Não sugira profissão por nome. Nada de "você dá um bom arquiteto". Fale de que tipo de
+construção a pessoa sustenta, de que ambiente a segura e do que a esgota.
+
+Quando vier "sem hora de nascimento", a leitura sai sem casas. Diga isso em uma frase,
+na seção "ondeRende", e siga com o que os planetas dão. Entregar menos calado é pior que
+entregar menos avisando.
+
+O que vai em cada campo:
+- "titulo": três a seis palavras que nomeiem a direção desta pessoa.
+- "ondeRende": a direção que o mapa aponta, do meio do céu e do regente da 10. 3 a 5 frases.
+- "ambiente": o que sustenta esta pessoa no dia a dia, da casa 6 e de onde o regente mora:
+  ritmo, companhia, grau de estrutura. 3 a 5 frases.
+- "drena": o que desgasta, de Saturno e dos aspectos tensos. É a seção que separa leitura
+  de elogio — não a suavize. 3 a 5 frases.
+- "passo": uma coisa concreta a fazer nas próximas semanas. Uma ação, não uma qualidade.
+
+Português do Brasil. Fale com a pessoa, por "você". Não prometa resultado, não fale de
+dinheiro garantido e não dê prazo.
+
+Responda SOMENTE com um objeto JSON, sem cercas de código e sem texto antes ou depois:
+{"titulo": "3 a 6 palavras", "ondeRende": "3 a 5 frases", "ambiente": "3 a 5 frases", "drena": "3 a 5 frases", "passo": "uma ação concreta"}`;
+
 const INSTRUCOES_POR_ORACULO: Record<Oraculo, string> = {
   tarot: INSTRUCOES_TAROT,
   buzios: INSTRUCOES_BUZIOS,
   mapa: INSTRUCOES_MAPA,
+  vocacao: INSTRUCOES_VOCACAO,
 };
 
 const CAMPOS: Record<Oraculo, string[]> = {
@@ -131,6 +165,7 @@ const CAMPOS: Record<Oraculo, string[]> = {
   tarot: ['titulo', 'resposta', 'narrativa', 'conselho'],
   buzios: ['titulo', 'narrativa', 'mensagem', 'conselho', 'afirmacao'],
   mapa: ['titulo', 'narrativa', 'forca', 'tensao', 'conselho', 'amor', 'trabalho', 'dinheiro', 'caminho'],
+  vocacao: ['titulo', 'ondeRende', 'ambiente', 'drena', 'passo'],
 };
 
 /** Teto de posições. A Cruz Celta tem dez; acima disso é pedido malformado. */
@@ -296,6 +331,33 @@ ${areas}` : '',
   ].filter(Boolean).join('\n');
 }
 
+function dadosDaVocacao(body: Record<string, unknown>): string {
+  const v = (body.vocacao ?? {}) as Record<string, unknown>;
+  const pecas = Array.isArray(v.pecas)
+    ? v.pecas.map((p) => texto(p, 200)).filter(Boolean).slice(0, 12)
+    : [];
+  // Sem peça nenhuma não há leitura possível: o despacho devolve 400 com esta frase,
+  // em vez de uma leitura genérica que serviria para qualquer pessoa.
+  if (pecas.length === 0) throw new Error('Vocação sem peças do mapa');
+
+  const mc = (v.meioDoCeu ?? null) as Record<string, unknown> | null;
+  const signo = mc ? texto(mc.signo, 30) : '';
+  const grau = mc && typeof mc.grau === 'number' ? Math.floor(mc.grau) : null;
+
+  // Dentro de <dados>, como nos outros oráculos: é o que `REGRAS` manda tratar como
+  // resultado do jogo, e não como instrução. As peças são texto livre vindo do aparelho.
+  return [
+    '<dados>',
+    signo
+      ? `Meio do céu: ${signo}${grau === null ? '' : ` (${grau}°)`}`
+      : 'Meio do céu: não disponível (sem hora de nascimento)',
+    v.comCasas === true ? 'Mapa com casas.' : 'Mapa SEM HORA DE NASCIMENTO: sem casas.',
+    'Peças:',
+    ...pecas.map((p) => `- ${p}`),
+    '</dados>',
+  ].join('\n');
+}
+
 /**
  * A chave da leitura já escrita.
  *
@@ -410,6 +472,7 @@ Deno.serve(async (request) => {
       dados = tarot.dados;
       posicoesDaTiragem = tarot.posicoes;
     } else if (oraculo === 'buzios') dados = dadosDosBuzios(body);
+    else if (oraculo === 'vocacao') dados = dadosDaVocacao(body);
     else dados = dadosDoMapa(body);
   } catch (erro) {
     return resposta({ erro: erro instanceof Error ? erro.message : 'Dados incompletos' }, 400);
@@ -486,6 +549,30 @@ Deno.serve(async (request) => {
     return resposta({ erro: 'Suas consultas deste período acabaram.', semConsultas: true }, 402);
   }
 
+  // A leitura de vocação já escrita vem DEPOIS do veredito e da cota do período, ao
+  // contrário da do mapa. A chave do mapa carrega a posição exata de dez corpos e quase
+  // não se repete entre pessoas; a da vocação é grossa (signos e graus de poucas peças),
+  // então o acerto entre pessoas diferentes é comum. Antes dos dois portões, uma leitura
+  // guardada iria de graça a quem está com o plano vencido ou com a cota gasta — e esta
+  // leitura é para quem paga. O acerto continua sem custar chamada, sem descontar consulta
+  // e sem entrar no limite do dia: só deixa de passar por cima de quem não tem acesso.
+  if (oraculo === 'vocacao') {
+    // O prefixo entra no TEXTO que vira hash, e não na função: assim as chaves de
+    // mapa já guardadas continuam valendo, e uma vocação nunca cai na linha de um
+    // mapa. Trocar `chaveDoMapa` invalidaria o cache de todo mundo de uma vez.
+    chave = await chaveDoMapa(`vocacao:${dados}`);
+    const { data: guardada, error: erroCache } = await supabaseAdmin
+      .from('interpretacoes_mapa').select('conteudo, usos').eq('chave', chave).maybeSingle();
+    if (erroCache) console.error('falha ao ler interpretacao guardada', erroCache.message);
+    else if (guardada?.conteudo) {
+      const usos = typeof guardada.usos === 'number' ? guardada.usos : 1;
+      const { error: erroContar } = await supabaseAdmin
+        .from('interpretacoes_mapa').update({ usos: usos + 1 }).eq('chave', chave);
+      if (erroContar) console.error('falha ao contar reuso', erroContar.message);
+      return resposta({ ...(guardada.conteudo as Record<string, unknown>), oraculo, doCache: true });
+    }
+  }
+
   try {
     const anthropic = new Anthropic({ apiKey: anthropicKey });
     const mensagem = await anthropic.messages.create({
@@ -540,7 +627,7 @@ Deno.serve(async (request) => {
     // Guarda a leitura do mapa para a próxima abertura. Falhar aqui não pode
     // estragar a leitura que a pessoa já tem na tela — custa uma reescrita,
     // não a resposta.
-    if (oraculo === 'mapa' && chave) {
+    if ((oraculo === 'mapa' || oraculo === 'vocacao') && chave) {
       const { error: erroGuardar } = await supabaseAdmin
         .from('interpretacoes_mapa').insert({ chave, conteudo: interpretacao });
       if (erroGuardar) console.error('falha ao guardar interpretacao', erroGuardar.message);

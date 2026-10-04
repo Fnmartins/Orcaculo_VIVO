@@ -356,3 +356,53 @@ export async function gerarInterpretacaoBuzios(odu: {
     afirmacao: bruto.afirmacao ?? '',
   };
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Leitura de Vocação por IA
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface InterpretacaoVocacao {
+  titulo: string;
+  /** A direção que o mapa aponta, do meio do céu e do regente da 10. */
+  ondeRende: string;
+  /** O que sustenta no dia a dia, da casa 6 e de onde o regente mora. */
+  ambiente: string;
+  /** O que desgasta, de Saturno e dos aspectos tensos. Separa leitura de elogio. */
+  drena: string;
+  /** Uma ação concreta, não uma qualidade a ter. */
+  passo: string;
+}
+
+export interface VocacaoParaIA {
+  /** Nulo sem hora de nascimento. */
+  meioDoCeu: { signo: string; grau: number } | null;
+  comCasas: boolean;
+  /** Cada peça em uma linha: "Casa 10 — Carreira: começa em Capricórnio". */
+  pecas: string[];
+}
+
+/**
+ * Escreve a leitura de carreira. Sobem as posições já calculadas, nunca data, hora
+ * ou cidade de nascimento: as efemérides rodam no aparelho, e o dado pessoal não
+ * precisa viajar.
+ */
+export async function gerarLeituraDeVocacao(
+  vocacao: VocacaoParaIA,
+): Promise<InterpretacaoVocacao> {
+  const { data, error } = await supabase.functions.invoke('ia-interpretacao', {
+    body: { oraculo: 'vocacao', vocacao },
+  });
+  if (error) throw await erroDeInterpretacao(error);
+
+  const bruto = (data ?? {}) as Partial<InterpretacaoVocacao>;
+  if (!bruto.titulo || !bruto.ondeRende) {
+    throw new Error('A leitura voltou incompleta. Tente de novo.');
+  }
+  return {
+    titulo: bruto.titulo,
+    ondeRende: bruto.ondeRende,
+    ambiente: bruto.ambiente ?? '',
+    drena: bruto.drena ?? '',
+    passo: bruto.passo ?? '',
+  };
+}

@@ -10,7 +10,7 @@ jest.mock('../supabase', () => ({
 }));
 
 // eslint-disable-next-line import/first
-import { gerarInterpretacaoMapa, gerarInterpretacaoTarot, type InterpretacaoMapa } from '../ia';
+import { gerarInterpretacaoMapa, gerarInterpretacaoTarot, gerarLeituraDeVocacao, type InterpretacaoMapa } from '../ia';
 
 /**
  * Este teste existe por causa de um defeito que ficou um dia inteiro no ar sem
@@ -214,5 +214,61 @@ describe('InterpretacaoTarot com numero livre de posicoes', () => {
     expect(enviada.frasesChave).toEqual(['estrutura falsa que cai']);
     expect(enviada.nota).toBe('A mesma força, travada.');
     expect(enviada.chave).toBe('obstaculo');
+  });
+});
+
+const VOCACAO_COMPLETA = {
+  titulo: 'Construir no escuro e entregar à luz',
+  ondeRende: 'Três frases sobre a direção.',
+  ambiente: 'Três frases sobre o ambiente.',
+  drena: 'Três frases sobre o desgaste.',
+  passo: 'Uma ação concreta.',
+};
+
+const VOCACAO_ENVIADA = {
+  meioDoCeu: { signo: 'Capricórnio', grau: 5 },
+  comCasas: true,
+  pecas: ['Casa 10 — Carreira: começa em Capricórnio', 'Saturno em Câncer, casa 6'],
+};
+
+describe('gerarLeituraDeVocacao', () => {
+  beforeEach(() => mockInvoke.mockReset());
+
+  it('entrega TODOS os campos que a function devolve', async () => {
+    mockInvoke.mockResolvedValue({ data: VOCACAO_COMPLETA, error: null });
+
+    const lida = await gerarLeituraDeVocacao(VOCACAO_ENVIADA);
+
+    // Campo por campo, pelas chaves da resposta: um campo novo que o mapeador
+    // esqueça de copiar derruba este teste em vez de desaparecer da tela.
+    for (const [campo, valor] of Object.entries(VOCACAO_COMPLETA)) {
+      expect(lida[campo as keyof typeof VOCACAO_COMPLETA]).toBe(valor);
+    }
+  });
+
+  it('manda as peças e o meio do céu para o servidor', async () => {
+    mockInvoke.mockResolvedValue({ data: VOCACAO_COMPLETA, error: null });
+
+    await gerarLeituraDeVocacao(VOCACAO_ENVIADA);
+
+    const enviado = mockInvoke.mock.calls[0][1].body;
+    expect(enviado.oraculo).toBe('vocacao');
+    expect(enviado.vocacao.pecas).toHaveLength(2);
+    expect(enviado.vocacao.meioDoCeu).toEqual({ signo: 'Capricórnio', grau: 5 });
+  });
+
+  it('manda comCasas falso sem hora, em vez de omitir', async () => {
+    // Omitir faria o prompt tratar mapa sem hora como mapa com hora, e a leitura
+    // falaria de casas que não existem.
+    mockInvoke.mockResolvedValue({ data: VOCACAO_COMPLETA, error: null });
+
+    await gerarLeituraDeVocacao({ ...VOCACAO_ENVIADA, meioDoCeu: null, comCasas: false });
+
+    expect(mockInvoke.mock.calls[0][1].body.vocacao.comCasas).toBe(false);
+  });
+
+  it('recusa resposta sem título ou sem a primeira seção', async () => {
+    mockInvoke.mockResolvedValue({ data: { titulo: 'Só o título' }, error: null });
+    await expect(gerarLeituraDeVocacao(VOCACAO_ENVIADA)).rejects.toThrow(/incompleta/i);
   });
 });
