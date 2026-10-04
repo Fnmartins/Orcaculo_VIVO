@@ -331,8 +331,8 @@ function dadosDaVocacao(body: Record<string, unknown>): string {
   const pecas = Array.isArray(v.pecas)
     ? v.pecas.map((p) => texto(p, 200)).filter(Boolean).slice(0, 12)
     : [];
-  // Sem peça nenhuma não há leitura possível: lançar vira 502 com frase, em vez de
-  // uma leitura genérica que serviria para qualquer pessoa.
+  // Sem peça nenhuma não há leitura possível: o despacho devolve 400 com esta frase,
+  // em vez de uma leitura genérica que serviria para qualquer pessoa.
   if (pecas.length === 0) throw new Error('Vocação sem peças do mapa');
 
   const mc = (v.meioDoCeu ?? null) as Record<string, unknown> | null;
