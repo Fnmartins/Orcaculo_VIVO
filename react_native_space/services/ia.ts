@@ -128,6 +128,11 @@ export interface LeituraDePosicao {
 
 export interface InterpretacaoTarot {
   titulo: string;
+  /**
+   * A resposta da taróloga à pergunta — escrita, ou a que a pessoa trouxe em mente.
+   * Opcional porque as leituras salvas antes dela não a têm e precisam continuar abrindo.
+   */
+  resposta?: string;
   narrativa: string;
   conselho: string;
   /** Uma por posição da tiragem, na ordem em que a pessoa distribuiu. */
@@ -180,6 +185,7 @@ export async function gerarInterpretacaoTarot(
   // morrerem aqui, um dia inteiro, sem erro nenhum.
   return {
     titulo: bruto.titulo,
+    ...(bruto.resposta ? { resposta: bruto.resposta } : {}),
     narrativa: bruto.narrativa,
     conselho: bruto.conselho ?? '',
     ...(bruto.leituras ? { leituras: bruto.leituras } : {}),
