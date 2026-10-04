@@ -97,6 +97,10 @@ export default function TelaResultado() {
     // Parâmetro corrompido não pode derrubar a leitura: fica o recuo.
   }
   const nomeDaPosicao = (i: number) => posicoes[i]?.nome ?? `Carta ${i + 1}`;
+  // A síntese fixa abaixo foi escrita para Passado / Presente / Futuro. Numa Cruz Celta
+  // ela chamava "A situação" de "carta do passado" — então só vale onde é verdade.
+  const ehPassadoPresenteFuturo = cartas.length === POSICOES.length
+    && POSICOES.every((nome, i) => nomeDaPosicao(i) === nome);
 
   useEffect(() => {
     Animated.parallel([
@@ -257,7 +261,9 @@ export default function TelaResultado() {
             >
               <Text style={estilos.sinteseTitulo}>✨ Síntese da Leitura</Text>
               <Text style={estilos.sinteseTexto}>
-                {`${cartas[0]?.nomeCompleto ?? 'A carta do passado'} convida a olhar para experiências que influenciam sua jornada. No presente, ${cartas[1]?.nomeCompleto ?? 'a carta central'} ajuda a refletir sobre desafios e oportunidades deste momento. Na posição de futuro, ${cartas[2]?.nomeCompleto ?? 'a transformação'} sugere uma possibilidade a considerar, que pode mudar conforme suas escolhas. Use esta leitura como apoio para agir com mais consciência.`}
+                {ehPassadoPresenteFuturo
+                  ? `${cartas[0]?.nomeCompleto ?? 'A carta do passado'} convida a olhar para experiências que influenciam sua jornada. No presente, ${cartas[1]?.nomeCompleto ?? 'a carta central'} ajuda a refletir sobre desafios e oportunidades deste momento. Na posição de futuro, ${cartas[2]?.nomeCompleto ?? 'a transformação'} sugere uma possibilidade a considerar, que pode mudar conforme suas escolhas. Use esta leitura como apoio para agir com mais consciência.`
+                  : `São ${cartas.length} cartas na mesa, cada uma respondendo à pergunta da sua posição. A leitura que junta todas elas — e responde ao que você trouxe — está logo abaixo.`}
               </Text>
             </LinearGradient>
           </Animated.View>
@@ -283,7 +289,7 @@ export default function TelaResultado() {
                   <View style={estilos.iaTextoArea}>
                     <Text style={estilos.iaTitulo}>Aprofundar com IA ✨</Text>
                     <Text style={estilos.iaSubtitulo}>
-                      Gerar interpretação personalizada conectando as 3 cartas
+                      {`Ler as ${cartas.length} cartas juntas e responder à sua pergunta`}
                     </Text>
                   </View>
                   <Ionicons name="chevron-forward" size={18} color={Cores.acento} />
@@ -318,6 +324,17 @@ export default function TelaResultado() {
                   <Text style={estilos.iaResultadoLabel}>Interpretação por IA</Text>
                 </View>
                 <Text style={estilos.iaResultadoTitulo}>{interpretacaoIA.titulo}</Text>
+                {/* A resposta vem antes de tudo: é o que a pessoa veio buscar. Leituras
+                    salvas antes dela não a têm, e abrem como antes. */}
+                {interpretacaoIA.resposta ? (
+                  <View style={estilos.iaResposta}>
+                    <Text style={estilos.iaSecaoLabel}>O que as cartas respondem</Text>
+                    {intencao.trim() ? (
+                      <Text style={estilos.iaRespostaSobre}>{`Sobre: ${intencao.trim()}`}</Text>
+                    ) : null}
+                    <Text style={estilos.iaRespostaTexto}>{interpretacaoIA.resposta}</Text>
+                  </View>
+                ) : null}
                 <Text style={estilos.iaResultadoNarrativa}>{interpretacaoIA.narrativa}</Text>
 
                 {secoesDaLeitura(interpretacaoIA).map((item) => (
@@ -685,6 +702,17 @@ const estilos = StyleSheet.create({
   },
   iaSecao: {
     marginBottom: Espacamento.md,
+  },
+  iaResposta: {
+    borderLeftWidth: 3, borderLeftColor: Cores.acento,
+    paddingLeft: Espacamento.md, marginBottom: Espacamento.lg,
+  },
+  iaRespostaSobre: {
+    fontFamily: Fontes.corpo, fontSize: 13, fontStyle: 'italic',
+    color: Cores.textoSecundario, marginBottom: 6,
+  },
+  iaRespostaTexto: {
+    fontFamily: Fontes.corpo, fontSize: 16, lineHeight: 25, color: Cores.textoClaro,
   },
   iaSecaoLabel: {
     fontFamily: Fontes.corpoSemibold,

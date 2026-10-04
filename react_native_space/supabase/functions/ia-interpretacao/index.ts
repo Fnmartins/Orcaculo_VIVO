@@ -13,7 +13,8 @@ import { exigirEscrita } from '../_shared/escritas.ts';
 // As regras de voz vivem em _shared desde que a ia-pergunta nasceu: duas
 // cópias de regra de segurança acabam divergindo, e a que some é sempre a que
 // importava.
-import { REGRAS } from '../_shared/regras-ia.ts';
+import { AVISO_FORA, REGRAS } from '../_shared/regras-ia.ts';
+import { RESPOSTA_CRISE, triar } from '../_shared/triagem.ts';
 import { conferirUso, mensagemDoLimite, registrarUso } from '../_shared/uso.ts';
 
 const CORS = {
@@ -56,7 +57,7 @@ function texto(valor: unknown, limite: number): string {
 
 const INSTRUCOES_TAROT = `${REGRAS}
 
-Você interpreta uma tiragem de tarô, ligando as cartas numa leitura coerente — não uma leitura solta por carta.
+Você lê uma tiragem de tarô como uma taróloga experiente lê na mesa: olha todas as cartas juntas, entende o que elas dizem em conjunto, e responde à pessoa — não entrega uma leitura solta por carta.
 
 As posições vêm dentro de <dados>, cada uma com a pergunta que ela faz. Escreva a partir do ENCONTRO entre a carta e a pergunta da posição dela, nunca da carta sozinha: a mesma carta diz coisas diferentes em posições diferentes, e é isso que faz a leitura ser desta tiragem e não de qualquer uma.
 
@@ -66,10 +67,18 @@ Quando a carta vier marcada como invertida, ela **não** é o contrário da cart
 
 Escreva uma entrada em "leituras" para CADA posição recebida, com o nome da posição copiado exatamente como veio. Nem uma a menos.
 
-Feche cada posição devolvendo uma pergunta a quem consultou, e não um veredito. A leitura abre uma questão para a pessoa pensar — nunca afirma o que vai acontecer com ela, nem decide por ela.
+Feche cada posição em "leituras" devolvendo uma pergunta a quem consultou, como as fontes fazem carta a carta: ali a leitura abre uma questão para a pessoa pensar, sem veredito. A resposta de frente fica para "resposta", que junta a mesa inteira.
+
+"resposta" é o coração da leitura: o que uma taróloga diz à pessoa depois de olhar a mesa inteira.
+- Quando houver intenção escrita, responda a ELA de frente, já na primeira frase: para que lado as cartas pendem — seguir, esperar, arriscar, recuar, conversar, ajustar o caminho. Uma resposta morna, que não pende para lado nenhum, é a falha que quem consulta mais sente.
+- Quando a intenção não for informada, não finja saber qual era. Fale à pergunta que a pessoa trouxe em mente ("seja qual for a pergunta que você trouxe…") e diga o movimento que as cartas mostram: o que está pronto para andar, o que pede espera, o que pede coragem.
+- Diga quais cartas sustentam essa resposta e por quê, pelo encontro de cada uma com a sua posição. Diga também o que mudaria o quadro — a carta que pesa contra, ou a condição para o caminho dar certo.
+- É a direção que as cartas mostram agora, não um destino: nunca diga que algo vai acontecer. Uma vez, sem repetir, deixe claro que a decisão é da pessoa.
+
+"narrativa" é a leitura da mesa como um todo: como as cartas conversam entre si, onde se reforçam e onde se contradizem, e que história contam juntas. "conselho" é o que fazer com isso: concreto, para os próximos dias.
 
 Responda SOMENTE com um objeto JSON, sem cercas de código e sem texto antes ou depois:
-{"titulo": "3 a 5 palavras", "narrativa": "4 a 6 frases ligando as cartas entre si", "leituras": [{"posicao": "o nome exato da posição", "texto": "2 a 3 frases"}], "conselho": "2 frases"}`;
+{"titulo": "3 a 5 palavras", "resposta": "3 a 5 frases, a resposta da taróloga", "narrativa": "5 a 8 frases lendo todas as cartas juntas", "leituras": [{"posicao": "o nome exato da posição", "texto": "2 a 3 frases"}], "conselho": "2 frases"}`;
 
 const INSTRUCOES_BUZIOS = `${REGRAS}
 
@@ -119,7 +128,7 @@ const CAMPOS: Record<Oraculo, string[]> = {
   // O tarô não lista posições aqui: elas variam com a tiragem, e exigi-las por nome
   // fazia a Cruz Celta ser recusada como "resposta fora do formato". Quem confere as
   // posições é `leituras`, contra as que foram realmente enviadas.
-  tarot: ['titulo', 'narrativa', 'conselho'],
+  tarot: ['titulo', 'resposta', 'narrativa', 'conselho'],
   buzios: ['titulo', 'narrativa', 'mensagem', 'conselho', 'afirmacao'],
   mapa: ['titulo', 'narrativa', 'forca', 'tensao', 'conselho', 'amor', 'trabalho', 'dinheiro', 'caminho'],
 };
@@ -406,6 +415,25 @@ Deno.serve(async (request) => {
     return resposta({ erro: erro instanceof Error ? erro.message : 'Dados incompletos' }, 400);
   }
 
+  // Desde que o tarô responde à pergunta de frente, a intenção passa pela mesma triagem
+  // da ia-pergunta. Uma resposta direta a "devo investir?" seria conselho financeiro, e
+  // a alguém em crise as cartas não respondem: volta o telefone, antes da cota e antes
+  // da IA, porque isso não é consulta e não pode custar uma.
+  let avisoDaIntencao = '';
+  if (oraculo === 'tarot') {
+    const triagem = triar(typeof body.intencao === 'string' ? body.intencao : '');
+    if (triagem.tipo === 'crise') {
+      return resposta({
+        titulo: 'Uma pausa antes das cartas',
+        narrativa: RESPOSTA_CRISE,
+        conselho: '',
+        crise: true,
+        oraculo,
+      });
+    }
+    if (triagem.tipo === 'fora') avisoDaIntencao = `\n\n${AVISO_FORA[triagem.assunto]}`;
+  }
+
   // A leitura do mapa já escrita vem antes de tudo: não custa chamada, não
   // desconta consulta e não entra no limite do dia. O mapa é determinístico —
   // mesma data, hora e cidade dão o mesmo céu — então reescrever seria pagar
@@ -479,7 +507,7 @@ Deno.serve(async (request) => {
       // `high` está no roadmap, para depois dos primeiros clientes. Voltar é esta
       // palavra de volta.
       output_config: { effort: 'medium' },
-      system: INSTRUCOES_POR_ORACULO[oraculo],
+      system: INSTRUCOES_POR_ORACULO[oraculo] + avisoDaIntencao,
       messages: [{ role: 'user', content: [{ type: 'text', text: dados }] }],
     });
 
