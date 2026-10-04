@@ -21,7 +21,7 @@ const intencoes = [
   ['trabalho', 'Trabalho', 'briefcase-outline'], ['eu', 'Eu mesmo', 'sparkles-outline'],
 ] as const;
 
-// Os seis oráculos do app. A leitura por imagem e a Lei da Atração ficaram de
+// Os sete oráculos do app. A leitura por imagem e a Lei da Atração ficaram de
 // fora desta lista até 24/09: existiam e eram vendidas nos planos, mas não
 // tinham porta de entrada — só se chegava nelas digitando a URL.
 //
@@ -86,7 +86,7 @@ const decisoes = [
 export function HomeAurora({ mostrarConselho = false }: { mostrarConselho?: boolean }) {
   const [intencao, setIntencao] = useState('clareza');
   // Qual oráculo está explicando o acesso parcial. Guarda o objeto e não um booleano:
-  // a folha precisa do nome e da frase daquele oráculo, e os três dizem coisas
+  // a folha precisa do nome e da frase daquele oráculo, e os quatro dizem coisas
   // diferentes sobre o que continua aberto.
   const [avisoDe, setAvisoDe] = useState<Oraculo | null>(null);
   const largo = useWindowDimensions().width >= 720;
