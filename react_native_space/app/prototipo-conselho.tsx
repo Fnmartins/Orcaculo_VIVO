@@ -48,7 +48,7 @@ interface Oraculo {
 
 // Objetos, e não tuplas: a lista já carregava sete campos posicionais, e `soIA` era um
 // booleano solto no fim que ninguém lia sem contar vírgulas.
-const oraculos: Oraculo[] = [
+export const oraculosDaHome: Oraculo[] = [
   {
     titulo: 'Búzios', apoio: 'Tradição e caminhos', icon: 'grain', cor: P.verde,
     lib: 'material', rota: '/consulta/buzios-preparo',
@@ -64,6 +64,11 @@ const oraculos: Oraculo[] = [
     titulo: 'Mapa Astral', apoio: 'Leitura do seu céu', icon: 'planet-outline', cor: P.dourado,
     lib: 'ion', rota: '/mapa-astral',
     parteGratis: 'O mapa com Sol, Lua e Ascendente segue aberto; a leitura da sua combinação precisa de um plano ativo.',
+  },
+  {
+    titulo: 'Vocação', apoio: 'Onde o seu mapa te rende', icon: 'briefcase-outline',
+    cor: P.verde, lib: 'ion', rota: '/vocacao',
+    parteGratis: 'O meio do céu e a casa 10 seguem abertos; a leitura de carreira precisa de um plano ativo.',
   },
   // O único card inteiramente IA: aqui não existe versão livre, então o cadeado é do
   // card. Nos outros, o conteúdo local é grátis e o cadeado explica em vez de barrar.
@@ -139,7 +144,7 @@ export function HomeAurora({ mostrarConselho = false }: { mostrarConselho?: bool
     existe é pior que botão nenhum. */}
 <View style={s.secaoHeader}><View><Text style={s.secaoTitulo}>Escolha seu oráculo</Text><Text style={s.secaoApoio}>Cada método tem linguagem e propósito próprios.</Text></View></View>
             <View style={s.grid}>
-              {oraculos.map((oraculo) => {
+              {oraculosDaHome.map((oraculo) => {
                 const { titulo, apoio, icon, cor, lib, rota, soIA, parteGratis } = oraculo;
                 const Icon = lib === 'material' ? MaterialCommunityIcons : Ionicons;
                 // Só tranca quando há perfil para julgar. Com `perfil` nulo — ainda
