@@ -38,14 +38,21 @@ interface PerfilFalso {
   nascimento_hora: string | null;
   nascimento_sem_hora: boolean;
   nascimento_cidade: CidadeFalsa | null;
+  // Só o `SemaforoUso` lê estes três, e só quando há sessão.
+  plano?: string;
+  plano_valido_ate?: string | null;
+  is_super_admin?: boolean;
 }
 
 // `let`, e não `const`: o mock lê o valor no momento da chamada, e cada teste monta o seu.
-// `sessao: null` de propósito: sem sessão o `SemaforoUso` não vai ao banco ler o uso do dia.
+// `sessao` nula por padrão, de propósito: sem sessão o `SemaforoUso` não renderiza nada
+// nem vai ao banco ler o uso do dia. O teste do cadeado põe uma sessão com acesso vencido,
+// caminho que o `SemaforoUso` resolve antes de `lerUsoDoDia`, então também não toca o banco.
 let mockPerfil: PerfilFalso | null = null;
 let mockCarregando = false;
+let mockSessao: { user: { id: string } } | null = null;
 jest.mock('../../../contexts/AuthContext', () => ({
-  useAuth: () => ({ perfil: mockPerfil, sessao: null, carregando: mockCarregando }),
+  useAuth: () => ({ perfil: mockPerfil, sessao: mockSessao, carregando: mockCarregando }),
 }));
 
 // O gate só abre para `mapa_completo`. Responder "sim" a qualquer recurso deixaria a tela
@@ -82,10 +89,15 @@ function renderComPlano(opcoes: {
   /** Hora nula SEM `nascimento_sem_hora`: a pessoa nunca respondeu sobre a hora. */
   horaNula?: boolean;
   perfilVazio?: boolean;
+  /** Ninguém logado, ou a busca do perfil falhou: o app não tem perfil nenhum. */
+  semPerfil?: boolean;
+  /** Sessão aberta, plano pago, mas `plano_valido_ate` no passado. */
+  acessoVencido?: boolean;
   cidade?: CidadeFalsa;
 }) {
   const {
-    temAcesso, semHora = false, horaNula = false, perfilVazio = false, cidade = SAO_PAULO,
+    temAcesso, semHora = false, horaNula = false, perfilVazio = false,
+    semPerfil = false, acessoVencido = false, cidade = SAO_PAULO,
   } = opcoes;
   mockAcesso = temAcesso;
   // Os quatro campos que `app/mapa-astral/index.tsx` grava. Sem hora, ele grava a hora
@@ -101,6 +113,13 @@ function renderComPlano(opcoes: {
       nascimento_sem_hora: semHora,
       nascimento_cidade: cidade,
     };
+  if (semPerfil) mockPerfil = null;
+  if (acessoVencido && mockPerfil) {
+    mockSessao = { user: { id: 'u1' } };
+    mockPerfil = {
+      ...mockPerfil, plano: 'iniciante', plano_valido_ate: '2020-01-01T00:00:00Z', is_super_admin: false,
+    };
+  }
   return render(<TelaVocacao />);
 }
 
@@ -129,6 +148,7 @@ const LEITURA = {
 beforeEach(() => {
   jest.clearAllMocks();
   mockCarregando = false;
+  mockSessao = null;
   mockGerarLeitura.mockResolvedValue(LEITURA);
 });
 
@@ -177,6 +197,65 @@ describe('tela de vocação', () => {
     render(<TelaVocacao />);
     expect(screen.queryByText(/Mapa Astral/i)).toBeNull();
     expect(screen.queryByText(/Falta o seu mapa natal/i)).toBeNull();
+  });
+
+  it('sem perfil nenhum, a tela não afirma a causa e oferece entrar, não o mapa astral', () => {
+    // Sem login, `perfil` é nulo (e também quando a busca do perfil falhou). A tela não
+    // sabe qual dos dois, então não pode dizer que "faltam dados". E mandar quem não
+    // entrou gerar o mapa é um beco sem saída: `mapa-astral/index.tsx` só grava no perfil
+    // `if (perfil)`, e a pessoa volta para esta mesma frase, para sempre.
+    renderComPlano({ temAcesso: true, semPerfil: true });
+    expect(screen.getByText(/Não consegui abrir o seu perfil/)).toBeTruthy();
+    expect(screen.queryByText(/falta a data ou a cidade/i)).toBeNull();
+    expect(screen.queryByText(/Mapa Astral/i)).toBeNull();
+    expect(screen.queryByText(/Meio do céu/i)).toBeNull();
+
+    fireEvent.press(screen.getByText('Entrar na minha conta'));
+    expect(mockPush).toHaveBeenCalledWith('/auth/login');
+    expect(mockPush).not.toHaveBeenCalledWith('/mapa-astral');
+  });
+
+  it('perfil presente sem data ou cidade: diz o que falta e manda para o mapa astral', () => {
+    // O estado que a frase "falta a data ou a cidade" de fato descreve. Separado do teste
+    // acima para uma edição futura não fundir os dois outra vez: aqui há perfil, e é a
+    // única situação em que o formulário do mapa astral resolve.
+    renderComPlano({ temAcesso: true, perfilVazio: true });
+    expect(screen.getByText(/falta a data ou a cidade/i)).toBeTruthy();
+    expect(screen.queryByText(/Não consegui abrir o seu perfil/)).toBeNull();
+    expect(screen.queryByText('Entrar na minha conta')).toBeNull();
+  });
+
+  it('data e cidade guardadas, mas o cálculo falha: não diz que os dados faltam', () => {
+    // A cidade guardada sem fuso faz `montarMapaAstral` lançar. O perfil TEM data e
+    // cidade, então "falta a data ou a cidade" seria falso; a saída certa é revisar os
+    // dados no formulário, que já vem preenchido com o que está guardado.
+    renderComPlano({ temAcesso: true, cidade: { ...SAO_PAULO, fuso: '' } });
+    expect(screen.getByText(/Não deu para calcular o seu mapa/)).toBeTruthy();
+    expect(screen.queryByText(/falta a data ou a cidade/i)).toBeNull();
+    expect(screen.queryByText(/Meio do céu/i)).toBeNull();
+
+    fireEvent.press(screen.getByText('Revisar no Mapa Astral'));
+    expect(mockPush).toHaveBeenCalledWith('/mapa-astral');
+  });
+
+  it('com o acesso vencido, o cadeado do semáforo aparece ANTES do botão da leitura', () => {
+    // O `SemaforoUso` sem sessão não renderiza nada, então apagar a linha deixava os
+    // testes todos verdes. Com sessão e `plano_valido_ate` no passado ele resolve o
+    // cadeado antes de qualquer ida ao banco. `temAcesso` segue verdadeiro, como no app:
+    // ele olha o nome do plano, não a validade, e é o cadeado que avisa antes do toque.
+    renderComPlano({ temAcesso: true, acessoVencido: true });
+    expect(screen.getByLabelText('Acesso vencido')).toBeTruthy();
+    const textos = textosNaOrdem();
+    const cadeado = textos.findIndex((t) => /Seu acesso terminou/.test(t));
+    const botao = textos.findIndex((t) => /Ler minha vocação/i.test(t));
+    expect(cadeado).toBeGreaterThanOrEqual(0);
+    expect(botao).toBeGreaterThanOrEqual(0);
+    expect(cadeado).toBeLessThan(botao);
+  });
+
+  it('sem sessão, o semáforo não aparece', () => {
+    renderComPlano({ temAcesso: true });
+    expect(screen.queryByLabelText('Acesso vencido')).toBeNull();
   });
 
   it('sem dados, o botão leva ao mapa astral', () => {

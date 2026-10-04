@@ -132,6 +132,10 @@ export default function TelaVocacao() {
   // seria uma frase falsa, com um botão que o manda refazer o que já fez.
   const carregandoPerfil = carregando && !perfil;
 
+  // Só com perfil presente a pergunta "tem data e cidade?" faz sentido. Sem perfil a
+  // tela não sabe a causa (sem login, ou a busca falhou), e é um estado à parte.
+  const dadosCompletos = !!perfil?.nascimento_cidade && !!perfil?.data_nascimento;
+
   return (
     <GradientBackground>
       <SafeAreaView style={estilos.safeArea}>
@@ -158,13 +162,36 @@ export default function TelaVocacao() {
 
           {carregandoPerfil ? (
             <EstadoTela tipo="carregando" titulo="Abrindo o seu perfil" />
-          ) : !mapa || !vocacao ? (
-            // 1. Sem dados de nascimento: explica e manda para onde o formulário já existe.
+          ) : !perfil ? (
+            // Sem perfil: sem login, ou a busca do perfil falhou. A tela não sabe qual dos
+            // dois e não afirma nenhum. O caminho é entrar: mandar quem não entrou gerar o
+            // mapa é um beco sem saída, porque `mapa-astral/index.tsx` só grava no perfil
+            // `if (perfil)` e a pessoa voltaria a esta mesma frase.
+            <EstadoTela
+              tipo="vazio"
+              titulo="Não consegui abrir o seu perfil"
+              descricao="A vocação sai do mapa natal guardado no seu perfil. Entre na sua conta para abri-lo; se você já entrou, volte daqui a pouco."
+              acaoLabel="Entrar na minha conta"
+              onAcao={() => { Hapticos.impactoLeve(); router.push('/auth/login'); }}
+            />
+          ) : !dadosCompletos ? (
+            // 1. Perfil presente sem data ou cidade: explica e manda para onde o formulário
+            // já existe e já grava.
             <EstadoTela
               tipo="vazio"
               titulo="Falta o seu mapa natal"
-              descricao="A vocação sai do mapa natal, e o seu perfil ainda não tem a data e a cidade de nascimento. Informe-as uma vez e esta tela passa a usar os mesmos dados."
+              descricao="A vocação sai do mapa natal, e no seu perfil falta a data ou a cidade de nascimento. Informe-as uma vez e esta tela passa a usar os mesmos dados."
               acaoLabel="Gerar meu Mapa Astral"
+              onAcao={() => { Hapticos.impactoLeve(); router.push('/mapa-astral'); }}
+            />
+          ) : !mapa || !vocacao ? (
+            // Data e cidade guardadas, mas o cálculo lançou (cidade sem fuso, por exemplo).
+            // Dizer que os dados faltam seria falso: eles estão lá, e não servem.
+            <EstadoTela
+              tipo="vazio"
+              titulo="Não deu para calcular o seu mapa"
+              descricao="Os dados de nascimento guardados no seu perfil não deram um mapa. Confira a data, a hora e a cidade: o formulário do Mapa Astral já vem preenchido com o que você guardou, e a correção fica salva."
+              acaoLabel="Revisar no Mapa Astral"
               onAcao={() => { Hapticos.impactoLeve(); router.push('/mapa-astral'); }}
             />
           ) : (
