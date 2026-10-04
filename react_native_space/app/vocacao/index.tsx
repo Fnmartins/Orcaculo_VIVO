@@ -67,7 +67,11 @@ export default function TelaVocacao() {
     const data = perfil?.data_nascimento;
     if (!cidade || !data) return null;
     const [ano, mes, dia] = data.split('-').map((parte) => parseInt(parte, 10));
-    const semHora = perfil?.nascimento_sem_hora === true;
+    // A hora nula É a ausência da hora, com ou sem o sinal `nascimento_sem_hora`. Confiar
+    // só no sinal montaria um mapa do meio-dia como se fosse o da pessoa, e o meio do
+    // céu errado apareceria com confiança na vitrine. Hoje só `mapa-astral/index.tsx`
+    // grava a hora e sempre grava um dos dois; a garantia não pode depender disso.
+    const semHora = perfil?.nascimento_sem_hora === true || !perfil?.nascimento_hora;
     const [hora, minuto] = (perfil?.nascimento_hora ?? '12:00')
       .split(':').map((parte) => parseInt(parte, 10));
     try {

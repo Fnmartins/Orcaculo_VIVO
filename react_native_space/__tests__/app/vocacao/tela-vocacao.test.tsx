@@ -79,10 +79,14 @@ const TROMSO: CidadeFalsa = {
 function renderComPlano(opcoes: {
   temAcesso: boolean;
   semHora?: boolean;
+  /** Hora nula SEM `nascimento_sem_hora`: a pessoa nunca respondeu sobre a hora. */
+  horaNula?: boolean;
   perfilVazio?: boolean;
   cidade?: CidadeFalsa;
 }) {
-  const { temAcesso, semHora = false, perfilVazio = false, cidade = SAO_PAULO } = opcoes;
+  const {
+    temAcesso, semHora = false, horaNula = false, perfilVazio = false, cidade = SAO_PAULO,
+  } = opcoes;
   mockAcesso = temAcesso;
   // Os quatro campos que `app/mapa-astral/index.tsx` grava. Sem hora, ele grava a hora
   // nula e `nascimento_sem_hora` verdadeiro, e este fixture faz o mesmo.
@@ -93,7 +97,7 @@ function renderComPlano(opcoes: {
     }
     : {
       data_nascimento: '1990-07-15',
-      nascimento_hora: semHora ? null : '14:30',
+      nascimento_hora: semHora || horaNula ? null : '14:30',
       nascimento_sem_hora: semHora,
       nascimento_cidade: cidade,
     };
@@ -198,6 +202,25 @@ describe('tela de vocação', () => {
     expect(aviso).toBeGreaterThanOrEqual(0);
     expect(botao).toBeGreaterThanOrEqual(0);
     expect(aviso).toBeLessThan(botao);
+  });
+
+  it('hora nula sem o sinal de "não sei a hora" também é sem hora: nenhum meio do céu vira da pessoa', async () => {
+    // O perfil tem data e cidade, mas `nascimento_hora` é nula e `nascimento_sem_hora` NÃO
+    // é verdadeiro. A hora nula É a ausência da hora; confiar só no sinal montaria um mapa
+    // do meio-dia, com `comCasas: true`, e a vitrine mostraria o meio do céu do meio-dia
+    // como se fosse o da pessoa. Hoje nenhuma tela grava esse perfil; a garantia vale só
+    // até a próxima tela que gravar dado de perfil.
+    renderComPlano({ temAcesso: true, horaNula: true });
+    expect(screen.getByText(/sem a hora/i)).toBeTruthy();
+    expect(screen.getByText(/depende da hora/i)).toBeTruthy();
+    // O grau só aparece junto do signo do meio do céu: sem ele, nada foi apresentado.
+    expect(screen.queryByText(/°/)).toBeNull();
+
+    fireEvent.press(screen.getByText(/Ler minha vocação/i));
+    await waitFor(() => expect(screen.getByText('Onde você rende')).toBeTruthy());
+    const pedido = mockGerarLeitura.mock.calls[0][0];
+    expect(pedido.meioDoCeu).toBeNull();
+    expect(pedido.comCasas).toBe(false);
   });
 
   it('com hora, a tela não diz que falta a hora', () => {
