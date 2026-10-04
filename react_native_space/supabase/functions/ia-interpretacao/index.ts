@@ -136,7 +136,7 @@ Quando vier "sem hora de nascimento", a leitura sai sem casas. Diga isso em uma 
 na seção "ondeRende", e siga com o que os planetas dão. Entregar menos calado é pior que
 entregar menos avisando.
 
-Responda em JSON, com exatamente estes campos:
+O que vai em cada campo:
 - "titulo": três a seis palavras que nomeiem a direção desta pessoa.
 - "ondeRende": a direção que o mapa aponta, do meio do céu e do regente da 10. 3 a 5 frases.
 - "ambiente": o que sustenta esta pessoa no dia a dia, da casa 6 e de onde o regente mora:
@@ -146,7 +146,10 @@ Responda em JSON, com exatamente estes campos:
 - "passo": uma coisa concreta a fazer nas próximas semanas. Uma ação, não uma qualidade.
 
 Português do Brasil. Fale com a pessoa, por "você". Não prometa resultado, não fale de
-dinheiro garantido e não dê prazo.`;
+dinheiro garantido e não dê prazo.
+
+Responda SOMENTE com um objeto JSON, sem cercas de código e sem texto antes ou depois:
+{"titulo": "3 a 6 palavras", "ondeRende": "3 a 5 frases", "ambiente": "3 a 5 frases", "drena": "3 a 5 frases", "passo": "uma ação concreta"}`;
 
 const INSTRUCOES_POR_ORACULO: Record<Oraculo, string> = {
   tarot: INSTRUCOES_TAROT,
@@ -499,11 +502,8 @@ Deno.serve(async (request) => {
   // mesma data, hora e cidade dão o mesmo céu — então reescrever seria pagar
   // duas vezes pela mesma frase.
   let chave = '';
-  if (oraculo === 'mapa' || oraculo === 'vocacao') {
-    // O prefixo entra no TEXTO que vira hash, e não na função: assim as chaves de
-    // mapa já guardadas continuam valendo, e uma vocação nunca cai na linha de um
-    // mapa. Trocar `chaveDoMapa` invalidaria o cache de todo mundo de uma vez.
-    chave = await chaveDoMapa(oraculo === 'mapa' ? dados : `vocacao:${dados}`);
+  if (oraculo === 'mapa') {
+    chave = await chaveDoMapa(dados);
     const { data: guardada, error: erroCache } = await supabaseAdmin
       .from('interpretacoes_mapa').select('conteudo, usos').eq('chave', chave).maybeSingle();
     if (erroCache) console.error('falha ao ler interpretacao guardada', erroCache.message);
@@ -537,6 +537,30 @@ Deno.serve(async (request) => {
       erro: mensagemDoLimite(veredito, 'interpretacao'),
       motivo: veredito.motivo,
     }, 402);
+  }
+
+  // A leitura de vocação já escrita vem DEPOIS do veredito, ao contrário da do mapa. A
+  // chave do mapa carrega a posição exata de dez corpos e quase não se repete entre
+  // pessoas; a da vocação é grossa (signos e graus de poucas peças), então o acerto
+  // entre pessoas diferentes é comum. Antes do veredito, uma leitura guardada iria de
+  // graça a quem está com o plano vencido — e esta leitura é para quem paga. O acerto
+  // continua sem custar chamada, sem descontar consulta e sem entrar no limite do dia:
+  // só deixa de passar por cima de quem não tem acesso.
+  if (oraculo === 'vocacao') {
+    // O prefixo entra no TEXTO que vira hash, e não na função: assim as chaves de
+    // mapa já guardadas continuam valendo, e uma vocação nunca cai na linha de um
+    // mapa. Trocar `chaveDoMapa` invalidaria o cache de todo mundo de uma vez.
+    chave = await chaveDoMapa(`vocacao:${dados}`);
+    const { data: guardada, error: erroCache } = await supabaseAdmin
+      .from('interpretacoes_mapa').select('conteudo, usos').eq('chave', chave).maybeSingle();
+    if (erroCache) console.error('falha ao ler interpretacao guardada', erroCache.message);
+    else if (guardada?.conteudo) {
+      const usos = typeof guardada.usos === 'number' ? guardada.usos : 1;
+      const { error: erroContar } = await supabaseAdmin
+        .from('interpretacoes_mapa').update({ usos: usos + 1 }).eq('chave', chave);
+      if (erroContar) console.error('falha ao contar reuso', erroContar.message);
+      return resposta({ ...(guardada.conteudo as Record<string, unknown>), oraculo, doCache: true });
+    }
   }
 
   // A cota do período fica DEPOIS do veredito, e a ordem importa pelo mesmo motivo de

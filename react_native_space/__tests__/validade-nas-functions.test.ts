@@ -228,6 +228,9 @@ describe('o payload do taro carrega o material da carta', () => {
 
 describe('o quarto oraculo: vocacao', () => {
   const fonte = readFileSync(join(RAIZ, 'ia-interpretacao', 'index.ts'), 'utf8');
+  // Os trechos abaixo atravessam linhas. A árvore de quem usa Windows é CRLF e o índice
+  // é LF: normalizar aqui evita um `\r?` em cada expressão.
+  const lf = fonte.replace(/\r\n/g, '\n');
 
   it('vocacao esta registrada como oraculo', () => {
     // Fora da lista, o pedido volta "Oráculo inválido" — e a tela mostraria erro
@@ -240,22 +243,111 @@ describe('o quarto oraculo: vocacao', () => {
     expect(fonte).toMatch(/vocacao: \['titulo', 'ondeRende', 'ambiente', 'drena', 'passo'\]/);
   });
 
-  it('a cota cobrada continua sendo a do aprofundamento', () => {
+  it('a cota cobrada e a do aprofundamento, nos tres pontos que a usam', () => {
     // Tipo novo exigiria coluna em `configuracao_ia` e decisão de limite que ninguém
-    // pediu. Trocar este literal leria o limite de outro recurso, sem erro nenhum.
-    expect(fonte).toMatch(/'interpretacao',\s*perfil\?\.plano_valido_ate/);
+    // pediu. Cada ponto é conferido com a lista de argumentos INTEIRA e o literal solto:
+    // um ternário como `oraculo === 'vocacao' ? 'vocacao' : 'interpretacao'` deixaria o
+    // literal na lista, e o teste genérico (`passa o tipo certo...`) o aceitava.
+    //
+    // `registrarUso` é o que alimenta a aba Custo. Errar o tipo ali põe o gasto da
+    // vocação na linha de outro recurso, sem erro nenhum — e é a única medição que o dono
+    // tem do que cada leitura custa.
+    expect(lf).toMatch(
+      /conferirUso\(\s*supabaseAdmin, usuarioId, plano, semLimite, 'interpretacao',\s*perfil\?\.plano_valido_ate as string \| null,\s*\)/,
+    );
+    expect(lf).toMatch(/registrarUso\(supabaseAdmin, usuarioId, 'interpretacao', \{/);
+    expect(lf).toMatch(/mensagemDoLimite\(veredito, 'interpretacao'\)/);
+    // Um ponto só de cada: uma segunda chamada, em outro ramo, poderia cobrar outro tipo.
+    for (const chamada of [/conferirUso\(/g, /registrarUso\(/g, /mensagemDoLimite\(/g]) {
+      expect({ chamada: String(chamada), vezes: lf.match(chamada)?.length })
+        .toEqual({ chamada: String(chamada), vezes: 1 });
+    }
   });
 
-  it('a vocacao entra no cache, com chave que nao colide com a do mapa', () => {
-    // Sem o prefixo, uma vocação e um mapa com o mesmo texto de dados cairiam na
-    // mesma linha, e a pessoa leria a leitura errada — vinda do cache, de graça.
-    expect(fonte).toMatch(/vocacao:\$\{dados\}/);
-    expect(fonte).toMatch(/oraculo === 'mapa' \|\| oraculo === 'vocacao'/);
+  it('o despacho manda a vocacao para dadosDaVocacao e deixa o mapa como o resto', () => {
+    // Sem a linha, uma vocação cai em `dadosDoMapa`: um 400 "Mapa sem posição do Sol" que
+    // ninguém entende — ou, se vier um mapa junto, um mapa lido no lugar da vocação.
+    expect(lf).toMatch(
+      /\} else if \(oraculo === 'buzios'\) dados = dadosDosBuzios\(body\);\n\s*else if \(oraculo === 'vocacao'\) dados = dadosDaVocacao\(body\);\n\s*else dados = dadosDoMapa\(body\);/,
+    );
   });
 
-  const instrucoes = fonte.slice(
-    fonte.indexOf('INSTRUCOES_VOCACAO'),
-    fonte.indexOf('const INSTRUCOES_POR_ORACULO'),
+  it('a chave do mapa segue sendo a de antes e a da vocacao leva o prefixo', () => {
+    // Sem o prefixo, uma vocação e um mapa com o mesmo texto de dados cairiam na mesma
+    // linha, e a pessoa leria a leitura errada — vinda do cache, de graça.
+    //
+    // Cada expressão é ancorada no ramo dela, e inteira. Invertidas, o MAPA passaria a
+    // ser prefixado: toda leitura de mapa já guardada ficaria órfã de uma vez, e todo
+    // mundo pagaria outra. É o desastre que o comentário ao lado do código descreve.
+    expect(lf).toMatch(/if \(oraculo === 'mapa'\) \{\n\s*chave = await chaveDoMapa\(dados\);\n/);
+    expect(lf).toMatch(
+      /if \(oraculo === 'vocacao'\) \{\n(?:\s*\/\/[^\n]*\n)*\s*chave = await chaveDoMapa\(`vocacao:\$\{dados\}`\);\n/,
+    );
+    // Só essas duas: uma terceira geraria uma chave que nenhum dos ramos lê.
+    expect(lf.match(/await chaveDoMapa\(/g)?.length).toBe(2);
+  });
+
+  it('chaveDoMapa continua exatamente como era', () => {
+    // Mexer no corpo dela muda o hash de TODA leitura de mapa já guardada. O prefixo da
+    // vocação mora fora dela justamente para isto não acontecer.
+    const inicio = lf.indexOf('async function chaveDoMapa');
+    expect(inicio).toBeGreaterThan(-1);
+    const corpo = lf.slice(inicio, lf.indexOf('\n}\n', inicio) + 3);
+    expect(corpo).toBe([
+      'async function chaveDoMapa(dados: string): Promise<string> {',
+      '  const bytes = new TextEncoder().encode(`${VERSAO_FORMATO}\\n${dados}`);',
+      "  const resumo = await crypto.subtle.digest('SHA-256', bytes);",
+      '  return Array.from(new Uint8Array(resumo))',
+      "    .map((b) => b.toString(16).padStart(2, '0'))",
+      "    .join('');",
+      '}',
+      '',
+    ].join('\n'));
+  });
+
+  it('a vocacao e guardada depois de gerada, e so quando ha chave', () => {
+    // Sem a vocação neste par ela leria o cache mas nunca escreveria nele: cada abertura
+    // seria uma chamada paga ao modelo. O espelho (fora do ramo de leitura) é pego pelo
+    // teste da chave, acima.
+    expect(lf).toMatch(
+      /if \(\(oraculo === 'mapa' \|\| oraculo === 'vocacao'\) && chave\) \{\n\s*const \{ error: erroGuardar \} = await supabaseAdmin\n\s*\.from\('interpretacoes_mapa'\)\.insert\(\{ chave, conteudo: interpretacao \}\);/,
+    );
+  });
+
+  it('o mapa le o cache antes do veredito e a vocacao so depois dele', () => {
+    // A chave da vocação é grossa (signos e graus de poucas peças), então o acerto entre
+    // pessoas diferentes é comum. Antes do veredito, uma leitura guardada iria de graça
+    // a quem está com o plano vencido — e esta leitura é para quem paga.
+    //
+    // O mapa fica ANTES: reabrir um mapa não custa nada e não entra no limite do dia, e
+    // mudar isso é regressão. A ordem é o que reverte em silêncio numa edição futura.
+    const veredito = lf.indexOf('if (!veredito.permitido)');
+    const lerMapa = lf.indexOf("if (oraculo === 'mapa') {");
+    const lerVocacao = lf.indexOf("if (oraculo === 'vocacao') {");
+    expect(veredito).toBeGreaterThan(-1);
+    expect(lerMapa).toBeGreaterThan(-1);
+    expect(lerVocacao).toBeGreaterThan(-1);
+    expect(lerMapa).toBeLessThan(lf.indexOf('conferirUso('));
+    expect(lerVocacao).toBeGreaterThan(veredito);
+    // E antes do modelo: depois dele não seria cache, seria só um registro.
+    expect(lerVocacao).toBeLessThan(lf.indexOf('anthropic.messages.create'));
+  });
+
+  it('o acerto de cache da vocacao nao desconta consulta nem conta no dia', () => {
+    // Passar pelo veredito é o único portão. O acerto devolve a leitura guardada sem
+    // custar chamada, sem baixar `consultas_restantes` e sem somar em `uso_ia`.
+    const bloco = /\n  if \(oraculo === 'vocacao'\) \{[\s\S]*?\n  \}\n/.exec(lf);
+    expect(bloco).not.toBeNull();
+    expect(bloco![0]).toMatch(/doCache: true/);
+    for (const proibido of ['restantes', 'registrarUso', 'exigirEscrita', 'anthropic']) {
+      expect({ proibido, aparece: bloco![0].includes(proibido) })
+        .toEqual({ proibido, aparece: false });
+    }
+  });
+
+  const instrucoes = lf.slice(
+    lf.indexOf('INSTRUCOES_VOCACAO'),
+    lf.indexOf('const INSTRUCOES_POR_ORACULO'),
   );
 
   it('o prompt proibe sugerir profissao por nome', () => {
@@ -299,5 +391,33 @@ describe('o quarto oraculo: vocacao', () => {
     expect(funcao).not.toBeNull();
     expect(funcao![0])
       .toMatch(/return \[\s*'<dados>',[\s\S]*\.\.\.pecas\.map[\s\S]*'<\/dados>',?\s*\]/);
+  });
+
+  it('sem pecas nao ha leitura: o pedido volta 400 antes do cache e do modelo', () => {
+    // Sem a guarda, peças vazias chegariam ao modelo e a leitura genérica seria GUARDADA
+    // sob a chave das peças vazias — e entregue a todo mundo que mandar peças vazias.
+    const funcao = /function dadosDaVocacao\([\s\S]*?\n\}/.exec(lf);
+    expect(funcao).not.toBeNull();
+    // A guarda tem de vir antes do `return`: depois dele seria código morto.
+    expect(funcao![0]).toMatch(/if \(pecas\.length === 0\) throw new Error\('[^']+'\);[\s\S]*return \[/);
+    // O `throw` só vira 400 porque o despacho está num try cujo catch devolve 400, e
+    // isso acontece antes de qualquer leitura de cache.
+    expect(lf).toMatch(
+      /\} catch \(erro\) \{\n\s*return resposta\(\{ erro: erro instanceof Error \? erro\.message : 'Dados incompletos' \}, 400\);/,
+    );
+    expect(lf.indexOf('dadosDaVocacao(body)')).toBeLessThan(lf.indexOf("if (oraculo === 'mapa') {"));
+  });
+
+  it('o prompt fecha como os outros tres: so o objeto JSON, com o esqueleto', () => {
+    // `validarResultado` tira cerca de código, mas não tira texto antes do JSON: um
+    // preâmbulo custa uma chamada gasta, um 502 e nada guardado. A frase é a dos irmãos,
+    // palavra por palavra, e o esqueleto lista os mesmos cinco campos de `CAMPOS`.
+    expect(instrucoes).toContain(
+      'Responda SOMENTE com um objeto JSON, sem cercas de código e sem texto antes ou depois:',
+    );
+    expect(instrucoes).toMatch(
+      /depois:\n\{"titulo": "[^"]+", "ondeRende": "[^"]+", "ambiente": "[^"]+", "drena": "[^"]+", "passo": "[^"]+"\}`;\n*$/,
+    );
+    expect(instrucoes).not.toMatch(/Responda em JSON/);
   });
 });
