@@ -225,3 +225,53 @@ describe('o payload do taro carrega o material da carta', () => {
     }
   });
 });
+
+describe('o quarto oraculo: vocacao', () => {
+  const fonte = readFileSync(join(RAIZ, 'ia-interpretacao', 'index.ts'), 'utf8');
+
+  it('vocacao esta registrada como oraculo', () => {
+    // Fora da lista, o pedido volta "Oráculo inválido" — e a tela mostraria erro
+    // genérico sem ninguém entender por quê.
+    expect(fonte).toMatch(/const ORACULOS = \[[^\]]*'vocacao'/);
+  });
+
+  it('tem instrucoes proprias e campos proprios', () => {
+    expect(fonte).toMatch(/vocacao: INSTRUCOES_VOCACAO/);
+    expect(fonte).toMatch(/vocacao: \['titulo', 'ondeRende', 'ambiente', 'drena', 'passo'\]/);
+  });
+
+  it('a cota cobrada continua sendo a do aprofundamento', () => {
+    // Tipo novo exigiria coluna em `configuracao_ia` e decisão de limite que ninguém
+    // pediu. Trocar este literal leria o limite de outro recurso, sem erro nenhum.
+    expect(fonte).toMatch(/'interpretacao',\s*perfil\?\.plano_valido_ate/);
+  });
+
+  it('a vocacao entra no cache, com chave que nao colide com a do mapa', () => {
+    // Sem o prefixo, uma vocação e um mapa com o mesmo texto de dados cairiam na
+    // mesma linha, e a pessoa leria a leitura errada — vinda do cache, de graça.
+    expect(fonte).toMatch(/vocacao:\$\{dados\}/);
+    expect(fonte).toMatch(/oraculo === 'mapa' \|\| oraculo === 'vocacao'/);
+  });
+
+  const instrucoes = fonte.slice(
+    fonte.indexOf('INSTRUCOES_VOCACAO'),
+    fonte.indexOf('const INSTRUCOES_POR_ORACULO'),
+  );
+
+  it('o prompt proibe sugerir profissao por nome', () => {
+    // É regra de conformidade do produto, não gosto: listar profissão é promessa
+    // sobre a vida de alguém, e envelhece mal.
+    expect(instrucoes).toMatch(/profiss/i);
+    expect(instrucoes).toMatch(/n.o (sugira|liste|nomeie)/i);
+  });
+
+  it('o prompt manda ler as pecas, nao repeti-las', () => {
+    // Se a leitura só repetir as peças em prosa, o produto não se justifica: o mapa
+    // astral já mostra as peças para quem paga. É a fronteira da spec.
+    expect(instrucoes).toMatch(/n.o repita/i);
+  });
+
+  it('o prompt manda dizer em voz alta quando falta a hora', () => {
+    expect(instrucoes).toMatch(/sem hora/i);
+  });
+});
