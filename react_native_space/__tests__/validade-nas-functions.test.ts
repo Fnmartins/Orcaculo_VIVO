@@ -314,28 +314,36 @@ describe('o quarto oraculo: vocacao', () => {
     );
   });
 
-  it('o mapa le o cache antes do veredito e a vocacao so depois dele', () => {
+  it('o mapa le o cache antes do veredito e a vocacao so depois dele e da cota do periodo', () => {
     // A chave da vocação é grossa (signos e graus de poucas peças), então o acerto entre
     // pessoas diferentes é comum. Antes do veredito, uma leitura guardada iria de graça
     // a quem está com o plano vencido — e esta leitura é para quem paga.
     //
+    // Depois da cota do período também: o acerto não custa nada, e a chave é grossa, então
+    // quem tem plano válido e cota gasta continuaria recebendo, sem limite, as leituras que
+    // outras pessoas deixaram guardadas. Barrar só pela metade é o pior resultado possível.
+    //
     // O mapa fica ANTES: reabrir um mapa não custa nada e não entra no limite do dia, e
     // mudar isso é regressão. A ordem é o que reverte em silêncio numa edição futura.
     const veredito = lf.indexOf('if (!veredito.permitido)');
+    const cota = lf.indexOf('if (!semLimite && restantes <= 0)');
     const lerMapa = lf.indexOf("if (oraculo === 'mapa') {");
     const lerVocacao = lf.indexOf("if (oraculo === 'vocacao') {");
     expect(veredito).toBeGreaterThan(-1);
     expect(lerMapa).toBeGreaterThan(-1);
     expect(lerVocacao).toBeGreaterThan(-1);
+    expect(cota).toBeGreaterThan(veredito);
     expect(lerMapa).toBeLessThan(lf.indexOf('conferirUso('));
     expect(lerVocacao).toBeGreaterThan(veredito);
+    expect(lerVocacao).toBeGreaterThan(cota);
     // E antes do modelo: depois dele não seria cache, seria só um registro.
     expect(lerVocacao).toBeLessThan(lf.indexOf('anthropic.messages.create'));
   });
 
   it('o acerto de cache da vocacao nao desconta consulta nem conta no dia', () => {
-    // Passar pelo veredito é o único portão. O acerto devolve a leitura guardada sem
-    // custar chamada, sem baixar `consultas_restantes` e sem somar em `uso_ia`.
+    // Passar pelo veredito e pela cota do período são os portões. O acerto devolve a
+    // leitura guardada sem custar chamada, sem baixar `consultas_restantes` e sem somar
+    // em `uso_ia`.
     const bloco = /\n  if \(oraculo === 'vocacao'\) \{[\s\S]*?\n  \}\n/.exec(lf);
     expect(bloco).not.toBeNull();
     expect(bloco![0]).toMatch(/doCache: true/);

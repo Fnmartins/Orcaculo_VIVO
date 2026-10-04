@@ -539,13 +539,23 @@ Deno.serve(async (request) => {
     }, 402);
   }
 
-  // A leitura de vocação já escrita vem DEPOIS do veredito, ao contrário da do mapa. A
-  // chave do mapa carrega a posição exata de dez corpos e quase não se repete entre
-  // pessoas; a da vocação é grossa (signos e graus de poucas peças), então o acerto
-  // entre pessoas diferentes é comum. Antes do veredito, uma leitura guardada iria de
-  // graça a quem está com o plano vencido — e esta leitura é para quem paga. O acerto
-  // continua sem custar chamada, sem descontar consulta e sem entrar no limite do dia:
-  // só deixa de passar por cima de quem não tem acesso.
+  // A cota do período fica DEPOIS do veredito, e a ordem importa pelo mesmo motivo de
+  // vencido vir antes de desligado em `decidirUso`. O webhook da Stripe zera
+  // `consultas_restantes` E `plano_valido_ate` no mesmo update do cancelamento: com esta
+  // checagem na frente, quem cancelou lia "suas consultas deste período acabaram" do
+  // servidor e "seu acesso terminou" no semáforo da mesma tela — duas explicações para
+  // uma pessoa, e a do servidor manda para o lugar errado. Vencimento responde primeiro.
+  if (!semLimite && restantes <= 0) {
+    return resposta({ erro: 'Suas consultas deste período acabaram.', semConsultas: true }, 402);
+  }
+
+  // A leitura de vocação já escrita vem DEPOIS do veredito e da cota do período, ao
+  // contrário da do mapa. A chave do mapa carrega a posição exata de dez corpos e quase
+  // não se repete entre pessoas; a da vocação é grossa (signos e graus de poucas peças),
+  // então o acerto entre pessoas diferentes é comum. Antes dos dois portões, uma leitura
+  // guardada iria de graça a quem está com o plano vencido ou com a cota gasta — e esta
+  // leitura é para quem paga. O acerto continua sem custar chamada, sem descontar consulta
+  // e sem entrar no limite do dia: só deixa de passar por cima de quem não tem acesso.
   if (oraculo === 'vocacao') {
     // O prefixo entra no TEXTO que vira hash, e não na função: assim as chaves de
     // mapa já guardadas continuam valendo, e uma vocação nunca cai na linha de um
@@ -561,16 +571,6 @@ Deno.serve(async (request) => {
       if (erroContar) console.error('falha ao contar reuso', erroContar.message);
       return resposta({ ...(guardada.conteudo as Record<string, unknown>), oraculo, doCache: true });
     }
-  }
-
-  // A cota do período fica DEPOIS do veredito, e a ordem importa pelo mesmo motivo de
-  // vencido vir antes de desligado em `decidirUso`. O webhook da Stripe zera
-  // `consultas_restantes` E `plano_valido_ate` no mesmo update do cancelamento: com esta
-  // checagem na frente, quem cancelou lia "suas consultas deste período acabaram" do
-  // servidor e "seu acesso terminou" no semáforo da mesma tela — duas explicações para
-  // uma pessoa, e a do servidor manda para o lugar errado. Vencimento responde primeiro.
-  if (!semLimite && restantes <= 0) {
-    return resposta({ erro: 'Suas consultas deste período acabaram.', semConsultas: true }, 402);
   }
 
   try {
