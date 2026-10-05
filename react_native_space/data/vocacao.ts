@@ -25,6 +25,26 @@ export interface MeioDoCeu {
   grau: number;
 }
 
+/**
+ * Por que ESTAS peças respondem por carreira.
+ *
+ * A vocação tem a frase dela, e não a da área Trabalho, desde 05/10/2026. A da área
+ * diz "Saturno responde pelo esforço e pela autoridade, Marte pela iniciativa" — que
+ * continua certo LÁ, na tela do mapa astral, onde a área é mesmo Saturno e Marte. Mas
+ * aqui ela explicava à pessoa um modelo que não é o que a leitura dela usou: desde que
+ * Mercúrio, Vênus e a casa 2 entraram, a tela prometia menos do que entregava. Visto
+ * numa leitura real, em produção.
+ *
+ * Fica aqui, e não no prompt, pelo mesmo motivo que a frase da área fica em
+ * `areas.ts`: é texto de tela, revisável por quem entende de astrologia sem caçar
+ * string no meio do código.
+ */
+export const PORQUE_DA_VOCACAO = 'O meio do céu e a casa 10 são a carreira e o que '
+  + 'você constrói à vista; a 6 é a rotina de quem faz; a casa 2, o que você tem a '
+  + 'oferecer. Mercúrio e Vênus são os planetas do ofício — como você pensa e o que '
+  + 'você valoriza; Saturno responde pelo esforço e pela autoridade, Marte pela '
+  + 'iniciativa.';
+
 export interface Vocacao {
   /**
    * Nulo sem hora de nascimento: sem horizonte não há meridiano. É justamente o
@@ -33,6 +53,8 @@ export interface Vocacao {
   meioDoCeu: MeioDoCeu | null;
   /** A área Trabalho: casas 10 e 6, Saturno e Marte, com as peças já resolvidas. */
   trabalho: AreaDaVida;
+  /** Por que estas peças. É `PORQUE_DA_VOCACAO`, e não o `porque` da área. */
+  porque: string;
   /** Falso sem hora: a leitura sai só dos planetas, e a tela tem de dizer isso. */
   comCasas: boolean;
 }
@@ -83,6 +105,7 @@ export function montarVocacao(entrada: EntradaVocacao): Vocacao {
       ? null
       : { signo: signoDoGrau(entrada.meioCeu).nome, grau: Math.floor(entrada.meioCeu % 30) },
     trabalho: { ...trabalho, pecas },
+    porque: PORQUE_DA_VOCACAO,
     comCasas: trabalho.comCasas,
   };
 }

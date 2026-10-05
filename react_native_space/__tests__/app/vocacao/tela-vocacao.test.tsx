@@ -157,7 +157,7 @@ describe('tela de vocação', () => {
     // É a vitrine: a parte grátis tem de aparecer ANTES de pedir dinheiro. Se ela
     // sumir, o card vira cadeado puro e a decisão 3 do dono deixa de valer.
     renderComPlano({ temAcesso: false });
-    expect(screen.getByText(/Meio do céu/i)).toBeTruthy();
+    expect(screen.getByText('Seu Meio do Céu')).toBeTruthy();
     expect(screen.queryByText(/Onde você rende/i)).toBeNull();
   });
 
@@ -185,7 +185,7 @@ describe('tela de vocação', () => {
     // 15/07/1990, 14:30, em São Paulo, o meio do céu cai em Leão (RAMC perto de 146°).
     renderComPlano({ temAcesso: false });
     expect(screen.getByText('Leão')).toBeTruthy();
-    expect(screen.getByText(/A casa 10 é a carreira/)).toBeTruthy();
+    expect(screen.getByText(/O meio do céu e a casa 10 são a carreira/)).toBeTruthy();
   });
 
   it('enquanto o perfil carrega, não diz que faltam os dados de nascimento', () => {
@@ -313,7 +313,7 @@ describe('tela de vocação', () => {
     renderComPlano({ temAcesso: true, cidade: TROMSO });
     expect(screen.queryByText(/a leitura sai sem as casas/)).toBeNull();
     expect(screen.getByText(/não se aplica/i)).toBeTruthy();
-    expect(screen.getByText(/Meio do céu/i)).toBeTruthy();
+    expect(screen.getByText('Seu Meio do Céu')).toBeTruthy();
   });
 
   it('o botão pede a leitura só com as posições e mostra as quatro seções', async () => {
