@@ -241,8 +241,10 @@ export default function TelaVocacao() {
                     </Text>
                   ))}
 
-                {/* A frase da casa 10, já escrita e revisável em `data/areas.ts`. */}
-                <Text style={estilos.porque}>{vocacao.trabalho.porque}</Text>
+                {/* A frase da VOCAÇÃO, e não a da área Trabalho: a da área nomeia só
+                    Saturno e Marte, e desde que Mercúrio, Vênus e a casa 2 entraram ela
+                    passou a prometer menos do que a leitura entrega. */}
+                <Text style={estilos.porque}>{vocacao.porque}</Text>
               </Animated.View>
 
               <Animated.View style={[estilos.secao, { opacity: fadeAnim }]}>

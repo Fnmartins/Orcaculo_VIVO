@@ -183,3 +183,31 @@ describe('sem hora, a Lua sai dos aspectos', () => {
     expect(Object.keys(comHora)).not.toContain('luaIncerta');
   });
 });
+
+/**
+ * A frase que explica o modelo.
+ *
+ * Visto numa leitura real em produção: a tela mostrava a frase da área Trabalho, que
+ * nomeia só Saturno e Marte, logo abaixo de um texto que falava de Mercúrio, de Vênus
+ * e do que a pessoa tem a oferecer. A tela prometia menos do que entregava.
+ */
+describe('a vocação explica o modelo que ela usa', () => {
+  it('nomeia as peças que entraram, e não só Saturno e Marte', () => {
+    const { porque } = montarVocacao(comHora);
+    for (const peca of ['Mercúrio', 'Vênus', 'casa 2', 'meio do céu']) {
+      expect(porque).toContain(peca);
+    }
+  });
+
+  it('não é a frase da área Trabalho', () => {
+    // O defeito que isto pega é a volta ao `trabalho.porque` numa limpeza futura: as
+    // duas frases se parecem, e a da área continua certa na tela do mapa astral.
+    const vocacao = montarVocacao(comHora);
+    expect(vocacao.porque).not.toBe(vocacao.trabalho.porque);
+    expect(vocacao.trabalho.porque).not.toContain('Mercúrio');
+  });
+
+  it('a frase não muda com o mapa: é texto de tela, não leitura', () => {
+    expect(montarVocacao(semHora).porque).toBe(montarVocacao(comHora).porque);
+  });
+});
