@@ -23,10 +23,12 @@ const TAMANHO_MESA = Math.min(LARGURA_TELA * 0.62, 300);
  * divergência. Entregar o jogo calado, como se jogar sozinho no telefone fosse a
  * prática, seria a desonestidade que a nota existe para evitar.
  */
-const NOTA_DO_BUZIOS = 'No candomblé, quem joga búzios é um pai ou mãe de santo '
-  + 'iniciado — não quem consulta. Aqui é uma porta de entrada, para quem quer '
-  + 'conhecer. Se o que vier fizer sentido, procure um terreiro: a consulta de verdade '
-  + 'é com um sacerdote.';
+const NOTA_DO_BUZIOS = 'O jogo de búzios é prática de séculos: atravessou o Atlântico '
+  + 'com os africanos escravizados e foi guardada nos terreiros até hoje. Aqui ele é uma '
+  + 'aproximação — um jeito de conhecer essa cultura de perto, com respeito por quem a '
+  + 'mantém viva. Quem joga de verdade é um pai ou mãe de santo iniciado, e nada neste '
+  + 'aplicativo ocupa o lugar dessa consulta. Se o que vier fizer sentido, procure um '
+  + 'terreiro.';
 export default function TelaBuziosPreparo() {
   const reduzirMovimento = useReduzirMovimento();
   const entrada = useRef(new Animated.Value(0)).current;

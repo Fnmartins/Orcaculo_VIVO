@@ -125,7 +125,16 @@ describe('Abertura do búzios', () => {
 describe('o búzios diz o que ele não é', () => {
   it('antes de jogar, a tela diz que quem joga é um sacerdote', () => {
     render(<TelaBuziosPreparo />);
-    expect(screen.getByText(/quem joga búzios é um pai ou mãe de santo iniciado/)).toBeTruthy();
+    expect(screen.getByText(/pai ou mãe de santo iniciado/)).toBeTruthy();
+    expect(screen.getByText(/nada neste aplicativo ocupa o lugar dessa consulta/)).toBeTruthy();
+  });
+
+  it('diz o que a prática É, e não só o que o app não é', () => {
+    // A primeira versão só avisava. Sem dizer de onde a prática vem, o aviso soa como
+    // isenção jurídica; com isso, soa como aproximação, que é a intenção.
+    render(<TelaBuziosPreparo />);
+    expect(screen.getByText(/prática de séculos/)).toBeTruthy();
+    expect(screen.getByText(/respeito por quem a mantém viva/)).toBeTruthy();
   });
 
   it('e manda procurar um terreiro, em vez de se oferecer no lugar dele', () => {
