@@ -130,7 +130,7 @@ export default function TelaMatrizCalculando() {
     <GradientBackground>
       <SafeAreaView style={estilos.safeArea}>
         <View style={estilos.container}>
-          <Text style={estilos.titulo}>Construindo sua Matriz</Text>
+          <Text style={estilos.titulo}>Construindo seu Mapa</Text>
           <Text style={estilos.subtitulo}>{params.nome || `${params.dia}/${params.mes}/${params.ano}`}</Text>
 
           {/* Octograma animado */}

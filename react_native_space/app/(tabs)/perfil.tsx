@@ -408,7 +408,7 @@ export default function TelaPerfil() {
                 <Text style={estilos.secaoTitulo}>Dados de nascimento</Text>
                 <Text style={estilos.secaoNota}>
                   São a base das suas leituras. Quanto mais completos, mais o mapa
-                  astral, a numerologia e a matriz falam de você — e não de quem
+                  astral, a numerologia e o mapa dos arcanos falam de você — e não de quem
                   nasceu no mesmo mês.
                 </Text>
                 <View style={estilos.menuGrupo}>

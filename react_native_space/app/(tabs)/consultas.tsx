@@ -44,7 +44,7 @@ const ICONES_TIPO: Record<string, { icone: string; lib: 'ionicons' | 'material';
   quiromancia:    { icone: 'hand-left-outline',      lib: 'ionicons', cor: '#E74C3C', label: 'Quiromância' },
   numerologia:    { icone: 'calculator-outline',     lib: 'ionicons', cor: '#3498DB', label: 'Numerologia' },
   mapa_astral:    { icone: 'planet-outline',         lib: 'ionicons', cor: '#E67E22', label: 'Mapa Astral' },
-  matriz_destino: { icone: 'star-david',             lib: 'material', cor: '#B565A7', label: 'Matriz do Destino' },
+  matriz_destino: { icone: 'star-david',             lib: 'material', cor: '#B565A7', label: 'Mapa dos Arcanos' },
   lei_atracao:    { icone: 'star-four-points',       lib: 'material', cor: '#EC4899', label: 'Lei da Atração' },
 };
 

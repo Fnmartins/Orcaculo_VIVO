@@ -55,8 +55,8 @@ export default function TelaMatrizResultado() {
       Animated.timing(slideAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
     ]).start();
     // Seleciona a essência por padrão
-    setSelecionado({ chave: 'centro', valor: matriz.centro, rotulo: 'Essência' });
-  }, [fadeAnim, slideAnim, matriz.centro]);
+    setSelecionado({ chave: 'essencia', valor: matriz.essencia, rotulo: 'Essência' });
+  }, [fadeAnim, slideAnim, matriz.essencia]);
 
   function selecionarPonto(chave: string, valor: number, rotulo: string) {
     Hapticos.impactoLeve();
@@ -74,8 +74,8 @@ export default function TelaMatrizResultado() {
         <SafeAreaView style={estilos.safeArea}>
           <EstadoTela
             tipo="erro"
-            titulo="Não foi possível calcular sua matriz"
-            descricao="Informe seu nome e uma data de nascimento válida para gerar a Matriz do Destino."
+            titulo="Não foi possível calcular seu mapa"
+            descricao="Informe seu nome e uma data de nascimento válida para gerar o Mapa dos Arcanos."
             acaoLabel="Revisar dados"
             onAcao={() => voltarOuIr()}
           />
@@ -104,7 +104,7 @@ export default function TelaMatrizResultado() {
               <Ionicons name="arrow-back" size={22} color={Cores.textoClaro} />
             </Pressable>
             <View style={estilos.headerCenter}>
-              <Text style={estilos.headerTitulo}>Matriz do Destino</Text>
+              <Text style={estilos.headerTitulo}>Mapa dos Arcanos</Text>
               <Text style={estilos.headerSubtitulo}>
                 {params.nome || `${params.dia}/${params.mes}/${params.ano}`}
               </Text>
@@ -162,9 +162,9 @@ export default function TelaMatrizResultado() {
           <Animated.View style={[estilos.secao, { opacity: fadeAnim }]}>
             <Text style={estilos.secaoTitulo}>Linhas de Vida</Text>
             <View style={estilos.linhasGrid}>
-              <CardLinha icone="cash-multiple" cor="#27AE60" titulo="Dinheiro" valor={matriz.linhaDinheiro} onPress={() => selecionarPonto('linhaDinheiro', matriz.linhaDinheiro, 'Linha do Dinheiro')} />
-              <CardLinha icone="heart" cor="#E91E63" titulo="Amor" valor={matriz.linhaAmor} onPress={() => selecionarPonto('linhaAmor', matriz.linhaAmor, 'Linha do Amor')} />
-              <CardLinha icone="karma" cor="#9B59B6" titulo="Cauda Cármica" valor={matriz.caudaCarmica} onPress={() => selecionarPonto('caudaCarmica', matriz.caudaCarmica, 'Cauda Cármica')} />
+              <CardLinha icone="cash-multiple" cor="#27AE60" titulo="Dinheiro" valor={matriz.sustento} onPress={() => selecionarPonto('sustento', matriz.sustento, 'Linha do Dinheiro')} />
+              <CardLinha icone="heart" cor="#E91E63" titulo="Amor" valor={matriz.vinculo} onPress={() => selecionarPonto('vinculo', matriz.vinculo, 'Linha do Amor')} />
+              <CardLinha icone="karma" cor="#9B59B6" titulo="Cauda Cármica" valor={matriz.herancaSomada} onPress={() => selecionarPonto('herancaSomada', matriz.herancaSomada, 'Cauda Cármica')} />
             </View>
           </Animated.View>
 

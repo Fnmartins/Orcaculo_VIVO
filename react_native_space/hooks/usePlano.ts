@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 type RecursoPlano =
   | 'consulta_basica'     // Tarot, Búzios, Numerologia, Mapa Astral (Sol, Lua e ascendente)
   | 'mapa_completo'       // O resto do mapa: os outros oito corpos, casas e aspectos
-  | 'consulta_premium'    // Matriz do Destino, Lei da Atração
+  | 'consulta_premium'    // Mapa dos Arcanos, Lei da Atração
   | 'ia_visual'           // Café, Quiromância (câmera)
   | 'consulta_ao_vivo';   // Agendamento com oraculista
 
@@ -32,7 +32,7 @@ const PLANO_MINIMO: Record<RecursoPlano, string> = {
 const NOME_RECURSO: Record<RecursoPlano, string> = {
   consulta_basica:    'oráculos',
   mapa_completo:      'O mapa astral completo',
-  consulta_premium:   'Matriz do Destino e Lei da Atração',
+  consulta_premium:   'Mapa dos Arcanos e Lei da Atração',
   ia_visual:          'Análise por IA (câmera)',
   consulta_ao_vivo:   'consultas ao vivo',
 };
