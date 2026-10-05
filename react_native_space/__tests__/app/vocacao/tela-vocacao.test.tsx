@@ -169,7 +169,7 @@ describe('tela de vocação', () => {
   it('sem hora de nascimento, a tela diz isso em voz alta', () => {
     // Entregar menos calado é o defeito que `comCasas` foi criado para evitar.
     renderComPlano({ temAcesso: true, semHora: true });
-    expect(screen.getByText(/sem a hora/i)).toBeTruthy();
+    expect(screen.getByText(/a leitura sai sem as casas/)).toBeTruthy();
   });
 
   it('sem dados de nascimento, manda para o mapa astral em vez de pedir de novo', () => {
@@ -184,7 +184,7 @@ describe('tela de vocação', () => {
     // O título sozinho passaria com a tela mostrando "Meio do Céu" e nenhum signo. Para
     // 15/07/1990, 14:30, em São Paulo, o meio do céu cai em Leão (RAMC perto de 146°).
     renderComPlano({ temAcesso: false });
-    expect(screen.getByText(/Leão/)).toBeTruthy();
+    expect(screen.getByText('Leão')).toBeTruthy();
     expect(screen.getByText(/A casa 10 é a carreira/)).toBeTruthy();
   });
 
@@ -276,7 +276,7 @@ describe('tela de vocação', () => {
     // lê: quem toca no botão já decidiu sem saber que a leitura sai mais curta.
     renderComPlano({ temAcesso: true, semHora: true });
     const textos = textosNaOrdem();
-    const aviso = textos.findIndex((t) => /sem a hora/i.test(t));
+    const aviso = textos.findIndex((t) => /a leitura sai sem as casas/.test(t));
     const botao = textos.findIndex((t) => /Ler minha vocação/i.test(t));
     expect(aviso).toBeGreaterThanOrEqual(0);
     expect(botao).toBeGreaterThanOrEqual(0);
@@ -290,7 +290,7 @@ describe('tela de vocação', () => {
     // como se fosse o da pessoa. Hoje nenhuma tela grava esse perfil; a garantia vale só
     // até a próxima tela que gravar dado de perfil.
     renderComPlano({ temAcesso: true, horaNula: true });
-    expect(screen.getByText(/sem a hora/i)).toBeTruthy();
+    expect(screen.getByText(/a leitura sai sem as casas/)).toBeTruthy();
     expect(screen.getByText(/depende da hora/i)).toBeTruthy();
     // O grau só aparece junto do signo do meio do céu: sem ele, nada foi apresentado.
     expect(screen.queryByText(/°/)).toBeNull();
@@ -304,14 +304,14 @@ describe('tela de vocação', () => {
 
   it('com hora, a tela não diz que falta a hora', () => {
     renderComPlano({ temAcesso: true });
-    expect(screen.queryByText(/sem a hora/i)).toBeNull();
+    expect(screen.queryByText(/a leitura sai sem as casas/)).toBeNull();
   });
 
   it('lugar polar com hora: as casas somem, mas a tela não culpa a hora', () => {
     // `comCasas` é falso aqui, e dizer "sem a hora" a quem informou a hora seria uma
     // falsidade pior que o silêncio. O meio do céu continua: existe com a hora.
     renderComPlano({ temAcesso: true, cidade: TROMSO });
-    expect(screen.queryByText(/sem a hora/i)).toBeNull();
+    expect(screen.queryByText(/a leitura sai sem as casas/)).toBeNull();
     expect(screen.getByText(/não se aplica/i)).toBeTruthy();
     expect(screen.getByText(/Meio do céu/i)).toBeTruthy();
   });
@@ -375,5 +375,42 @@ describe('tela de vocação', () => {
     );
     expect(screen.getByText(/Ler minha vocação/i)).toBeTruthy();
     expect(screen.queryByText('Onde você rende')).toBeNull();
+  });
+});
+
+/**
+ * O que a revisão final da entrega pegou, já no ar.
+ *
+ * Dois buracos na parte que não custa nada: a casa 10 prometida e não mostrada, e o
+ * aviso da Lua que a tela do mapa astral dá desde sempre e esta não dava — justamente
+ * aqui, que é onde um aspecto da Lua vira prosa paga.
+ */
+describe('o que a parte grátis promete, ela mostra', () => {
+  it('com hora, a casa 10 da PESSOA aparece, e não só a definição dela', () => {
+    // O card na home diz "o meio do céu e a casa 10 seguem abertos" e a spec promete o
+    // mesmo. Antes disto o que vinha de graça era a frase genérica de `areas.ts`, igual
+    // para todo mundo — a promessa do card era falsa.
+    renderComPlano({ temAcesso: false });
+    expect(screen.getByText(/Casa 10 — Carreira:/)).toBeTruthy();
+  });
+
+  it('sem hora não há cúspide, então a linha da casa 10 não aparece', () => {
+    // O contrapeso: inventar uma cúspide sem hora seria o mesmo defeito do meio do céu
+    // do meio-dia, que esta entrega já corrigiu uma vez.
+    renderComPlano({ temAcesso: false, semHora: true });
+    expect(screen.queryByText(/Casa 10 — Carreira:/)).toBeNull();
+  });
+
+  it('sem hora, a tela avisa que um aspecto da Lua pode não ser o seu', () => {
+    // 15/07/1990 ao meio-dia cai com a Lua perto da virada de signo — `luaIncerta` é
+    // verdadeiro. `areas.ts` deixa passar aspectos da Lua para as peças, então um
+    // "Lua trígono Saturno" pode entrar na leitura PAGA sem ser verdade.
+    renderComPlano({ temAcesso: true, semHora: true });
+    expect(screen.getByText(/a Lua pode ter mudado de signo nesse dia/)).toBeTruthy();
+  });
+
+  it('com hora, o aviso da Lua não aparece', () => {
+    renderComPlano({ temAcesso: true });
+    expect(screen.queryByText(/a Lua pode ter mudado de signo/)).toBeNull();
   });
 });

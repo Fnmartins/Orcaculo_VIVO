@@ -227,6 +227,19 @@ export default function TelaVocacao() {
                   </View>
                 )}
 
+                {/* A casa 10 DESTA pessoa, e não só a definição dela: a parte grátis promete
+                    "o meio do céu e a casa 10", e o card na home repete a promessa. Antes
+                    disto, o que aparecia de graça era a frase genérica abaixo, igual para
+                    todo mundo. Sem hora não há cúspide e a peça não existe — por isso filtrar,
+                    e não indexar. */}
+                {vocacao.trabalho.pecas
+                  .filter((peca) => peca.rotulo.startsWith('Casa 10'))
+                  .map((peca) => (
+                    <Text key={peca.rotulo} style={estilos.porque}>
+                      {`${peca.rotulo}: ${peca.valor}`}
+                    </Text>
+                  ))}
+
                 {/* A frase da casa 10, já escrita e revisável em `data/areas.ts`. */}
                 <Text style={estilos.porque}>{vocacao.trabalho.porque}</Text>
               </Animated.View>
@@ -244,6 +257,21 @@ export default function TelaVocacao() {
                       {mapa.semHora
                         ? 'Sem a hora de nascimento, a leitura sai sem as casas e fala só dos planetas. Se achar a hora na certidão, refaça o seu Mapa Astral com ela: leva um minuto.'
                         : 'Neste lugar de nascimento o sistema de casas não se aplica, então a leitura sai sem elas e fala só dos planetas.'}
+                    </Text>
+                  </View>
+                )}
+
+                {/* A Lua ao meio-dia pode não ser a desta pessoa. Ela anda 13° por dia, e
+                    `areas.ts` deixa passar aspectos dela para as peças — então um "Lua
+                    trígono Saturno" pode entrar na leitura PAGA sem ser verdade. A tela do
+                    mapa astral já diz isto desde sempre; esta, que é onde o aspecto vira
+                    prosa cobrada, não dizia. */}
+                {mapa.luaIncerta && (
+                  <View style={[estilos.equilibrioCaixa, { marginBottom: Espacamento.sm }]}>
+                    <Text style={estilos.equilibrioTexto}>
+                      Sem a hora de nascimento, a Lua pode ter mudado de signo nesse dia — ela
+                      anda 13 graus por dia, e a sua está perto da virada. Se a leitura falar de
+                      um aspecto da Lua, ele pode não ser o seu. Com a hora, isto fica firme.
                     </Text>
                   </View>
                 )}

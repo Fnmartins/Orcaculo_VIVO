@@ -429,3 +429,42 @@ describe('o quarto oraculo: vocacao', () => {
     expect(instrucoes).not.toMatch(/Responda em JSON/);
   });
 });
+
+/**
+ * O defeito que a revisão final pegou, já no ar.
+ *
+ * Sem hora de nascimento não chegam casas, nem meio do céu, nem o regente da 10 — só
+ * Saturno, Marte e os aspectos. Mesmo assim o prompt abria dizendo que recebia tudo, e
+ * exigia `ambiente` "da casa 6 e de onde o regente mora": as DUAS fontes ausentes. Como
+ * `ambiente` é campo obrigatório em CAMPOS, a resposta sem ele vira 502 — ou seja, o
+ * modelo era empurrado a inventar uma seção inteira, e "não sei a hora" é opção de
+ * primeira classe no formulário.
+ */
+describe('a vocacao sem hora nao manda inventar', () => {
+  const fonte = readFileSync(join(RAIZ, 'ia-interpretacao', 'index.ts'), 'utf8');
+  const instrucoes = fonte.slice(
+    fonte.indexOf('INSTRUCOES_VOCACAO'),
+    fonte.indexOf('const INSTRUCOES_POR_ORACULO'),
+  );
+
+  it('a abertura nao promete pecas que podem nao vir', () => {
+    // "Recebe as peças já calculadas: o meio do céu, a casa 10..." era falso sem hora.
+    expect(instrucoes).toMatch(/que podem ser menos/i);
+    expect(instrucoes).toMatch(/n.o existe nesta leitura/i);
+  });
+
+  it('o caso sem hora diz o que fazer em CADA secao, e nao so numa', () => {
+    // A versão anterior falava só de `ondeRende` e deixava `ambiente` — obrigatório e
+    // sem fonte nenhuma — por conta do modelo.
+    const semHora = instrucoes.slice(instrucoes.indexOf('SEM HORA DE NASCIMENTO'));
+    expect(semHora).toMatch(/em "ondeRende"/);
+    expect(semHora).toMatch(/em "ambiente"/);
+  });
+
+  it('proibe nomear a casa 6 e o regente quando eles nao vieram', () => {
+    // É a frase que separa "entregar menos avisando" de "inventar o que não veio".
+    expect(instrucoes).toMatch(/NUNCA da casa 6/);
+    expect(instrucoes).toMatch(/nunca de onde o regente mora/);
+    expect(instrucoes).toMatch(/N.o nomeie, em nenhuma se..o, uma casa que n.o esteja nos dados/);
+  });
+});
