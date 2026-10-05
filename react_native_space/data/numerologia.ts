@@ -1,4 +1,7 @@
 // Dados de Numerologia do Arcanus
+//
+// Procedência do sistema — autoria, data e o que o nome "pitagórico" esconde — em
+// `docs/referencias/2026-10-05-fontes-de-numerologia.md`.
 
 import {
   calcularAlma as calcularAlmaDetalhado,

@@ -1,4 +1,11 @@
 // Mapa Numerológico Completo — Cálculo Pitagórico com passos preservados
+//
+// ATENÇÃO AO NOME: "pitagórico" é atribuição herdada, não histórica. A tabela de
+// letras, os números de nome e de nascimento e os mestres 11 e 22 vêm de L. Dow
+// Balliett (1908); Caminho de Vida, Expressão, Alma e Personalidade foram formalizados
+// por Juno Jordan (1965). Nada disso tem base no que Pitágoras escreveu. E a tabela
+// abaixo é UMA escolha: a numerologia caldaica usa outra e dá outros números.
+// Ver `docs/referencias/2026-10-05-fontes-de-numerologia.md`.
 
 export type NumeroNumerologico = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 11 | 22 | 33;
 
