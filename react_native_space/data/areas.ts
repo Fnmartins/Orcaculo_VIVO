@@ -1,5 +1,5 @@
 import type { Aspecto, PontoAspectavel } from './aspectos';
-import { ROTULO_ASPECTO } from './aspectos';
+import { ROTULO_ASPECTO, aspectosSemALua } from './aspectos';
 import { CASAS } from './astrologia';
 import type { Corpo, PosicaoCorpo } from './efemerides';
 import { NOME_CORPO, corpoPorNome, signoDoGrau } from './efemerides';
@@ -97,6 +97,14 @@ export interface EntradaAreas {
   cuspides: number[] | null;
   casaDoCorpo: Record<Corpo, number> | null;
   aspectos: Aspecto[];
+  /**
+   * A hora de nascimento é desconhecida.
+   *
+   * Separado de `cuspides === null` de propósito: acima do círculo polar não há
+   * cúspide e a hora É conhecida. Quem decide se a Lua entra nos aspectos é este
+   * campo, e não a ausência de casas.
+   */
+  semHora: boolean;
   nomeDoPonto: (ponto: PontoAspectavel) => string;
 }
 
@@ -194,7 +202,11 @@ export function pecasDosAspectos(def: DefinicaoArea, entrada: EntradaAreas): Pec
   const pontos = pontosDaArea(def, entrada.cuspides);
   // `aspectos` já chega do mais exato para o mais frouxo (`data/aspectos.ts`),
   // então cortar no começo guarda os que mais pesam.
-  return entrada.aspectos
+  // A Lua sai ANTES do corte dos dois mais exatos. Depois do corte, a área ficaria
+  // com um aspecto ou nenhum; antes, o próximo aspecto verdadeiro ocupa a vaga. E
+  // há um ganho que não é só de honestidade: uma Lua medida a "0,5° do exato" hoje
+  // rouba a vaga de um aspecto de Saturno ou Marte realmente exato.
+  return aspectosSemALua(entrada.aspectos, entrada.semHora)
     .filter((a) => pontos.has(a.a) || pontos.has(a.b))
     .slice(0, LIMITE_ASPECTOS)
     .map((a) => ({

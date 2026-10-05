@@ -34,6 +34,7 @@ const aspecto = (
 const CUSPIDES_REDONDAS = Array.from({ length: 12 }, (_, i) => i * 30);
 
 const base: EntradaAreas = {
+  semHora: false,
   posicoes: [
     corpo('sol', 125),          // Leão
     corpo('lua', 5),            // Áries
