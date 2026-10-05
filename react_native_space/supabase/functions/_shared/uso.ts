@@ -99,17 +99,49 @@ export async function registrarUso(
   cliente: Cliente,
   usuarioId: string,
   tipo: TipoUso,
+  /**
+   * O PRODUTO que gerou a chamada: 'tarot', 'buzios', 'mapa', 'vocacao', 'imagem',
+   * 'pergunta', 'voz'.
+   *
+   * `tipo` é o que a cota cobra; quatro produtos diferentes caem em 'interpretacao'
+   * e custam valores bem diferentes. Sem este corte, a aba Custo sabe dizer o preço
+   * médio de uma interpretação e não sabe dizer o de uma Cruz Celta.
+   */
+  oraculo: string,
   consumo: ConsumoIA = {},
 ): Promise<void> {
+  const dia = hojeISO();
+  const entrada = inteiroSeguro(consumo.entrada);
+  const saida = inteiroSeguro(consumo.saida);
+  const caracteres = inteiroSeguro(consumo.caracteres);
+
   const { error } = await cliente.rpc('contar_uso_ia', {
     p_usuario: usuarioId,
-    p_dia: hojeISO(),
+    p_dia: dia,
     p_tipo: tipo,
-    p_entrada: inteiroSeguro(consumo.entrada),
-    p_saida: inteiroSeguro(consumo.saida),
-    p_caracteres: inteiroSeguro(consumo.caracteres),
+    p_entrada: entrada,
+    p_saida: saida,
+    p_caracteres: caracteres,
   });
   if (error) console.error('falha ao contar uso', error.message);
+
+  // A medição por produto vai para uma tabela SEPARADA, e não numa coluna de
+  // `uso_ia`: aquela é a tabela da cota, lida com `maybeSingle()` por (usuário, dia,
+  // tipo), e dividi-la por oráculo faria a leitura ver uma linha de várias —
+  // afrouxando o limite diário em silêncio. Ver `supabase/consumo-por-oraculo.sql`.
+  //
+  // Falhar aqui não pode derrubar nada: a cota já foi contada acima e a pessoa já
+  // tem a leitura na tela. Perder uma linha de medição custa um ponto no gráfico.
+  const { error: erroConsumo } = await cliente.from('consumo_ia').insert({
+    usuario_id: usuarioId,
+    dia,
+    tipo,
+    oraculo,
+    tokens_entrada: entrada,
+    tokens_saida: saida,
+    caracteres,
+  });
+  if (erroConsumo) console.error('falha ao medir consumo por oraculo', erroConsumo.message);
 }
 
 // `mensagemDoLimite` mudou para `limites.ts`: ela é decisão pura sobre um veredito,

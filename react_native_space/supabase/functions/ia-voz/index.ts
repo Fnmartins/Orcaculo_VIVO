@@ -275,7 +275,7 @@ Deno.serve(async (request) => {
   // A voz nao gasta token: a Google cobra por caractere sintetizado. E `texto` e o
   // que FOI sintetizado — depois do teto de 3000 e do corte no fim da frase —, nao
   // o que a pessoa pediu, senao a conta cobraria o que nunca foi gerado.
-  await registrarUso(supabaseAdmin, usuarioId, 'voz', { caracteres: texto.length });
+  await registrarUso(supabaseAdmin, usuarioId, 'voz', 'voz', { caracteres: texto.length });
 
   const curto = body.compartilhar === true
     ? await linkCurto(supabaseAdmin, hash, null)
