@@ -112,3 +112,45 @@ describe('Abertura do búzios', () => {
     expect(screen.queryByText('Os búzios estão prontos...')).toBeNull();
   });
 });
+
+/**
+ * A nota do búzios.
+ *
+ * No candomblé quem joga é sacerdote iniciado, não quem consulta — está nas fontes
+ * (`docs/referencias/2026-10-05-fontes-de-buzios.md`). O app diverge disso de
+ * propósito, como porta de entrada, e a nota é o que impede a divergência de ser
+ * silenciosa. Sem ela, o app entregaria o jogo como se jogar sozinho no telefone
+ * fosse a prática.
+ */
+describe('o búzios diz o que ele não é', () => {
+  it('antes de jogar, a tela diz que quem joga é um sacerdote', () => {
+    render(<TelaBuziosPreparo />);
+    expect(screen.getByText(/pai ou mãe de santo iniciado/)).toBeTruthy();
+    expect(screen.getByText(/nada neste aplicativo ocupa o lugar dessa consulta/)).toBeTruthy();
+  });
+
+  it('diz o que a prática É, e não só o que o app não é', () => {
+    // A primeira versão só avisava. Sem dizer de onde a prática vem, o aviso soa como
+    // isenção jurídica; com isso, soa como aproximação, que é a intenção.
+    render(<TelaBuziosPreparo />);
+    expect(screen.getByText(/prática de séculos/)).toBeTruthy();
+    expect(screen.getByText(/respeito por quem a mantém viva/)).toBeTruthy();
+  });
+
+  it('e manda procurar um terreiro, em vez de se oferecer no lugar dele', () => {
+    // O ponto não é só avisar: é apontar para onde a consulta de verdade acontece.
+    render(<TelaBuziosPreparo />);
+    expect(screen.getByText(/procure um terreiro/)).toBeTruthy();
+  });
+
+  it('a nota é opcional: quem não passa não ganha nota nenhuma', () => {
+    // Os outros oráculos não têm o que dizer aqui, e uma nota vazia ocuparia espaço
+    // na tela deles.
+    render(
+      <AberturaOraculo titulo="Teste" frase="Frase" acaoLabel="Seguir" aoAvancar={() => {}}>
+        <Text>palco</Text>
+      </AberturaOraculo>,
+    );
+    expect(screen.queryByText(/sacerdote/)).toBeNull();
+  });
+});

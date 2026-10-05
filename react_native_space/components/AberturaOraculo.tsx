@@ -41,6 +41,7 @@ export function AberturaOraculo({
   acaoLabel,
   aoAvancar,
   children,
+  nota,
   desabilitado = false,
 }: {
   titulo: string;
@@ -48,6 +49,11 @@ export function AberturaOraculo({
   acaoLabel: string;
   aoAvancar: () => void;
   children: ReactNode;
+  /**
+   * Linha abaixo do botão, para o oráculo que precisa dizer algo sobre a própria
+   * prática antes de começar. Opcional: só o búzios usa hoje.
+   */
+  nota?: string;
   desabilitado?: boolean;
 }) {
   return (
@@ -69,6 +75,8 @@ export function AberturaOraculo({
           >
             <Text style={estilos.botaoTexto}>{acaoLabel}</Text>
           </Pressable>
+
+          {nota ? <Text style={estilos.nota}>{nota}</Text> : null}
         </View>
       </SafeAreaView>
     </GradientBackground>
@@ -92,6 +100,15 @@ const estilos = StyleSheet.create({
     color: Cores.acento,
   },
   palco: { alignItems: 'center', justifyContent: 'center' },
+  nota: {
+    fontFamily: Fontes.corpo,
+    fontSize: 13,
+    lineHeight: 19,
+    color: Cores.textoSecundario,
+    textAlign: 'center',
+    marginTop: Espacamento.md,
+    maxWidth: 420,
+  },
   frase: {
     fontFamily: Fontes.titulo,
     fontSize: 22,
