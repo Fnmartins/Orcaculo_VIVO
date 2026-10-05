@@ -42,12 +42,18 @@ export const CATEGORIAS: CategoriaInfo[] = [
     titulo: 'Prosperidade',
     icone: 'diamond',
     cor: '#D4AF37',
+    // Reescritas em 05/10/2026. As anteriores afirmavam CAUSA — "eu sou um ímã para
+    // riqueza", "o dinheiro vem até mim com facilidade" —, ou seja, que a prática traz
+    // dinheiro. O bloco REGRAS das Edge Functions proíbe conselho financeiro e promessa
+    // de resultado, e estas frases escapavam dele por serem texto fixo do app, sem
+    // passar pela IA. Agora falam de intenção e de ação, que é o que uma afirmação pode
+    // sustentar.
     afirmacoes: [
-      'A abundância flui em minha vida em todas as áreas.',
-      'Eu sou um ímã para prosperidade e riqueza.',
-      'O dinheiro vem até mim com facilidade e alegria.',
-      'Eu mereço toda a prosperidade que desejo.',
-      'Oportunidades financeiras aparecem constantemente para mim.',
+      'Eu sei o que quero construir, e dou um passo de cada vez.',
+      'Eu cuido do que já tenho antes de correr atrás do que falta.',
+      'Quando a oportunidade aparecer, eu quero estar preparado para ela.',
+      'Pedir o que vale o meu trabalho é parte do meu trabalho.',
+      'Eu escolho onde gasto a minha energia, e isso inclui o meu dinheiro.',
     ],
   },
   {
@@ -55,11 +61,20 @@ export const CATEGORIAS: CategoriaInfo[] = [
     titulo: 'Saúde',
     icone: 'leaf',
     cor: '#7C9A82',
+    // Reescritas em 05/10/2026, e esta foi a mais séria da auditoria. As anteriores
+    // afirmavam CURA em primeira pessoa — "eu me curo em todos os níveis", "a saúde
+    // perfeita é meu estado natural" — e iam para quem pode estar doente, junto de um
+    // botão de ritual e de um registro de "manifestado". Alguém com diagnóstico sério
+    // podia ler aquilo como razão para adiar tratamento. O mesmo bloco REGRAS que
+    // proíbe conselho de saúde na IA não alcançava este texto.
+    //
+    // A última já estava certa e ficou: cuidado e escuta é o que uma afirmação pode
+    // dizer sobre um corpo sem mentir para ele.
     afirmacoes: [
-      'Meu corpo é forte, saudável e vibrante.',
-      'Cada célula do meu corpo irradia saúde e vitalidade.',
-      'Eu me curo em todos os níveis: físico, mental e espiritual.',
-      'A saúde perfeita é meu estado natural.',
+      'Eu cuido do meu corpo com atenção, um dia de cada vez.',
+      'Eu faço o que está ao meu alcance, e peço ajuda quando preciso.',
+      'Descansar também é cuidar.',
+      'Eu trato meu corpo com a paciência que daria a quem eu amo.',
       'Eu escuto e honro as necessidades do meu corpo.',
     ],
   },
