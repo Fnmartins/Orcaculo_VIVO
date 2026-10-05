@@ -141,8 +141,8 @@ E duas coisas dele **não** estão:
 
 - **Mercúrio e Vênus.** Para Ptolomeu os planetas do ofício são exatamente três —
   Mercúrio, Vênus e Marte (mais Sol e Lua). Mercúrio é o significador de carreira mais
-  citado da doutrina: escrita, negócio, cálculo, ensino, comércio. **Nós não
-  consultamos nenhum dos dois.**
+  citado da doutrina: escrita, negócio, cálculo, ensino, comércio. **Entraram no modelo
+  em 05/10/2026**, em `CORPOS_DA_VOCACAO` (`data/vocacao.ts`).
 - **O método do senhor da ação por fase heliacal.** Exige calcular nascer heliacal, que
   é motor novo. Decidido fora de escopo: um produto moderno não ganha o bastante por
   isso. Registrado aqui para que a ausência seja escolha, e não esquecimento.
@@ -151,8 +151,8 @@ E duas coisas dele **não** estão:
 
 - **As casas 2, 6 e 10 como "casas de substância"** são o padrão da astrologia
   vocacional moderna — a 10 é a carreira e a reputação, a 6 é o trabalho do dia a dia,
-  e a **2 são os dons inatos e o que se consegue ganhar com eles**. Usamos a 10 e a 6.
-  **A casa 2 está fora, e isso é um buraco conhecido**, não uma decisão argumentada.
+  e a **2 são os dons inatos e o que se consegue ganhar com eles**. As três estão no
+  modelo desde 05/10/2026, em `CASAS_DA_VOCACAO` (`data/vocacao.ts`).
 - **A casa 6** não existe no método de Ptolomeu. Ela entra por prática moderna.
 - **Saturno** como responsável pelo esforço, pela hierarquia e pelo que sustenta uma
   carreira ao longo de décadas é leitura moderna (karaka da 10). **Ptolomeu não o nomeia
@@ -162,11 +162,18 @@ E duas coisas dele **não** estão:
 
 ### O que foi escolha nossa, e por quê
 
-- **Saturno e Marte, e não Mercúrio e Vênus.** Isto não foi decidido para a vocação:
-  foi **herdado** da área Trabalho de `data/areas.ts`, que existia antes deste produto
-  e já alimenta a tela do mapa astral. A vocação reaproveitou a área em vez de criar
-  uma segunda verdade sobre o mesmo céu — o que é certo do ponto de vista do código, e
-  é como o buraco de Mercúrio e Vênus entrou sem ninguém decidir nada.
+- **A vocação monta as peças DELA, e não as da área Trabalho.** Até 05/10/2026 ela
+  reaproveitava a área inteira, e com isso herdou uma lista de corpos com Saturno e
+  Marte, sem Mercúrio e Vênus — ninguém decidiu isso, foi herança. Agora `montarVocacao`
+  remonta a lista com as casas 10, 6 e 2 e com os quatro planetas, reusando as mesmas
+  funções de formatação de `areas.ts` para não criar uma segunda verdade sobre o mesmo céu.
+- **A casa 2 entra só na vocação, não na área Trabalho compartilhada.** Ela já é da área
+  Dinheiro; pô-la em Trabalho a faria aparecer duas vezes na tela do mapa astral e duas
+  vezes no payload de lá.
+- **O filtro dos aspectos continua o da área Trabalho** — Saturno, Marte e os regentes,
+  teto de dois. Alargá-lo para Mercúrio e Vênus faria quase todo aspecto do mapa
+  qualificar, e os dois escolhidos virariam os mais exatos do mapa em vez dos de carreira.
+  As fontes pedem esses planetas como significadores do ofício, não como filtro de aspecto.
 - **Quatro seções nomeadas** (onde rende, ambiente, o que drena, próximo passo) são
   recorte nosso, de produto, não de tradição.
 - **Não sugerir profissão por nome.** Ptolomeu lista ofícios ("escultores, médicos,
@@ -175,15 +182,15 @@ E duas coisas dele **não** estão:
 
 ### Buracos conhecidos, em aberto
 
-1. **Mercúrio e Vênus fora do modelo.** Consertar significa mexer em `data/areas.ts`,
-   que é **compartilhado com a tela do mapa astral já publicada** — tarefa própria, com
-   revisão própria.
-2. **Casa 2 fora do modelo.** Mesma dependência, mesma consequência.
+1. ~~Mercúrio e Vênus fora do modelo.~~ **Fechado em 05/10/2026.**
+2. ~~Casa 2 fora do modelo.~~ **Fechado em 05/10/2026.**
 3. **A Lua sem hora de nascimento.** Sem hora o mapa é calculado ao meio-dia e a Lua
    continua entrando nos aspectos. Ela anda ~13° por dia, então o erro chega a 6,5° —
    maior que o orbe. Um aspecto como "Lua trígono Saturno" pode virar peça e ser escrito
    como se fosse da pessoa. `MapaAstral.luaIncerta` existe e **não é consultado** aqui.
-   Afeta também a tela do mapa astral.
+   Afeta também a tela do mapa astral. **Continua aberto:** em 05/10 a tela da vocação
+   ganhou o aviso que a do mapa astral já dava, mas aviso não é correção — a Lua segue
+   entrando nos aspectos.
 
 ### Fontes
 

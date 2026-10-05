@@ -120,7 +120,8 @@ function regenteDaCasa(numero: number, cuspides: number[]): Corpo | null {
   return corpoPorNome(signoDoGrau(cuspides[numero - 1]).regente);
 }
 
-function pecaDaCasa(numero: number, entrada: EntradaAreas): PecaDaArea | null {
+/** Exportada para `data/vocacao.ts`, que monta um conjunto de casas diferente do das áreas. */
+export function pecaDaCasa(numero: number, entrada: EntradaAreas): PecaDaArea | null {
   const { cuspides, casaDoCorpo, posicoes } = entrada;
   if (!cuspides) return null;
 
@@ -147,7 +148,8 @@ function pecaDaCasa(numero: number, entrada: EntradaAreas): PecaDaArea | null {
   };
 }
 
-function pecaDoCorpo(corpo: Corpo, entrada: EntradaAreas): PecaDaArea | null {
+/** Exportada pelo mesmo motivo que `pecaDaCasa`. */
+export function pecaDoCorpo(corpo: Corpo, entrada: EntradaAreas): PecaDaArea | null {
   const posicao = entrada.posicoes.find((p) => p.corpo === corpo);
   if (!posicao) return null;
 
@@ -181,7 +183,14 @@ function pontosDaArea(def: DefinicaoArea, cuspides: number[] | null): Set<PontoA
   return pontos;
 }
 
-function pecasDosAspectos(def: DefinicaoArea, entrada: EntradaAreas): PecaDaArea[] {
+/**
+ * Exportada para a vocação reusar o filtro COMO ELE É: por Saturno, Marte e os
+ * regentes. Alargá-lo para Mercúrio e Vênus faria quase todo aspecto do mapa
+ * qualificar, e os dois escolhidos virariam os mais exatos do mapa em vez dos de
+ * carreira. As fontes pedem esses planetas como significadores do ofício, não como
+ * filtro de aspecto.
+ */
+export function pecasDosAspectos(def: DefinicaoArea, entrada: EntradaAreas): PecaDaArea[] {
   const pontos = pontosDaArea(def, entrada.cuspides);
   // `aspectos` já chega do mais exato para o mais frouxo (`data/aspectos.ts`),
   // então cortar no começo guarda os que mais pesam.

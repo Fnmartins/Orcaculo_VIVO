@@ -19,6 +19,7 @@ const CUSPIDES_REDONDAS = Array.from({ length: 12 }, (_, i) => i * 30);
 const POSICOES: PosicaoCorpo[] = [
   corpo('sol', 125),      // Leão
   corpo('lua', 5),        // Áries
+  corpo('mercurio', 200), // Libra
   corpo('venus', 65),     // Gêmeos
   corpo('marte', 275),    // Capricórnio
   corpo('jupiter', 185),  // Libra
@@ -73,5 +74,55 @@ describe('montarVocacao', () => {
     // `AREAS[0]` é Amor. Trocar o `find` por um índice passaria nos testes acima,
     // porque Amor também tem peças — e a leitura de carreira sairia sobre namoro.
     expect(montarVocacao(comHora).trabalho.id).toBe('trabalho');
+  });
+});
+
+/**
+ * Os planetas do ofício e a casa 2.
+ *
+ * A comparação com as fontes mostrou que o modelo tinha herdado da área Trabalho uma
+ * lista com Marte e Saturno e nunca tinha decidido deixar Mercúrio e Vênus de fora —
+ * em Ptolomeu os planetas do ofício são exatamente Mercúrio, Vênus e Marte. A casa 2
+ * é a terceira casa vocacional de toda escola moderna, e entra só aqui: na área
+ * compartilhada ela apareceria duas vezes, porque já é da área Dinheiro.
+ */
+describe('montarVocacao traz os planetas do ofício e a casa 2', () => {
+  const rotulos = (entrada: EntradaVocacao) =>
+    montarVocacao(entrada).trabalho.pecas.map((p) => p.rotulo);
+
+  it('com hora, a casa 2 entra junto da 10 e da 6', () => {
+    const lista = rotulos(comHora);
+    expect(lista).toEqual(expect.arrayContaining([
+      expect.stringMatching(/^Casa 10/),
+      expect.stringMatching(/^Casa 6/),
+      expect.stringMatching(/^Casa 2/),
+    ]));
+  });
+
+  it('Mercúrio e Vênus chegam, com hora e sem hora', () => {
+    // Sem hora é onde isto mais pesa: antes a leitura saía com dois planetas, porque
+    // as casas desapareciam. Agora sai com quatro.
+    for (const entrada of [comHora, semHora]) {
+      const lista = rotulos(entrada);
+      expect(lista).toContain('Mercúrio');
+      expect(lista).toContain('Vênus');
+      expect(lista).toContain('Saturno');
+      expect(lista).toContain('Marte');
+    }
+  });
+
+  it('as casas vêm antes dos planetas, e a ordem é a da leitura', () => {
+    // A ordem é o que a tela e o prompt leem: casas, depois planetas. Remontar a lista
+    // em `montarVocacao` existe para isto — acrescentar no fim daria outra ordem.
+    const lista = rotulos(comHora);
+    const ultimaCasa = lista.map((r) => r.startsWith('Casa ')).lastIndexOf(true);
+    const primeiroPlaneta = lista.indexOf('Mercúrio');
+    expect(ultimaCasa).toBeLessThan(primeiroPlaneta);
+  });
+
+  it('sem hora não entra casa nenhuma, nem a 2', () => {
+    // Sem cúspides não há casa. Inventar a 2 seria o mesmo defeito do meio do céu do
+    // meio-dia, que esta entrega já corrigiu uma vez.
+    expect(rotulos(semHora).filter((r) => r.startsWith('Casa '))).toEqual([]);
   });
 });
