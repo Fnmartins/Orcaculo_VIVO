@@ -25,7 +25,7 @@ const TAMANHO_MESA = Math.min(LARGURA_TELA * 0.62, 300);
  */
 const NOTA_DO_BUZIOS = 'O jogo de búzios é prática de séculos: atravessou o Atlântico '
   + 'com os africanos escravizados e foi guardada nos terreiros até hoje. Aqui ele é uma '
-  + 'aproximação — um jeito de conhecer essa cultura de perto, com respeito por quem a '
+  + 'aproximação, um jeito de conhecer essa cultura de perto, com respeito por quem a '
   + 'mantém viva. Quem joga de verdade é um pai ou mãe de santo iniciado, e nada neste '
   + 'aplicativo ocupa o lugar dessa consulta. Se o que vier fizer sentido, procure um '
   + 'terreiro.';
