@@ -468,3 +468,41 @@ describe('a vocacao sem hora nao manda inventar', () => {
     expect(instrucoes).toMatch(/N.o nomeie, em nenhuma se..o, uma casa que n.o esteja nos dados/);
   });
 });
+
+/**
+ * Os planetas do ofício e a casa 2 no prompt.
+ *
+ * O payload passou a levar Mercúrio, Vênus e a casa 2. Material que chega sem o prompt
+ * saber o que fazer com ele vira enfeite: o modelo o ignora e escreve do mesmo jeito de
+ * antes. É o mesmo defeito que a Task 5 do tarô corrigiu, noutro oráculo.
+ */
+describe('o prompt da vocacao sabe o que fazer com os planetas do oficio', () => {
+  const fonte = readFileSync(join(RAIZ, 'ia-interpretacao', 'index.ts'), 'utf8');
+  const instrucoes = fonte.slice(
+    fonte.indexOf('INSTRUCOES_VOCACAO'),
+    fonte.indexOf('const INSTRUCOES_POR_ORACULO'),
+  );
+
+  it('a abertura nomeia os tres que entraram', () => {
+    for (const peca of ['a casa 2', 'Mercúrio', 'Vênus']) {
+      expect(instrucoes).toContain(peca);
+    }
+  });
+
+  it('"ondeRende" recebe os tres como fonte, e nao so como enfeite', () => {
+    const campo = instrucoes.slice(
+      instrucoes.indexOf('- "ondeRende"'),
+      instrucoes.indexOf('- "ambiente"'),
+    );
+    expect(campo).toMatch(/Mercúrio/);
+    expect(campo).toMatch(/Vênus/);
+    expect(campo).toMatch(/casa 2/);
+  });
+
+  it('sem hora, o prompt conta com os quatro planetas, e nao com dois', () => {
+    // Sem casas a leitura vive dos planetas. Deixar a frase falando só de Saturno e
+    // Marte desperdiçaria os dois que acabaram de entrar, justo no caso mais magro.
+    const semHora = instrucoes.slice(instrucoes.indexOf('SEM HORA DE NASCIMENTO'));
+    expect(semHora).toMatch(/Mercúrio, Vênus, Saturno e Marte/);
+  });
+});

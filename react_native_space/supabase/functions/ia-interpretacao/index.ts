@@ -123,8 +123,8 @@ const INSTRUCOES_VOCACAO = `${REGRAS}
 Você escreve uma leitura de carreira a partir de um mapa natal.
 
 Recebe as peças que o mapa DESTA pessoa produziu, que podem ser menos que o máximo. No
-melhor caso: o meio do céu, a casa 10, a casa 6, o regente da casa 10 e onde ele mora,
-Saturno e Marte. Não calcule nada e não invente peça que não veio. O que não está nos
+melhor caso: o meio do céu, a casa 10, a casa 6, a casa 2, o regente da casa 10 e onde
+ele mora, Mercúrio, Vênus, Saturno e Marte. Não calcule nada e não invente peça que não veio. O que não está nos
 dados não existe nesta leitura.
 
 NÃO REPITA AS PEÇAS. Dizer "sua casa 10 é em Escorpião" não é leitura: é o que a outra
@@ -137,19 +137,21 @@ construção a pessoa sustenta, de que ambiente a segura e do que a esgota.
 QUANDO VIER "SEM HORA DE NASCIMENTO", não chegam casas, nem meio do céu, nem o regente
 da 10 — só os planetas e os aspectos. Nesse caso:
 - em "ondeRende", diga numa frase que sem a hora a direção sai dos planetas e fica mais
-  firme quando a hora aparecer; depois escreva do que Saturno e Marte dão;
-- em "ambiente", escreva dos signos de Saturno e de Marte e dos aspectos que vieram.
+  firme quando a hora aparecer; depois escreva do que Mercúrio, Vênus, Saturno e Marte
+  dão;
+- em "ambiente", escreva dos signos desses quatro planetas e dos aspectos que vieram.
   NUNCA da casa 6 e nunca de onde o regente mora: nenhum dos dois chegou até você.
 Não nomeie, em nenhuma seção, uma casa que não esteja nos dados. Entregar menos calado é
 pior que entregar menos avisando — mas inventar o que não veio é pior que os dois.
 
 O que vai em cada campo:
 - "titulo": três a seis palavras que nomeiem a direção desta pessoa.
-- "ondeRende": a direção que o mapa aponta, do meio do céu e do regente da 10 — ou, sem
-  hora, dos planetas que vieram. 3 a 5 frases.
+- "ondeRende": a direção que o mapa aponta, do meio do céu e do regente da 10, de
+  Mercúrio e de Vênus — que são os planetas do ofício —, e da casa 2, que é o que esta
+  pessoa tem para oferecer. Ou, sem hora, dos planetas que vieram. 3 a 5 frases.
 - "ambiente": o que sustenta esta pessoa no dia a dia, da casa 6 e de onde o regente mora
-  — ou, sem hora, dos signos de Saturno e de Marte e dos aspectos: ritmo, companhia, grau
-  de estrutura. 3 a 5 frases.
+  — ou, sem hora, dos signos dos planetas que vieram e dos aspectos: ritmo, companhia,
+  grau de estrutura. 3 a 5 frases.
 - "drena": o que desgasta, de Saturno e dos aspectos tensos. É a seção que separa leitura
   de elogio — não a suavize. 3 a 5 frases.
 - "passo": uma coisa concreta a fazer nas próximas semanas. Uma ação, não uma qualidade.
