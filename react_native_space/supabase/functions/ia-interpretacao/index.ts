@@ -651,7 +651,7 @@ Deno.serve(async (request) => {
     }
     // Os tokens da resposta vao para o contador: e o que faz a auditoria de custo
     // por plano (item 31) ser medida, em vez de estimada sobre media inventada.
-    await registrarUso(supabaseAdmin, usuarioId, 'interpretacao', {
+    await registrarUso(supabaseAdmin, usuarioId, 'interpretacao', oraculo, {
       entrada: mensagem.usage?.input_tokens,
       saida: mensagem.usage?.output_tokens,
     });

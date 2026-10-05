@@ -296,7 +296,7 @@ Deno.serve(async (request) => {
     }
     // A imagem entra na conta pelos tokens dela, que sao muitos: uma foto custa
     // bem mais que um mapa de palavras. Sem isto, as duas pesariam igual.
-    await registrarUso(supabaseAdmin, usuarioId, 'imagem', {
+    await registrarUso(supabaseAdmin, usuarioId, 'imagem', 'imagem', {
       entrada: mensagem.usage?.input_tokens,
       saida: mensagem.usage?.output_tokens,
     });

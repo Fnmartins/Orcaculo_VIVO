@@ -255,7 +255,7 @@ describe('o quarto oraculo: vocacao', () => {
     expect(lf).toMatch(
       /conferirUso\(\s*supabaseAdmin, usuarioId, plano, semLimite, 'interpretacao',\s*perfil\?\.plano_valido_ate as string \| null,\s*\)/,
     );
-    expect(lf).toMatch(/registrarUso\(supabaseAdmin, usuarioId, 'interpretacao', \{/);
+    expect(lf).toMatch(/registrarUso\(supabaseAdmin, usuarioId, 'interpretacao', oraculo, \{/);
     expect(lf).toMatch(/mensagemDoLimite\(veredito, 'interpretacao'\)/);
     // Um ponto só de cada: uma segunda chamada, em outro ramo, poderia cobrar outro tipo.
     for (const chamada of [/conferirUso\(/g, /registrarUso\(/g, /mensagemDoLimite\(/g]) {
@@ -504,5 +504,65 @@ describe('o prompt da vocacao sabe o que fazer com os planetas do oficio', () =>
     // Marte desperdiçaria os dois que acabaram de entrar, justo no caso mais magro.
     const semHora = instrucoes.slice(instrucoes.indexOf('SEM HORA DE NASCIMENTO'));
     expect(semHora).toMatch(/Mercúrio, Vênus, Saturno e Marte/);
+  });
+});
+
+/**
+ * Custo por ORÁCULO, e não só por tipo de cota.
+ *
+ * A aba Custo sabia dizer o preço médio de uma "interpretação", mas quatro produtos
+ * diferentes caem nesse tipo e custam valores bem diferentes — uma Cruz Celta manda
+ * dez cartas com material, um Mapa dos Arcanos manda uma data reduzida a números. Sem
+ * o corte por produto não dá para pensar em preço avulso por item.
+ *
+ * A medição vai para `consumo_ia`, tabela separada. NÃO entra em `uso_ia`: aquela é a
+ * tabela da cota, lida com `maybeSingle()` por (usuário, dia, tipo), e dividi-la por
+ * oráculo faria a leitura ver uma linha de várias, afrouxando o limite diário sem erro
+ * nenhum aparecer.
+ */
+describe('a medicao de custo separa por oraculo sem tocar na cota', () => {
+  const uso = readFileSync(join(RAIZ, '_shared', 'uso.ts'), 'utf8');
+
+  it('registrarUso grava na tabela de medicao', () => {
+    expect(uso).toMatch(/from\('consumo_ia'\)\s*\.insert\(/);
+    expect(uso).toMatch(/oraculo,/);
+  });
+
+  it('a cota continua indo para contar_uso_ia, intacta', () => {
+    // O defeito que isto pega: alguém "simplificar" trocando a RPC por um insert na
+    // tabela nova. A cota deixaria de ser contada e o limite diário sumiria.
+    expect(uso).toMatch(/rpc\('contar_uso_ia', \{/);
+    expect(uso).toMatch(/p_tipo: tipo,/);
+  });
+
+  it('a tabela da cota NAO ganhou coluna de oraculo', () => {
+    // É a regra que protege o limite diário. Se alguém puser o oráculo em `uso_ia`,
+    // `conferirUso` passa a ler uma linha de várias.
+    expect(uso).not.toMatch(/from\('uso_ia'\)[\s\S]{0,200}oraculo/);
+  });
+
+  it('falhar a medicao nao derruba a leitura: so loga', () => {
+    // A cota já foi contada e a pessoa já tem o texto na tela. Perder uma linha de
+    // medição custa um ponto no gráfico; lançar aqui custaria a leitura dela.
+    const trecho = uso.slice(uso.indexOf("from('consumo_ia')"));
+    expect(trecho).toMatch(/console\.error\('falha ao medir consumo por oraculo'/);
+    expect(trecho).not.toMatch(/throw/);
+  });
+
+  it('as quatro functions dizem QUAL produto gerou a chamada', () => {
+    // A de interpretação passa a variável `oraculo`, porque são quatro produtos num
+    // tipo só. As outras três têm produto fixo e passam o literal. Um literal na de
+    // interpretação juntaria tarô, búzios, mapa e vocação na mesma conta.
+    const esperado: Record<string, RegExp> = {
+      'ia-interpretacao': /registrarUso\([^)]*'interpretacao', oraculo,/,
+      'ia-oraculo': /registrarUso\([^)]*'imagem', 'imagem',/,
+      'ia-pergunta': /registrarUso\([^)]*'pergunta', 'pergunta',/,
+      'ia-voz': /registrarUso\([^)]*'voz', 'voz',/,
+    };
+    for (const [nome, padrao] of Object.entries(esperado)) {
+      const fonte = readFileSync(join(RAIZ, nome, 'index.ts'), 'utf8');
+      expect({ function: nome, passa: padrao.test(fonte) })
+        .toEqual({ function: nome, passa: true });
+    }
   });
 });

@@ -228,7 +228,7 @@ Deno.serve(async (request) => {
     }
 
     // Conta o uso só depois que a resposta existe.
-    await registrarUso(supabaseAdmin, usuarioId, 'pergunta', {
+    await registrarUso(supabaseAdmin, usuarioId, 'pergunta', 'pergunta', {
       entrada: mensagem.usage?.input_tokens,
       saida: mensagem.usage?.output_tokens,
     });
