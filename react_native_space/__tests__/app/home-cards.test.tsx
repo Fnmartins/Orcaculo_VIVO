@@ -7,9 +7,12 @@ describe('cards da home', () => {
     expect(card?.titulo).toBe('Vocação');
   });
 
-  it('a vocação declara parte grátis, senão o cadeado tranca tudo', () => {
-    // Sem `parteGratis`, o vencimento trata o card como inteiramente pago — e o meio
-    // do céu, que é a vitrine, some para quem venceu.
+  it('a vocação declara parte grátis, que é o que acende o cadeado parcial', () => {
+    // O que `parteGratis` compra é a MARCA no card e a folha que explica o que
+    // continua aberto. Sem o campo o card NÃO tranca: ele vira um card comum, sem
+    // marca e sem folha, e o toque leva direto para /vocacao. Quem tranca o card
+    // inteiro é `soIA` — daí a segunda asserção, porque a vocação tem parte grátis
+    // e não pode cair no cadeado total.
     const card = oraculosDaHome.find((o) => o.rota === '/vocacao');
     expect(card?.parteGratis).toMatch(/plano ativo/);
     expect(card?.soIA).toBeUndefined();

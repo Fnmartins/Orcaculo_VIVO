@@ -76,15 +76,17 @@ describe('cadeado na home', () => {
     expect(estilo.opacity).toBeUndefined();
   });
 
-  it('os outros cinco NUNCA trancam', () => {
+  it('os outros seis NUNCA trancam', () => {
     // A regressão mais provável desta entrega é o cadeado no card errado.
-    // Numerologia e Lei da Atração não custam nada; Búzios, Tarot e Mapa Astral têm
-    // conteúdo local grátis e, desde 01/10, ganham o cadeado PARCIAL — que marca o card
+    // Numerologia e Lei da Atração não custam nada; Búzios, Tarot, Mapa Astral e
+    // Vocação têm conteúdo local grátis e ganham o cadeado PARCIAL — que marca o card
     // e abre a folha de escolhas, sem trancar. "Trancada" continua sendo só da leitura
     // por imagem, e é isso que este teste prende. O parcial tem describe próprio abaixo.
     comValidade(VENCIDO);
     render(<HomeAurora />);
-    for (const titulo of ['Búzios', 'Tarot', 'Numerologia', 'Mapa Astral', 'Lei da Atração']) {
+    for (const titulo of [
+      'Búzios', 'Tarot', 'Numerologia', 'Mapa Astral', 'Lei da Atração', 'Vocação',
+    ]) {
       expect(screen.queryByLabelText(`${titulo}, trancada`)).toBeNull();
       // Pelo texto visível, não pelo rótulo: o card livre não leva rótulo próprio, para
       // o leitor de tela continuar lendo o título e o apoio. Um rótulo só com o título
@@ -162,7 +164,8 @@ describe('cadeado na home', () => {
  * O cadeado parcial, desde 01/10.
  *
  * O app tinha UM cadeado para DOIS significados. Na leitura por imagem ele quer dizer
- * "você não entra" — não há versão livre ali. No tarô, nos búzios e no mapa astral quer
+ * "você não entra" — não há versão livre ali. No tarô, nos búzios, no mapa astral e na
+ * vocação quer
  * dizer "parte disto continua sua", e mandar essas pessoas direto aos planos esconderia
  * o que elas ainda podem usar. Por isso o parcial marca o card e abre uma escolha.
  */
@@ -194,12 +197,30 @@ describe('acesso parcial nos oráculos com parte grátis', () => {
   });
 
   it('cada oráculo explica o que é dele', () => {
-    // Trocar as frases entre os três não quebraria nada que o tsc enxergue, e a pessoa
+    // Trocar as frases entre os quatro não quebraria nada que o tsc enxergue, e a pessoa
     // leria sobre o jogo de búzios dentro do mapa astral.
     comValidade(VENCIDO);
     render(<HomeAurora />);
     fireEvent.press(screen.getByText('Mapa Astral'));
     expect(screen.getByText(/Sol, Lua e Ascendente/)).toBeTruthy();
+  });
+
+  it('a vocação também explica o que é dela, e não navega', () => {
+    // O card da vocação entrou sem teste de toque, enquanto os três irmãos tinham. Sem
+    // isto, deixá-lo navegar em vez de abrir a folha — ou mostrar a frase de outro
+    // oráculo — passaria verde.
+    comValidade(VENCIDO);
+    render(<HomeAurora />);
+    fireEvent.press(screen.getByText('Vocação'));
+    expect(mockPush).not.toHaveBeenCalled();
+    expect(screen.getByText(/O meio do céu e a casa 10 seguem abertos/)).toBeTruthy();
+  });
+
+  it('com acesso válido, a vocação leva direto para a leitura', () => {
+    comValidade(VALIDO);
+    render(<HomeAurora />);
+    fireEvent.press(screen.getByText('Vocação'));
+    expect(mockPush).toHaveBeenCalledWith('/vocacao');
   });
 
   it.each([
