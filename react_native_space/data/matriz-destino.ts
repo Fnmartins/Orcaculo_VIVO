@@ -1,6 +1,14 @@
 // A Matriz do Destino — Arcanus
 // Sistema baseado em numerologia + 22 Arcanos Maiores do Tarô + chakras
 // Usa apenas a data de nascimento
+//
+// AUTORIA E DIREITOS: este método NÃO é tradição anônima. Foi criado por Natalia
+// Ladini em 2006, e a estrutura abaixo — pontos cardeais, quadrado ancestral, linhas
+// de dinheiro e amor, cauda cármica, chakras em três energias — é a dela, com a
+// nomenclatura dela. Fontes, autoria e a questão de licenciamento estão em
+// `docs/referencias/2026-10-05-fontes-da-matriz-do-destino.md`. Há parecer jurídico
+// pendente; até ele sair, o produto fica exatamente como está, por decisão do dono
+// em 05/10/2026 — desmontá-lo antes de perguntar eliminaria a chance de acordo.
 
 export interface Arcano {
   numero: number;
