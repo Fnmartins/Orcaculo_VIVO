@@ -401,16 +401,26 @@ describe('o que a parte grátis promete, ela mostra', () => {
     expect(screen.queryByText(/Casa 10 — Carreira:/)).toBeNull();
   });
 
-  it('sem hora, a tela avisa que um aspecto da Lua pode não ser o seu', () => {
-    // 15/07/1990 ao meio-dia cai com a Lua perto da virada de signo — `luaIncerta` é
-    // verdadeiro. `areas.ts` deixa passar aspectos da Lua para as peças, então um
-    // "Lua trígono Saturno" pode entrar na leitura PAGA sem ser verdade.
+  it('sem hora, a tela diz que os aspectos da Lua ficaram de fora', () => {
+    // Eles saem de verdade (`aspectosSemALua`), e sumir calado é pior que entregar
+    // menos — é a mesma regra que vale para as casas, logo acima na tela.
     renderComPlano({ temAcesso: true, semHora: true });
-    expect(screen.getByText(/a Lua pode ter mudado de signo nesse dia/)).toBeTruthy();
+    expect(screen.getByText(/Os aspectos da Lua ficaram de fora/)).toBeTruthy();
   });
 
-  it('com hora, o aviso da Lua não aparece', () => {
+  it('com hora, nada se diz sobre a Lua', () => {
     renderComPlano({ temAcesso: true });
-    expect(screen.queryByText(/a Lua pode ter mudado de signo/)).toBeNull();
+    expect(screen.queryByText(/aspectos da Lua/)).toBeNull();
+  });
+
+  it('sem hora, nenhum aspecto da Lua chega ao servidor', () => {
+    // O teste que importa: o aviso na tela é explicação, não conserto. Quem não pode
+    // vazar é o payload, porque é dele que a prosa paga é escrita. A Lua não está em
+    // `CORPOS_DA_VOCACAO`, então "Lua" só apareceria vindo de um aspecto.
+    renderComPlano({ temAcesso: true, semHora: true });
+    fireEvent.press(screen.getByText(/Ler minha vocação/i));
+
+    const enviado = mockGerarLeitura.mock.calls[0][0] as { pecas: string[] };
+    expect(enviado.pecas.filter((p) => /Lua/.test(p))).toEqual([]);
   });
 });

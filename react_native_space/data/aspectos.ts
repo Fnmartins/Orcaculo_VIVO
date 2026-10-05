@@ -151,3 +151,33 @@ export function entradasDoMapa(
   }
   return entradas;
 }
+
+/**
+ * Os aspectos que sobrevivem a um mapa sem hora de nascimento.
+ *
+ * Sem hora o mapa é levantado ao meio-dia, que é a convenção. Isso não estraga os
+ * aspectos entre planetas: eles dependem do ângulo de um planeta ao outro, não do
+ * relógio. A Lua é a exceção, e a doutrina a trata como ponto cego — o que depende
+ * dela se põe de lado.
+ *
+ * A conta explica por quê. A Lua anda ~13,2° por dia, então meio dia de incerteza a
+ * move até ±6,6°; no perigeu ela chega a ~15,4°/dia, ou ±7,7°. Os nossos orbes para
+ * luminar são 10° (conjunção e oposição), 8° (trígono e quadratura) e 6° (sextil).
+ * Ou seja: um sextil da Lua NUNCA é confiável sem hora, e um trígono só sobreviveria
+ * a menos de 1,4° do exato — e mesmo esse corte vaza justamente nos dias em que ela
+ * corre mais. Guardar "os robustos" seria precisão falsa.
+ *
+ * Isto NÃO usa `luaIncerta`: aquele sinaliza risco de a Lua trocar de SIGNO, e só é
+ * verdadeiro quando ela está nos 6,6° de ponta do signo — em pouco mais de 40% dos
+ * casos. Uma Lua no meio do signo tem o signo seguro e os aspectos igualmente
+ * incertos. O gatilho certo é a hora ser desconhecida, e nada mais.
+ *
+ * Também não usa "não há cúspides": acima do círculo polar as casas se desfazem com
+ * a hora conhecida, e ali a Lua está perfeitamente boa.
+ */
+export function aspectosSemALua(aspectos: Aspecto[], semHora: boolean): Aspecto[] {
+  if (!semHora) return aspectos;
+  // As duas pontas: "Saturno trígono Lua" entra na área de carreira pelo Saturno, e
+  // olhar só uma ponta o deixaria passar.
+  return aspectos.filter((a) => a.a !== 'lua' && a.b !== 'lua');
+}

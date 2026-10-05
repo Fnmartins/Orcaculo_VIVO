@@ -46,6 +46,22 @@ afterEach(() => jest.restoreAllMocks());
 
 // A leitura do "reduzir movimento" é assíncrona: sem este ato, cada teste reclama de um
 // setState fora do act quando a promessa resolve.
+/**
+ * Espera a carta virar sozinha — os 320 ms de `ESPERA_DA_VIRADA`.
+ *
+ * Com `waitFor` isto levava 4,5 a 5,7 SEGUNDOS, e fazia a suíte inteira falhar de vez
+ * em quando. A causa, medida: `waitFor` pesquisa em laço e roda um `act()` a cada
+ * passada, percorrendo a árvore desta tela — que tem 22 lâminas e vários componentes.
+ * O laço come a thread, e o `setTimeout` da própria tela não consegue rodar. Medido:
+ * o relógio disparava aos 4478 ms com `waitFor` e aos 326 ms com uma espera simples.
+ *
+ * A regra que fica: `waitFor` serve para o que você não sabe quando chega. Para o que
+ * vem de relógio, espere o relógio.
+ */
+const esperarAVirada = async () => {
+  await act(async () => { await new Promise((r) => { setTimeout(r, 500); }); });
+};
+
 const abrir = async () => {
   render(<TelaCartas />);
   await act(async () => {});
@@ -211,9 +227,8 @@ describe('o rito do tarô', () => {
     embaralharCartas(); cortar(); irParaLeitura();
     puxar();
     expect(screen.getByLabelText(/^Posição Passado, carta de costas/)).toBeTruthy();
-    await waitFor(() =>
-      expect(screen.queryByLabelText(/^Posição Passado, carta de costas/)).toBeNull()
-    );
+    await esperarAVirada();
+    expect(screen.queryByLabelText(/^Posição Passado, carta de costas/)).toBeNull();
   });
 
   it('a distribuição conta quantas faltam', async () => {
@@ -239,9 +254,8 @@ describe('o rito do tarô', () => {
     // A regressão mais provável: liberar a leitura assim que a primeira carta cai.
     await abrir();
     embaralharCartas(); cortar(); irParaLeitura(); puxar();
-    await waitFor(() =>
-      expect(screen.queryByLabelText(/^Posição Passado, carta de costas/)).toBeNull()
-    );
+    await esperarAVirada();
+    expect(screen.queryByLabelText(/^Posição Passado, carta de costas/)).toBeNull();
     expect(screen.queryByText('Ver Leitura Completa')).toBeNull();
   });
 

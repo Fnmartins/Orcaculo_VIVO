@@ -94,6 +94,7 @@ export default function TelaVocacao() {
     cuspides: mapa.casas?.cuspides ?? null,
     casaDoCorpo: mapa.casaDoCorpo,
     aspectos: mapa.aspectos,
+    semHora: mapa.semHora,
     nomeDoPonto,
     meioCeu: mapa.angulos?.meioCeu ?? null,
   }) : null), [mapa]);
@@ -261,17 +262,17 @@ export default function TelaVocacao() {
                   </View>
                 )}
 
-                {/* A Lua ao meio-dia pode não ser a desta pessoa. Ela anda 13° por dia, e
-                    `areas.ts` deixa passar aspectos dela para as peças — então um "Lua
-                    trígono Saturno" pode entrar na leitura PAGA sem ser verdade. A tela do
-                    mapa astral já diz isto desde sempre; esta, que é onde o aspecto vira
-                    prosa cobrada, não dizia. */}
-                {mapa.luaIncerta && (
+                {/* Os aspectos da Lua agora SAEM da leitura sem hora (`aspectosSemALua`), em
+                    vez de irem com ressalva. Sumir calado é pior que entregar menos: a linha
+                    abaixo diz o que ficou de fora e por quê. Vale por `semHora`, e não por
+                    `luaIncerta` — aquele só marca risco de troca de signo, e é falso na
+                    maioria dos mapas cujos aspectos lunares são igualmente incertos. */}
+                {mapa.semHora && (
                   <View style={[estilos.equilibrioCaixa, { marginBottom: Espacamento.sm }]}>
                     <Text style={estilos.equilibrioTexto}>
-                      Sem a hora de nascimento, a Lua pode ter mudado de signo nesse dia — ela
-                      anda 13 graus por dia, e a sua está perto da virada. Se a leitura falar de
-                      um aspecto da Lua, ele pode não ser o seu. Com a hora, isto fica firme.
+                      Os aspectos da Lua ficaram de fora desta leitura. Sem a hora de
+                      nascimento ela pode estar a até 7 graus do lugar certo, e isso passa do
+                      limite em que um aspecto ainda vale. Com a hora, ela volta.
                     </Text>
                   </View>
                 )}

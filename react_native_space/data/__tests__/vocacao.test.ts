@@ -29,6 +29,7 @@ const POSICOES: PosicaoCorpo[] = [
 const ASPECTOS: Aspecto[] = [];
 
 const comHora: EntradaVocacao = {
+  semHora: false,
   posicoes: POSICOES,
   cuspides: CUSPIDES_REDONDAS,
   casaDoCorpo: { saturno: 6, marte: 10 } as EntradaVocacao['casaDoCorpo'],
@@ -38,7 +39,7 @@ const comHora: EntradaVocacao = {
 };
 
 const semHora: EntradaVocacao = {
-  ...comHora, cuspides: null, casaDoCorpo: null, meioCeu: null,
+  ...comHora, semHora: true, cuspides: null, casaDoCorpo: null, meioCeu: null,
 };
 
 describe('montarVocacao', () => {
@@ -124,5 +125,61 @@ describe('montarVocacao traz os planetas do ofício e a casa 2', () => {
     // Sem cúspides não há casa. Inventar a 2 seria o mesmo defeito do meio do céu do
     // meio-dia, que esta entrega já corrigiu uma vez.
     expect(rotulos(semHora).filter((r) => r.startsWith('Casa '))).toEqual([]);
+  });
+});
+
+/**
+ * A Lua num mapa sem hora.
+ *
+ * Sem hora o mapa é levantado ao meio-dia. Aspecto entre planetas sobrevive a isso,
+ * porque depende do ângulo de um planeta ao outro e não do relógio — a Lua é a
+ * exceção, e a doutrina a trata como ponto cego. A conta: ela anda ~13,2°/dia (até
+ * ~15,4° no perigeu), e os nossos orbes de luminar vão de 6° a 10°.
+ */
+describe('sem hora, a Lua sai dos aspectos', () => {
+  const comAspectos = (lista: Aspecto[], semHora: boolean): string[] =>
+    montarVocacao({ ...comHora, semHora, aspectos: lista })
+      .trabalho.pecas.map((p) => p.rotulo);
+
+  const aspecto = (a: string, b: string, forca: number): Aspecto => ({
+    a: a as Aspecto['a'], b: b as Aspecto['b'],
+    tipo: 'trigono', natureza: 'harmonico', orbe: 1, forca,
+  });
+
+  it('com hora, um aspecto da Lua continua valendo', () => {
+    // O contrapeso: a regra é da hora desconhecida, não da Lua.
+    expect(comAspectos([aspecto('lua', 'saturno', 1)], false))
+      .toContain('lua trígono saturno');
+  });
+
+  it('sem hora, o mesmo aspecto sai', () => {
+    expect(comAspectos([aspecto('lua', 'saturno', 1)], true))
+      .not.toContain('lua trígono saturno');
+  });
+
+  it('sai pelas DUAS pontas', () => {
+    // "Saturno trígono Lua" entra na área de carreira pelo Saturno. Olhar só uma
+    // ponta deixaria passar metade dos casos.
+    expect(comAspectos([aspecto('saturno', 'lua', 1)], true))
+      .not.toContain('saturno trígono lua');
+  });
+
+  it('a Lua sai ANTES do corte dos dois mais exatos, e o verdadeiro ocupa a vaga', () => {
+    // Este é o defeito que o conselho pegou: filtrar DEPOIS do corte deixaria a área
+    // com um aspecto ou nenhum. E tem um ganho que não é só de honestidade — a Lua
+    // hoje rouba a vaga de um aspecto de Saturno ou Marte realmente exato.
+    const lista = [
+      aspecto('lua', 'saturno', 0.99),
+      aspecto('lua', 'marte', 0.98),
+      aspecto('saturno', 'marte', 0.5),
+    ];
+    expect(comAspectos(lista, true)).toContain('saturno trígono marte');
+  });
+
+  it('não usa `luaIncerta` como porta: o gatilho é a hora desconhecida', () => {
+    // `luaIncerta` marca risco de troca de SIGNO, e é falso quando a Lua está no meio
+    // do signo — onde os aspectos dela são igualmente incertos. `montarVocacao` nem
+    // recebe esse campo: se um dia receber, este teste morre junto e alguém relê isto.
+    expect(Object.keys(comHora)).not.toContain('luaIncerta');
   });
 });

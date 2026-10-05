@@ -25,7 +25,7 @@ import { dataConsultaValida, horarioConsultaValido, textoConsultaValido } from '
 import { Hapticos } from '../../utils/haptics';
 import { CASAS, PLANETAS, lerSigno, corElemento, type LeituraSignoSolar } from '../../data/astrologia';
 import { areasDaVida } from '../../data/areas';
-import { ROTULO_ASPECTO, SIMBOLO_ASPECTO } from '../../data/aspectos';
+import { ROTULO_ASPECTO, SIMBOLO_ASPECTO, aspectosSemALua } from '../../data/aspectos';
 import { assinaturaDoMapa } from '../../data/assinatura';
 import { corpoPorNome, signoDoGrau } from '../../data/efemerides';
 import {
@@ -208,6 +208,12 @@ export default function TelaMapaAstralResultado() {
   const solIdx = idxSigno(signo.id);
   const posicoes = ordemDeLeitura(mapa.posicoes);
 
+  // Sem hora de nascimento, os aspectos da Lua saem de tudo que esta tela mostra ou
+  // manda: ela anda ~13° por dia, e meio dia de incerteza passa do orbe. Aspecto entre
+  // planetas sobrevive a um mapa sem hora; a Lua é a exceção, e a doutrina a trata como
+  // ponto cego. Ver `aspectosSemALua`.
+  const aspectosConfiaveis = aspectosSemALua(mapa.aspectos, mapa.semHora);
+
   // As quatro áreas com as peças de mapa de cada uma. As mesmas peças vão para
   // quem escreve o texto e para a tela: a leitura fica conferível, em vez de sair
   // de um lugar que a pessoa não pode ver.
@@ -216,6 +222,7 @@ export default function TelaMapaAstralResultado() {
     cuspides: mapa.casas?.cuspides ?? null,
     casaDoCorpo: mapa.casaDoCorpo,
     aspectos: mapa.aspectos,
+    semHora: mapa.semHora,
     nomeDoPonto,
   });
 
@@ -255,7 +262,7 @@ export default function TelaMapaAstralResultado() {
           : undefined,
         // Só os mais exatos: um mapa produz dezenas de aspectos, e mandar todos
         // afoga o que importa no meio do que mal encosta.
-        aspectos: mapa.aspectos.slice(0, 8).map((a) => ({
+        aspectos: aspectosConfiaveis.slice(0, 8).map((a) => ({
           texto: `${nomeDoPonto(a.a)} em ${ROTULO_ASPECTO[a.tipo]} com ${nomeDoPonto(a.b)}`,
           natureza: a.natureza,
         })),
@@ -284,14 +291,14 @@ export default function TelaMapaAstralResultado() {
 
   // Seis aspectos bastam: um mapa produz dezenas, e uma lista longa vira o
   // mesmo catálogo que a gente está tentando deixar de ser.
-  const aspectosVisiveis = temMapaCompleto ? mapa.aspectos.slice(0, 6) : [];
+  const aspectosVisiveis = temMapaCompleto ? aspectosConfiaveis.slice(0, 6) : [];
 
   // A assinatura lê o mapa inteiro. Sem hora de nascimento ela nasce mais
   // curta — sem casa e sem regente — e isso é honesto: são fatores que
   // dependem de um horizonte que não existe.
   const assinatura = assinaturaDoMapa({
     posicoes: mapa.posicoes,
-    aspectos: mapa.aspectos,
+    aspectos: aspectosConfiaveis,
     casaDoCorpo: mapa.casaDoCorpo,
     elementoDominante: mapa.sintese.elementoDominante,
     elementoAusente: mapa.sintese.elementoAusente,
