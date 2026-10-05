@@ -30,6 +30,26 @@ export function regentesDoOdu(regente: string): string[] {
     .filter((nome) => nome.length > 0 && nome !== '—' && nome !== '-');
 }
 
+/**
+ * Os odus, pelo número de búzios que caem abertos.
+ *
+ * **Os orixás de cada odu foram alinhados à fonte declarada em
+ * `docs/referencias/2026-10-05-fontes-de-buzios.md` em 05/10/2026.** Antes disto cada
+ * odu trazia um orixá, às vezes dois; na fonte vários trazem quatro, cinco ou sete. E
+ * quatro dos nossos não apareciam nela — Nanã no Ìròsún, Yemanjá no Òdí, Egún no
+ * Òwónrín, Xangô no Òbàrà, onde a fonte traz Airá.
+ *
+ * **Casas divergem.** Ketu, Jeje e Angola leem de modos diferentes, e dentro de cada
+ * nação há variação de terreiro para terreiro. Esta tabela segue UMA fonte, nomeada —
+ * não é a tabela, é uma tabela. Quem for revisar isto com um pai ou mãe de santo deve
+ * tratar a divergência como esperada, não como erro.
+ *
+ * Duas equivalências foram normalizadas para o nome que o resto do app usa: Oyá
+ * aparece como Iansã, e Odé como Oxóssi.
+ *
+ * O Opirá não é odu: é a caída em que nenhum búzio se abre. Por isso não tem regente,
+ * e o travessão abaixo é lido como lista vazia por `regentesDoOdu`.
+ */
 export const ODUS: OduBuzios[] = [
   {
     id: 1,
@@ -37,7 +57,7 @@ export const ODUS: OduBuzios[] = [
     nomeYoruba: 'Okan\u00e1n',
     abertos: 1,
     elemento: 'Fogo',
-    regente: 'Ex\u00fa',
+    regente: 'Exú / Egún / Iansã',
     significado: 'Momento de aten\u00e7\u00e3o e cuidado. As energias pedem cautela em suas decis\u00f5es. N\u00e3o \u00e9 hora de grandes mudan\u00e7as, mas sim de reflex\u00e3o profunda.',
     conselho: 'Fa\u00e7a oferendas e limpezas espirituais. Evite conflitos e seja prudente em neg\u00f3cios.',
     energia: 'atencao',
@@ -49,7 +69,7 @@ export const ODUS: OduBuzios[] = [
     nomeYoruba: 'Ej\u00ed Ok\u00f4',
     abertos: 2,
     elemento: 'Terra',
-    regente: 'Ibeji',
+    regente: 'Oxalufã / Ibeji / Irôko / Ajê Xalugá',
     significado: 'Dualidade e escolhas. Dois caminhos se apresentam. A sabedoria est\u00e1 em equilibrar raz\u00e3o e emo\u00e7\u00e3o antes de decidir.',
     conselho: 'Busque equil\u00edbrio. Parcerias podem ser ben\u00e9ficas neste momento. Ou\u00e7a ambos os lados.',
     energia: 'neutra',
@@ -61,7 +81,7 @@ export const ODUS: OduBuzios[] = [
     nomeYoruba: 'Et\u00e1 Ogund\u00e1',
     abertos: 3,
     elemento: 'Fogo',
-    regente: 'Ogum',
+    regente: 'Ogum / Omolú / Yemanjá / Iansã',
     significado: 'For\u00e7a, coragem e supera\u00e7\u00e3o de obst\u00e1culos. Ogum abre os caminhos com sua espada. \u00c9 hora de agir com determina\u00e7\u00e3o.',
     conselho: 'Avan\u00e7e com coragem. Os obst\u00e1culos ser\u00e3o vencidos com persist\u00eancia e f\u00e9.',
     energia: 'positiva',
@@ -73,7 +93,7 @@ export const ODUS: OduBuzios[] = [
     nomeYoruba: 'Iros\u00fan',
     abertos: 4,
     elemento: '\u00c1gua',
-    regente: 'Nan\u00e3',
+    regente: 'Iansã / Egún / Yemanjá / Oxóssi',
     significado: 'Ancestralidade e sabedoria dos mais velhos. As ra\u00edzes te chamam. Honre sua hist\u00f3ria e os que vieram antes.',
     conselho: 'Busque a sabedoria dos ancestrais. Medite, fa\u00e7a ora\u00e7\u00f5es e conecte-se com suas ra\u00edzes.',
     energia: 'positiva',
@@ -85,7 +105,7 @@ export const ODUS: OduBuzios[] = [
     nomeYoruba: 'Ox\u00ea',
     abertos: 5,
     elemento: '\u00c1gua',
-    regente: 'Oxum',
+    regente: 'Omolú / Oxum / Yamí / Iansã / Xangô / Exú',
     significado: 'Amor, fertilidade e prosperidade. Oxum derrama suas \u00e1guas doces trazendo abund\u00e2ncia emocional e material.',
     conselho: 'Abra-se para o amor. Cuide da sua vida afetiva e financeira com carinho e aten\u00e7\u00e3o.',
     energia: 'positiva',
@@ -97,7 +117,7 @@ export const ODUS: OduBuzios[] = [
     nomeYoruba: 'Obar\u00e1',
     abertos: 6,
     elemento: 'Fogo',
-    regente: 'Xang\u00f4',
+    regente: 'Airá / Oxóssi / Logun Edé / Ori / Oxum',
     significado: 'Justi\u00e7a, poder e equil\u00edbrio. Xang\u00f4 traz a balan\u00e7a da justi\u00e7a. A verdade prevalecer\u00e1.',
     conselho: 'Aja com justi\u00e7a e honestidade. Decis\u00f5es importantes devem ser tomadas com sabedoria.',
     energia: 'positiva',
@@ -109,7 +129,7 @@ export const ODUS: OduBuzios[] = [
     nomeYoruba: 'Od\u00ed',
     abertos: 7,
     elemento: 'Terra',
-    regente: 'Oxossi / Yemanj\u00e1',
+    regente: 'Oxum / Omolú / Exú / Oxóssi / Ogum / Obá / Ajê Xalugá',
     significado: 'Transforma\u00e7\u00e3o profunda e renascimento. As portas do passado se fecham para que novas se abram.',
     conselho: 'Aceite as mudan\u00e7as. Liberte-se do que n\u00e3o serve mais e confie no novo ciclo.',
     energia: 'neutra',
@@ -121,7 +141,7 @@ export const ODUS: OduBuzios[] = [
     nomeYoruba: 'Ej\u00ed On\u00edl\u00ea',
     abertos: 8,
     elemento: 'Terra',
-    regente: 'Oxagui\u00e3',
+    regente: 'Oxaguiã / Irôko / Ogunjá / Modé / Iyagunté / Jibí / Arauwé',
     significado: 'Conquista, vit\u00f3ria e realiza\u00e7\u00e3o. As energias est\u00e3o alinhadas para grandes conquistas. O universo conspira a seu favor.',
     conselho: 'Aproveite este momento favor\u00e1vel. Inicie projetos, tome decis\u00f5es e celebre.',
     energia: 'positiva',
@@ -133,7 +153,7 @@ export const ODUS: OduBuzios[] = [
     nomeYoruba: 'Oss\u00e1',
     abertos: 9,
     elemento: 'Ar',
-    regente: 'Ians\u00e3',
+    regente: 'Yemanjá / Iansã / Ori / Ajalá / Egún',
     significado: 'Mudan\u00e7a de ventos e transforma\u00e7\u00e3o r\u00e1pida. Ians\u00e3 sopra ventos de renova\u00e7\u00e3o. Prepare-se para mudan\u00e7as intensas.',
     conselho: 'Seja flex\u00edvel. As mudan\u00e7as podem ser repentinas, mas trazem evolu\u00e7\u00e3o.',
     energia: 'neutra',
@@ -145,7 +165,7 @@ export const ODUS: OduBuzios[] = [
     nomeYoruba: 'Of\u00fan',
     abertos: 10,
     elemento: '\u00c1gua',
-    regente: 'Oxal\u00e1',
+    regente: 'Oxalufã / Oxum / Orunmilá / Oduduwá',
     significado: 'Paz, harmonia e b\u00ean\u00e7\u00e3os. Oxal\u00e1 derrama sua paz sobre voc\u00ea. \u00c9 tempo de gratid\u00e3o e serenidade.',
     conselho: 'Agradeça. Mantenha a paz interior e espalhe harmonia ao seu redor.',
     energia: 'positiva',
@@ -157,7 +177,7 @@ export const ODUS: OduBuzios[] = [
     nomeYoruba: 'Ow\u00f4nrin',
     abertos: 11,
     elemento: 'Ar',
-    regente: 'Ians\u00e3 / Eg\u00fan',
+    regente: 'Iansã / Exú / Ogum',
     significado: 'Conex\u00e3o espiritual profunda. O v\u00e9u entre os mundos est\u00e1 fino. Mensagens espirituais est\u00e3o chegando.',
     conselho: 'Preste aten\u00e7\u00e3o aos sonhos e intui\u00e7\u00f5es. O mundo espiritual quer se comunicar.',
     energia: 'neutra',
@@ -169,7 +189,7 @@ export const ODUS: OduBuzios[] = [
     nomeYoruba: 'Ej\u00ed L\u00e1shebor\u00e1',
     abertos: 12,
     elemento: 'Fogo',
-    regente: 'Xang\u00f4',
+    regente: 'Xangô / Obá / Axabó / Yamassê / Irôko',
     significado: 'Grande poder e sabedoria. Todas as for\u00e7as est\u00e3o alinhadas. Um momento raro de plenitude espiritual.',
     conselho: 'Este \u00e9 um odu de grande poder. Use-o com sabedoria e generosidade.',
     energia: 'positiva',
@@ -184,7 +204,7 @@ export const ODUS: OduBuzios[] = [
     nomeYoruba: 'Ej\u00ed Ologbon',
     abertos: 13,
     elemento: '\u00c1gua',
-    regente: 'Nan\u00e3',
+    regente: 'Nanã / Ikú / Omolú / Egún',
     significado: 'Sabedoria antiga e tempo de matura\u00e7\u00e3o. O que voc\u00ea busca pede paci\u00eancia e escuta de quem veio antes.',
     conselho: 'N\u00e3o apresse a decis\u00e3o. Procure quem tem experi\u00eancia no assunto e ou\u00e7a com aten\u00e7\u00e3o.',
     energia: 'neutra',
@@ -196,7 +216,7 @@ export const ODUS: OduBuzios[] = [
     nomeYoruba: 'Ik\u00e1',
     abertos: 14,
     elemento: 'Ar',
-    regente: 'Oxumar\u00ea',
+    regente: 'Oxumarê / Ossaim / Ewá / Omolú / Logun Edé',
     significado: 'Ciclos e renova\u00e7\u00e3o. O que parecia fim \u00e9 passagem: algo se transforma para continuar de outra forma.',
     conselho: 'Aceite a mudan\u00e7a de ciclo em vez de resistir a ela. Observe o que j\u00e1 est\u00e1 nascendo.',
     energia: 'neutra',
@@ -208,7 +228,7 @@ export const ODUS: OduBuzios[] = [
     nomeYoruba: 'Ob\u00e9 Ogund\u00e1',
     abertos: 15,
     elemento: 'Fogo',
-    regente: 'Ob\u00e1 / Ogum',
+    regente: 'Obá / Ewá / Ogum',
     significado: 'Corte e decis\u00e3o. Algo precisa ser encerrado com clareza para que o novo tenha espa\u00e7o.',
     conselho: 'Evite meias decis\u00f5es. Defina o que fica e o que termina, sem conflito desnecess\u00e1rio.',
     energia: 'atencao',
@@ -220,7 +240,7 @@ export const ODUS: OduBuzios[] = [
     nomeYoruba: 'Alafi\u00e1',
     abertos: 16,
     elemento: 'Ar',
-    regente: 'Oxal\u00e1',
+    regente: 'Orunmilá',
     significado: 'Paz e confirma\u00e7\u00e3o. Todos os b\u00fazios se abriram: o caminho est\u00e1 aberto e em harmonia.',
     conselho: 'Siga com serenidade e gratid\u00e3o. Mantenha a palavra e cuide do que j\u00e1 est\u00e1 bom.',
     energia: 'positiva',
@@ -232,7 +252,7 @@ export const ODUS: OduBuzios[] = [
     nomeYoruba: 'Opir\u00e1',
     abertos: 0,
     elemento: 'Terra',
-    regente: '\u2014',
+    regente: '—',
     significado: 'O jogo n\u00e3o se abriu. Nenhum b\u00fazio caiu com a boca para cima: neste momento n\u00e3o h\u00e1 resposta a ser dada.',
     conselho: 'Respire, reformule a sua pergunta com mais clareza e lance de novo, sem pressa.',
     energia: 'atencao',
