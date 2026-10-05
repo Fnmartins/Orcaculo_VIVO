@@ -56,7 +56,7 @@ function corpoEmail(primeiroNome: string | null): string {
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 8px 0;">
           <tr><td style="padding:4px 0; font-size:15px; line-height:1.6; color:#24312D;">🔮&nbsp;&nbsp;Tarô e leitura das cartas</td></tr>
           <tr><td style="padding:4px 0; font-size:15px; line-height:1.6; color:#24312D;">🐚&nbsp;&nbsp;Jogo de búzios</td></tr>
-          <tr><td style="padding:4px 0; font-size:15px; line-height:1.6; color:#24312D;">🔢&nbsp;&nbsp;Numerologia e matriz do destino</td></tr>
+          <tr><td style="padding:4px 0; font-size:15px; line-height:1.6; color:#24312D;">🔢&nbsp;&nbsp;Numerologia e Mapa dos Arcanos</td></tr>
           <tr><td style="padding:4px 0; font-size:15px; line-height:1.6; color:#24312D;">🌌&nbsp;&nbsp;Mapa astral e leitura do dia</td></tr>
         </table>
       </td></tr>

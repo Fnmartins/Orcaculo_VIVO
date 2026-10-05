@@ -62,7 +62,7 @@ const CAMINHOS: { id: CaminhoEspiritual; titulo: string; descricao: string; icon
   },
   {
     id: 'matriz_destino',
-    titulo: 'Matriz do Destino',
+    titulo: 'Mapa dos Arcanos',
     descricao: '22 arcanos do seu mapa',
     icone: 'star-david',
     iconeLib: 'material',

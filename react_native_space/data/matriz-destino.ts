@@ -1,4 +1,15 @@
-// A Matriz do Destino — Arcanus
+// Mapa dos Arcanos — Arcanus
+//
+// Chamava-se "Matriz do Destino" até 05/10/2026. O nome mudou porque "Matriz do
+// Destino" é MARCA REGISTRADA no Brasil, em vigor (INPI 937147850, classe 45,
+// titular Wagner Matias Quintana) — e a classe 45 é justamente a de serviços como
+// este. Isso é independente da questão de autoria do método, que segue em
+// `docs/referencias/2026-10-05-fontes-da-matriz-do-destino.md`.
+//
+// Os campos também deixaram de usar o vocabulário do método original: pontos
+// cardeais, quadrado ancestral, linhas de dinheiro e amor e cauda cármica viraram
+// nomes que dizem o que a coisa É. O cálculo não mudou — ele é esquema para realizar
+// atos mentais, que a Lei 9.610 art. 8º não protege e a LPI art. 10 não patenteia.
 // Sistema baseado em numerologia + 22 Arcanos Maiores do Tarô + chakras
 // Usa apenas a data de nascimento
 //
@@ -237,22 +248,22 @@ export interface PropositoNivel {
 
 export interface ResultadoMatriz {
   // Pontos cardinais (quadrado pessoal)
-  oeste: number; // dia — qualidades pessoais / retrato
-  norte: number; // mês — talento
-  leste: number; // ano — herança
-  sul: number; // missão / karma
-  centro: number; // essência / zona de conforto
+  doDia: number; // dia — qualidades pessoais / retrato
+  doMes: number; // mês — talento
+  doAno: number; // ano — herança
+  missao: number; // missão / karma
+  essencia: number; // essência / zona de conforto
   // Cantos diagonais (quadrado ancestral)
-  noroeste: number;
-  nordeste: number;
-  sudoeste: number;
-  sudeste: number;
+  maternaUm: number;
+  paternaUm: number;
+  maternaDois: number;
+  paternaDois: number;
   // Linhas especiais
-  linhaDinheiro: number;
-  linhaAmor: number;
-  linhaPaterna: number;
-  linhaMaterna: number;
-  caudaCarmica: number;
+  sustento: number;
+  vinculo: number;
+  ramoPaterno: number;
+  ramoMaterno: number;
+  herancaSomada: number;
   // Chakras
   chakras: Chakra[];
   // Propósitos
@@ -265,24 +276,24 @@ export interface ResultadoMatriz {
 
 export function calcularMatriz(dia: number, mes: number, ano: number): ResultadoMatriz {
   // === QUADRADO PESSOAL (pontos cardinais) ===
-  const oeste = reduzir(dia); // Dia — qualidades pessoais / Retrato
-  const norte = reduzir(mes); // Mês — talento
-  const leste = reduzir(somarDigitos(ano)); // Ano (dígitos somados) — herança
-  const sul = reduzir(oeste + norte + leste); // Missão / Karma
-  const centro = reduzir(oeste + norte + leste + sul); // Essência / Zona de Conforto
+  const doDia = reduzir(dia); // Dia — qualidades pessoais / Retrato
+  const doMes = reduzir(mes); // Mês — talento
+  const doAno = reduzir(somarDigitos(ano)); // Ano (dígitos somados) — herança
+  const missao = reduzir(doDia + doMes + doAno); // Missão / Karma
+  const essencia = reduzir(doDia + doMes + doAno + missao); // Essência / Zona de Conforto
 
   // === QUADRADO ANCESTRAL (cantos diagonais) ===
-  const noroeste = reduzir(oeste + norte); // Linha materna superior
-  const nordeste = reduzir(norte + leste); // Linha paterna superior
-  const sudeste = reduzir(leste + sul); // Linha paterna inferior
-  const sudoeste = reduzir(sul + oeste); // Linha materna inferior
+  const maternaUm = reduzir(doDia + doMes); // Linha materna superior
+  const paternaUm = reduzir(doMes + doAno); // Linha paterna superior
+  const paternaDois = reduzir(doAno + missao); // Linha paterna inferior
+  const maternaDois = reduzir(missao + doDia); // Linha materna inferior
 
   // === LINHAS ESPECIAIS ===
-  const linhaPaterna = reduzir(nordeste + sudeste); // diagonal paterna
-  const linhaMaterna = reduzir(noroeste + sudoeste); // diagonal materna
-  const linhaDinheiro = reduzir(leste + centro); // canal do dinheiro (leste→centro)
-  const linhaAmor = reduzir(sul + centro); // canal do amor (sul→centro)
-  const caudaCarmica = reduzir(noroeste + nordeste + sudeste + sudoeste); // karma acumulado
+  const ramoPaterno = reduzir(paternaUm + paternaDois); // diagonal paterna
+  const ramoMaterno = reduzir(maternaUm + maternaDois); // diagonal materna
+  const sustento = reduzir(doAno + essencia); // canal do dinheiro (doAno→essencia)
+  const vinculo = reduzir(missao + essencia); // canal do amor (missao→essencia)
+  const herancaSomada = reduzir(maternaUm + paternaUm + paternaDois + maternaDois); // karma acumulado
 
   // === CHAKRAS (7) ===
   // Cada chakra recebe 3 energias (Corpo/Físico, Energia, Emoções)
@@ -297,20 +308,20 @@ export function calcularMatriz(dia: number, mes: number, ano: number): Resultado
   ];
 
   // Deriva energias de cada chakra a partir dos pontos principais
-  const pontos = [oeste, norte, leste, sul, centro, noroeste, nordeste];
+  const pontos = [doDia, doMes, doAno, missao, essencia, maternaUm, paternaUm];
   const chakras: Chakra[] = chakrasBase.map((c, i) => {
     const base = pontos[i % pontos.length];
     const corpo = reduzir(base + i + 1);
-    const energia = reduzir(base + norte);
-    const emocoes = reduzir(base + sul);
+    const energia = reduzir(base + doMes);
+    const emocoes = reduzir(base + missao);
     return { ...c, corpo, energia, emocoes };
   });
 
   // === PROPÓSITOS (4 níveis) ===
-  const propPessoal = reduzir(oeste + norte);
-  const propSocial = reduzir(leste + sul);
+  const propPessoal = reduzir(doDia + doMes);
+  const propSocial = reduzir(doAno + missao);
   const propEspiritual = reduzir(propPessoal + propSocial);
-  const propPlanetario = reduzir(centro + propEspiritual);
+  const propPlanetario = reduzir(essencia + propEspiritual);
 
   const propositos: PropositoNivel[] = [
     { nome: 'Propósito Pessoal', descricao: 'Sua missão individual até os 40 anos — o que veio desenvolver em si mesmo.', arcano: propPessoal },
@@ -320,9 +331,9 @@ export function calcularMatriz(dia: number, mes: number, ano: number): Resultado
   ];
 
   return {
-    oeste, norte, leste, sul, centro,
-    noroeste, nordeste, sudoeste, sudeste,
-    linhaDinheiro, linhaAmor, linhaPaterna, linhaMaterna, caudaCarmica,
+    doDia, doMes, doAno, missao, essencia,
+    maternaUm, paternaUm, maternaDois, paternaDois,
+    sustento, vinculo, ramoPaterno, ramoMaterno, herancaSomada,
     chakras, propositos,
     dia, mes, ano,
   };

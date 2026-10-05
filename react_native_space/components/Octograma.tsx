@@ -29,11 +29,17 @@ interface OctogramaProps {
 }
 
 /**
- * Octograma da Matriz do Destino — estrela de 8 pontas (2 quadrados sobrepostos)
+ * Octograma do Mapa dos Arcanos — estrela de 8 pontas (2 quadrados sobrepostos).
+ *
+ * ATENÇÃO, registrado em 05/10/2026: o DESENHO continua sendo o do método original —
+ * dois quadrados sobrepostos com os arcanos nas pontas. Renomear o produto não muda
+ * isso, e a figura é a expressão mais reconhecível daquele sistema. Trocar a geometria
+ * é decisão de produto que o dono ainda não tomou; ver
+ * `docs/referencias/2026-10-05-fontes-da-matriz-do-destino.md`.
  * Exibe os pontos principais com seus arcanos, cores dos chakras e linhas de conexão.
  */
 export function Octograma({ matriz, tamanho = 320, onSelecionarPonto, pontoSelecionado }: OctogramaProps) {
-  const centro = tamanho / 2;
+  const essencia = tamanho / 2;
   const raioExterno = tamanho * 0.4;
   const raioMeio = tamanho * 0.22;
 
@@ -42,25 +48,25 @@ export function Octograma({ matriz, tamanho = 320, onSelecionarPonto, pontoSelec
   function posicao(indice: number, raio: number): { x: number; y: number } {
     const ang = (indice * 45 - 90) * (Math.PI / 180);
     return {
-      x: centro + Math.cos(ang) * raio,
-      y: centro + Math.sin(ang) * raio,
+      x: essencia + Math.cos(ang) * raio,
+      y: essencia + Math.sin(ang) * raio,
     };
   }
 
   const pontos: PontoOctograma[] = [
-    { chave: 'norte', rotulo: 'Talento', valor: matriz.norte, ...posicao(0, raioExterno), cor: '#9B59B6', raio: 22 },
-    { chave: 'nordeste', rotulo: 'Linha Paterna', valor: matriz.nordeste, ...posicao(1, raioExterno), cor: '#5B4B8A', raio: 17 },
-    { chave: 'leste', rotulo: 'Herança', valor: matriz.leste, ...posicao(2, raioExterno), cor: '#3498DB', raio: 22 },
-    { chave: 'sudeste', rotulo: 'Karma Paterno', valor: matriz.sudeste, ...posicao(3, raioExterno), cor: '#2ECC71', raio: 17 },
-    { chave: 'sul', rotulo: 'Missão', valor: matriz.sul, ...posicao(4, raioExterno), cor: '#F1C40F', raio: 22 },
-    { chave: 'sudoeste', rotulo: 'Karma Materno', valor: matriz.sudoeste, ...posicao(5, raioExterno), cor: '#E67E22', raio: 17 },
-    { chave: 'oeste', rotulo: 'Retrato', valor: matriz.oeste, ...posicao(6, raioExterno), cor: '#E74C3C', raio: 22 },
-    { chave: 'noroeste', rotulo: 'Linha Materna', valor: matriz.noroeste, ...posicao(7, raioExterno), cor: '#E91E63', raio: 17 },
+    { chave: 'doMes', rotulo: 'Talento', valor: matriz.doMes, ...posicao(0, raioExterno), cor: '#9B59B6', raio: 22 },
+    { chave: 'paternaUm', rotulo: 'Linha Paterna', valor: matriz.paternaUm, ...posicao(1, raioExterno), cor: '#5B4B8A', raio: 17 },
+    { chave: 'doAno', rotulo: 'Herança', valor: matriz.doAno, ...posicao(2, raioExterno), cor: '#3498DB', raio: 22 },
+    { chave: 'paternaDois', rotulo: 'Karma Paterno', valor: matriz.paternaDois, ...posicao(3, raioExterno), cor: '#2ECC71', raio: 17 },
+    { chave: 'missao', rotulo: 'Missão', valor: matriz.missao, ...posicao(4, raioExterno), cor: '#F1C40F', raio: 22 },
+    { chave: 'maternaDois', rotulo: 'Karma Materno', valor: matriz.maternaDois, ...posicao(5, raioExterno), cor: '#E67E22', raio: 17 },
+    { chave: 'doDia', rotulo: 'Retrato', valor: matriz.doDia, ...posicao(6, raioExterno), cor: '#E74C3C', raio: 22 },
+    { chave: 'maternaUm', rotulo: 'Linha Materna', valor: matriz.maternaUm, ...posicao(7, raioExterno), cor: '#E91E63', raio: 17 },
   ];
 
   // Pontos das linhas internas (dinheiro e amor)
-  const pontoDinheiro = { chave: 'linhaDinheiro', rotulo: 'Dinheiro', valor: matriz.linhaDinheiro, ...posicao(2, raioMeio), cor: '#27AE60', raio: 14 };
-  const pontoAmor = { chave: 'linhaAmor', rotulo: 'Amor', valor: matriz.linhaAmor, ...posicao(4, raioMeio), cor: '#E91E63', raio: 14 };
+  const pontoDinheiro = { chave: 'sustento', rotulo: 'Dinheiro', valor: matriz.sustento, ...posicao(2, raioMeio), cor: '#27AE60', raio: 14 };
+  const pontoAmor = { chave: 'vinculo', rotulo: 'Amor', valor: matriz.vinculo, ...posicao(4, raioMeio), cor: '#E91E63', raio: 14 };
 
   // Quadrado 1 (reto): Norte, Leste, Sul, Oeste
   const quad1 = [posicao(0, raioExterno), posicao(2, raioExterno), posicao(4, raioExterno), posicao(6, raioExterno)]
@@ -83,22 +89,22 @@ export function Octograma({ matriz, tamanho = 320, onSelecionarPonto, pontoSelec
         <Polygon points={quad1} fill="none" stroke="rgba(212,175,55,0.4)" strokeWidth="1.2" />
         <Polygon points={quad2} fill="none" stroke="rgba(135,206,235,0.35)" strokeWidth="1.2" />
 
-        {/* Linhas radiais do centro para cada ponto */}
+        {/* Linhas radiais do essencia para cada ponto */}
         {pontos.map((p) => (
           <Line
             key={`linha-${p.chave}`}
-            x1={centro} y1={centro} x2={p.x} y2={p.y}
+            x1={essencia} y1={essencia} x2={p.x} y2={p.y}
             stroke="rgba(255,255,255,0.06)" strokeWidth="0.8"
           />
         ))}
 
-        {/* Linha do dinheiro (leste -> centro) destaque */}
-        <Line x1={centro} y1={centro} x2={pontos[2].x} y2={pontos[2].y} stroke="rgba(39,174,96,0.3)" strokeWidth="1.5" strokeDasharray="4 3" />
-        {/* Linha do amor (sul -> centro) destaque */}
-        <Line x1={centro} y1={centro} x2={pontos[4].x} y2={pontos[4].y} stroke="rgba(233,30,99,0.3)" strokeWidth="1.5" strokeDasharray="4 3" />
+        {/* Linha do dinheiro (doAno -> essencia) destaque */}
+        <Line x1={essencia} y1={essencia} x2={pontos[2].x} y2={pontos[2].y} stroke="rgba(39,174,96,0.3)" strokeWidth="1.5" strokeDasharray="4 3" />
+        {/* Linha do amor (missao -> essencia) destaque */}
+        <Line x1={essencia} y1={essencia} x2={pontos[4].x} y2={pontos[4].y} stroke="rgba(233,30,99,0.3)" strokeWidth="1.5" strokeDasharray="4 3" />
 
         {/* Glow central */}
-        <SvgCircle cx={centro} cy={centro} r={raioMeio * 1.4} fill="url(#centroGlow)" />
+        <SvgCircle cx={essencia} cy={essencia} r={raioMeio * 1.4} fill="url(#centroGlow)" />
 
         {/* Pontos internos (dinheiro e amor) */}
         {[pontoDinheiro, pontoAmor].map((p) => {
@@ -123,8 +129,8 @@ export function Octograma({ matriz, tamanho = 320, onSelecionarPonto, pontoSelec
         })}
 
         {/* Centro — essência */}
-        <SvgCircle cx={centro} cy={centro} r={26} fill="#4B0082" stroke="#D4AF37" strokeWidth={pontoSelecionado === 'centro' ? 3 : 1.5} />
-        <SvgText x={centro} y={centro + 6} fontSize="18" fontWeight="bold" fill="#D4AF37" textAnchor="middle">{matriz.centro}</SvgText>
+        <SvgCircle cx={essencia} cy={essencia} r={26} fill="#4B0082" stroke="#D4AF37" strokeWidth={pontoSelecionado === 'essencia' ? 3 : 1.5} />
+        <SvgText x={essencia} y={essencia + 6} fontSize="18" fontWeight="bold" fill="#D4AF37" textAnchor="middle">{matriz.essencia}</SvgText>
       </Svg>
 
       {/* Camada de toque para cada ponto */}
@@ -138,8 +144,8 @@ export function Octograma({ matriz, tamanho = 320, onSelecionarPonto, pontoSelec
             />
           ))}
           <Pressable
-            onPress={() => onSelecionarPonto('centro', matriz.centro, 'Essência')}
-            style={[styles.toque, { left: centro - 30, top: centro - 30, width: 60, height: 60, borderRadius: 30 }]}
+            onPress={() => onSelecionarPonto('essencia', matriz.essencia, 'Essência')}
+            style={[styles.toque, { left: essencia - 30, top: essencia - 30, width: 60, height: 60, borderRadius: 30 }]}
           />
         </>
       )}

@@ -102,7 +102,7 @@ export default function TelaMatrizForm() {
                 <Ionicons name="arrow-back" size={22} color={Cores.textoClaro} />
               </Pressable>
               <View style={estilos.headerCenter}>
-                <Text style={estilos.headerTitulo}>Matriz do Destino</Text>
+                <Text style={estilos.headerTitulo}>Mapa dos Arcanos</Text>
                 <Text style={estilos.headerSubtitulo}>Seu mapa energético pessoal</Text>
               </View>
               <View style={{ width: 40 }} />
@@ -184,7 +184,7 @@ export default function TelaMatrizForm() {
               <View style={estilos.infoBox}>
                 <Ionicons name="sparkles-outline" size={16} color={Cores.acento} />
                 <Text style={estilos.infoTexto}>
-                  A Matriz do Destino combina numerologia, os 22 Arcanos do Tarô e os 7 chakras. Diferente do Mapa Astral, precisa apenas da sua data de nascimento.
+                  O Mapa dos Arcanos combina numerologia, os 22 Arcanos do Tarô e os 7 chakras. Diferente do Mapa Astral, precisa apenas da sua data de nascimento.
                 </Text>
               </View>
             </Animated.View>
@@ -202,7 +202,7 @@ export default function TelaMatrizForm() {
                   style={estilos.botaoGerar}
                 >
                   <MaterialCommunityIcons name="star-four-points" size={20} color="#fff" />
-                  <Text style={estilos.botaoGerarTexto}>Revelar Minha Matriz</Text>
+                  <Text style={estilos.botaoGerarTexto}>Revelar meu Mapa</Text>
                 </LinearGradient>
               </Pressable>
             </Animated.View>
