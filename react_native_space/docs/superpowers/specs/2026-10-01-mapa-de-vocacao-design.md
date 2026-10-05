@@ -115,3 +115,85 @@ tratar o card novo como se fosse inteiramente pago.
   envelhece mal.
 - **Mudar a área Trabalho do mapa astral.** Ela continua como está; a fronteira acima é o que
   separa as duas, e mexer nela agora misturaria duas entregas.
+
+---
+
+## Procedência das escolhas
+
+Acrescentado em 04/10/2026, depois que o produto já estava no ar, porque a pergunta
+"estamos no caminho certo?" não tinha como ser respondida: a spec afirmava as peças
+sem dizer de onde elas vêm. No tarô a estrutura saiu de livros nomeados e está
+registrada; aqui não estava. Esta seção conserta isso **sem mudar uma linha de
+código** — ela separa o que é doutrina clássica, o que é prática moderna, e o que foi
+escolha nossa.
+
+### O que é clássico
+
+**Ptolomeu, Tetrabiblos IV — "A qualidade do emprego"** é o texto fundador sobre
+profissão. Duas coisas dele estão no nosso modelo:
+
+- **O meio do céu / a culminação.** Ptolomeu escolhe o "senhor da ação" por dois
+  caminhos: o planeta que fez o nascer heliacal mais próximo do Sol, ou o que está
+  culminando. O MC como eixo da profissão é dele.
+- **Marte** como um dos significadores do ofício.
+
+E duas coisas dele **não** estão:
+
+- **Mercúrio e Vênus.** Para Ptolomeu os planetas do ofício são exatamente três —
+  Mercúrio, Vênus e Marte (mais Sol e Lua). Mercúrio é o significador de carreira mais
+  citado da doutrina: escrita, negócio, cálculo, ensino, comércio. **Nós não
+  consultamos nenhum dos dois.**
+- **O método do senhor da ação por fase heliacal.** Exige calcular nascer heliacal, que
+  é motor novo. Decidido fora de escopo: um produto moderno não ganha o bastante por
+  isso. Registrado aqui para que a ausência seja escolha, e não esquecimento.
+
+### O que é moderno
+
+- **As casas 2, 6 e 10 como "casas de substância"** são o padrão da astrologia
+  vocacional moderna — a 10 é a carreira e a reputação, a 6 é o trabalho do dia a dia,
+  e a **2 são os dons inatos e o que se consegue ganhar com eles**. Usamos a 10 e a 6.
+  **A casa 2 está fora, e isso é um buraco conhecido**, não uma decisão argumentada.
+- **A casa 6** não existe no método de Ptolomeu. Ela entra por prática moderna.
+- **Saturno** como responsável pelo esforço, pela hierarquia e pelo que sustenta uma
+  carreira ao longo de décadas é leitura moderna (karaka da 10). **Ptolomeu não o nomeia
+  entre os significadores de profissão.** É escolha defensável, mas é moderna.
+- **O regente da casa 10 e onde ele mora** é prática das duas tradições, e é a parte
+  mais bem apoiada do nosso modelo.
+
+### O que foi escolha nossa, e por quê
+
+- **Saturno e Marte, e não Mercúrio e Vênus.** Isto não foi decidido para a vocação:
+  foi **herdado** da área Trabalho de `data/areas.ts`, que existia antes deste produto
+  e já alimenta a tela do mapa astral. A vocação reaproveitou a área em vez de criar
+  uma segunda verdade sobre o mesmo céu — o que é certo do ponto de vista do código, e
+  é como o buraco de Mercúrio e Vênus entrou sem ninguém decidir nada.
+- **Quatro seções nomeadas** (onde rende, ambiente, o que drena, próximo passo) são
+  recorte nosso, de produto, não de tradição.
+- **Não sugerir profissão por nome.** Ptolomeu lista ofícios ("escultores, médicos,
+  banqueiros"). Nós recusamos de propósito: é promessa sobre a vida de alguém e
+  envelhece mal. Está no escopo de conformidade do projeto.
+
+### Buracos conhecidos, em aberto
+
+1. **Mercúrio e Vênus fora do modelo.** Consertar significa mexer em `data/areas.ts`,
+   que é **compartilhado com a tela do mapa astral já publicada** — tarefa própria, com
+   revisão própria.
+2. **Casa 2 fora do modelo.** Mesma dependência, mesma consequência.
+3. **A Lua sem hora de nascimento.** Sem hora o mapa é calculado ao meio-dia e a Lua
+   continua entrando nos aspectos. Ela anda ~13° por dia, então o erro chega a 6,5° —
+   maior que o orbe. Um aspecto como "Lua trígono Saturno" pode virar peça e ser escrito
+   como se fosse da pessoa. `MapaAstral.luaIncerta` existe e **não é consultado** aqui.
+   Afeta também a tela do mapa astral.
+
+### Fontes
+
+- Ptolomeu, *Tetrabiblos*, Livro IV — <https://www.skyscript.co.uk/tet4.html> e
+  <https://www.sacred-texts.com/astro/ptb/ptb67.htm>
+- As casas 2, 6 e 10 na astrologia vocacional —
+  <https://www.astrosynthesis.com.au/wp-content/uploads/2017/10/vocation-chapter-1-and-contents.pdf>
+  e <https://traceycantu.com/2nd-6th-10th-houses/>
+- Saturno como indicador de carreira — <https://bornundersaturn.com/blog/career-indicators-astrology/>
+
+Nenhum texto destes autores foi transcrito para o app: o que viaja daqui é a
+**estrutura** — quais peças do mapa respondem por carreira —, escrita com as nossas
+palavras, como no tarô.
