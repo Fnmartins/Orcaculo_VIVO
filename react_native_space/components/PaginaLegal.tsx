@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { voltarOuIr } from '../utils/navegacao';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -8,9 +8,26 @@ import { Cores } from '../constants/colors';
 import { Fontes } from '../constants/typography';
 import { Espacamento } from '../constants/spacing';
 
+/** Um endereço que a pessoa pode abrir. Ver `links` em `SecaoLegal`. */
+export interface LinkLegal {
+  texto: string;
+  url: string;
+}
+
 export interface SecaoLegal {
   titulo: string;
   paragrafos: string[];
+  /**
+   * Endereços abríveis, abaixo dos parágrafos.
+   *
+   * Existe por causa da página de Créditos: os dados de cidades vêm do GeoNames
+   * sob Creative Commons Attribution 4.0, e CC BY pede que a atribuição aponte
+   * para a fonte e para a licença. URL em texto morto cumpriria a letra e
+   * desperdiçaria a página — quem abre Créditos quer chegar na fonte.
+   *
+   * Opcional: Termos e Privacidade não usam, e não mudaram por causa disto.
+   */
+  links?: LinkLegal[];
 }
 
 interface Props {
@@ -57,6 +74,23 @@ export function PaginaLegal({ titulo, atualizadoEm, intro, secoes }: Props) {
               <Text style={estilos.h2}>{`${i + 1}. ${secao.titulo}`}</Text>
               {secao.paragrafos.map((par, j) => (
                 <Text key={j} style={estilos.paragrafo}>{par}</Text>
+              ))}
+              {/*
+                Falhar em abrir não vira alerta: o texto do link é o próprio
+                endereço, então quem não conseguir abrir ainda consegue ler e
+                copiar. Um alerta de erro sobre uma página legal assustaria mais
+                do que ajudaria.
+              */}
+              {secao.links?.map((link) => (
+                <Pressable
+                  key={link.url}
+                  onPress={() => { Linking.openURL(link.url).catch(() => {}); }}
+                  accessibilityRole="link"
+                  accessibilityLabel={`${link.texto}, abre no navegador`}
+                  hitSlop={6}
+                >
+                  <Text style={estilos.link}>{link.texto}</Text>
+                </Pressable>
               ))}
             </View>
           ))}
@@ -120,5 +154,15 @@ const estilos = StyleSheet.create({
     lineHeight: 23,
     color: Cores.textoSecundario,
     marginBottom: Espacamento.sm,
+  },
+  // Sublinhado além da cor: cor sozinha não diz "isto abre" a quem não
+  // distingue o acento do texto corrido.
+  link: {
+    fontFamily: Fontes.corpo,
+    fontSize: 14,
+    lineHeight: 22,
+    color: Cores.acento,
+    textDecorationLine: 'underline',
+    marginBottom: Espacamento.xs,
   },
 });
