@@ -24,6 +24,7 @@ import { Espacamento, RaioBorda } from '../../constants/spacing';
 import { Hapticos } from '../../utils/haptics';
 import { BotaoOuvir } from '../../components/BotaoOuvir';
 import type { AnaliseIA } from '../../data/ia-analise';
+import { TEXTO_LINHA_DA_VIDA, TEXTO_MAO_DOMINANTE } from '../../data/textos-imagem';
 import { useAuth } from '../../contexts/AuthContext';
 import { DatabaseServico } from '../../services/database';
 import { obterImagem } from '../../services/imagemCache';
@@ -208,6 +209,20 @@ export default function TelaIAResultado() {
             </Animated.View>
           ))}
 
+          {/*
+              Desarme, não ressalva. O prompt já proíbe o modelo de ligar a linha
+              da vida a tempo de vida, e ele obedece — mas a conclusão errada é
+              do LEITOR, e o silêncio do app é que a deixa de pé. Por isso o
+              texto é fixo daqui: resposta gerada muda a cada leitura, e o
+              desarme não pode depender de o modelo ter lembrado dele.
+              Só na quiromancia: a xícara não tem crença equivalente. */}
+          {analise.tipo === 'quiromancia' && (
+            <View style={estilos.avisoCard} accessibilityRole="summary">
+              <Text style={estilos.avisoTexto}>{TEXTO_LINHA_DA_VIDA}</Text>
+              <Text style={[estilos.avisoTexto, estilos.avisoSegundo]}>{TEXTO_MAO_DOMINANTE}</Text>
+            </View>
+          )}
+
           <NotaReflexiva />
 
           {/* Rating */}
@@ -351,6 +366,19 @@ const estilos = StyleSheet.create({
     fontFamily: Fontes.corpo, fontSize: 14, color: Cores.textoClaro,
     lineHeight: 22, opacity: 0.85,
   },
+
+  // Deliberadamente SEM o visual de card de seção: este bloco não é mais uma
+  // parte da leitura, é o app falando por fora dela. Borda discreta e fundo
+  // transparente para não competir com o que foi lido.
+  avisoCard: {
+    borderWidth: 1, borderColor: Cores.cardBorda, borderRadius: RaioBorda.lg,
+    padding: Espacamento.md, marginTop: Espacamento.md,
+  },
+  avisoTexto: {
+    fontFamily: Fontes.corpo, fontSize: 13, color: Cores.textoSecundario,
+    lineHeight: 21,
+  },
+  avisoSegundo: { marginTop: Espacamento.sm },
 
   salvarContainer: { marginBottom: Espacamento.lg },
   salvarBotao: {
