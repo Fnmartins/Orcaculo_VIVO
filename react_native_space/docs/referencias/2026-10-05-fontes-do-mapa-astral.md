@@ -48,8 +48,17 @@ escolha:
 
 Com a mesma hora e o mesmo lugar, **dois apps dão casas diferentes**, e quem comparar o
 Arcanus com outro site pode concluir que um dos dois está quebrado. Nenhum está. É o mesmo
-problema que a numerologia tem com a tabela caldaica, e a mitigação é a mesma: uma linha na
-tela dizendo qual sistema se usou. **Isso ainda não existe.**
+problema que a numerologia tem com a tabela caldaica.
+
+**Correção, 05/10/2026.** A primeira versão deste documento afirmava aqui que a tela não
+dizia qual sistema se usou. **Estava errado**: `app/mapa-astral/resultado.tsx` já mostrava
+"Calculadas pelo sistema Placidus" acima das doze casas, e eu afirmei o contrário tendo
+olhado só a camada `data/`. É a quarta inferência errada desta auditoria, e está na nota de
+método no fim.
+
+O que de fato faltava era a **consequência**, não o nome: dizer "Placidus" não avisa a quem
+compara com outro site que a divergência é esperada. Isso entrou em
+`TEXTO_SISTEMA_DE_CASAS` (`data/textos-mapa.ts`), abaixo do rótulo que já existia.
 
 ## O tempo e o lugar
 
@@ -135,8 +144,16 @@ Na mesma família, menor: `astronomy-engine` é **MIT**, que pede o aviso de cop
 distribuições. Não encontrei tela de créditos nem de licenças de terceiros — uma página em
 `app/legal/` resolveria as duas de uma vez.
 
-**2. Declarar Placidus na tela.** Uma linha, onde as casas aparecem. Corrige uma omissão, não
-um recurso ausente.
+> **Feito em 05/10/2026.** `app/legal/creditos.tsx` credita o GeoNames com link para a fonte
+> e para a licença CC BY 4.0, carrega o aviso MIT, e entrou no menu do Perfil. No caminho
+> apareceu que Termos e Privacidade estavam marcados "em breve" ali, com as duas páginas
+> prontas desde setembro e alcançáveis só pela tela de cadastro — atribuição que ninguém
+> alcança não é atribuição.
+
+**2. Dizer que Placidus é uma escolha entre sistemas.**
+
+> **Feito em 05/10/2026**, e não como estava escrito aqui. A tela já nomeava o sistema; o
+> que faltava era a consequência. Ver a correção na seção sobre casas, acima.
 
 **3. Nodos lunares.** As fontes tratam os nodos como componente padrão da prática natal —
 conhecidos desde a antiguidade como *Caput* e *Cauda Draconis*, cabeça e cauda do dragão. É a
@@ -171,10 +188,19 @@ independentemente do roadmap.
 
 ## Nota de método sobre esta auditoria
 
-Das cinco lacunas que eu levantei antes de conferir o código, **três não existiam**:
-retrogradação, cobertura de cidades e aspectos aos ângulos já estavam implementados. Eu havia
-inferido de leitura parcial — a lista local de 54 cidades sem ver a tabela do GeoNames, o tipo
-`PosicaoCorpo` sem ver `estaRetrogrado`, o filtro de aspectos sem ver `PontoAspectavel`.
+Das cinco lacunas que eu levantei antes de conferir o código, **quatro não existiam como eu
+as descrevi**: retrogradação, cobertura de cidades, aspectos aos ângulos e a declaração de
+Placidus já estavam implementados. Eu havia inferido de leitura parcial — a lista local de 54
+cidades sem ver a tabela do GeoNames, o tipo `PosicaoCorpo` sem ver `estaRetrogrado`, o filtro
+de aspectos sem ver `PontoAspectavel`, e a camada `data/` sem abrir as telas.
+
+A quarta só apareceu no dia seguinte, quando fui implementar a correção e descobri que ela já
+estava lá. As três primeiras eu achei antes de escrever; esta eu **publiquei errada** neste
+documento, e ela viveu no `main` até ser corrigida.
+
+O padrão é sempre o mesmo e tem nome: concluir sobre o sistema a partir de um arquivo. Vale
+mais que uma nota — vale um método. **Antes de afirmar que algo falta, procurar onde ele
+estaria se existisse**, e isso quase nunca é só a camada de dados.
 
 Fica registrado por dois motivos: quem ler isto depois merece saber que o mapa é mais
 completo do que uma primeira passada sugere; e o achado que de fato importa — o crédito do

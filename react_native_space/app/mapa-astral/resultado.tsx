@@ -34,6 +34,7 @@ import {
 import {
   TEXTO_ABERTURA, TEXTO_ASCENDENTE, TEXTO_CORPO, TEXTO_ELEMENTO,
   TEXTO_ELEMENTO_AUSENTE, TEXTO_QUALIDADE, TEXTO_RETROGRADO,
+  TEXTO_SISTEMA_DE_CASAS,
 } from '../../data/textos-mapa';
 import { rotuloDoOffset } from '../../utils/fuso';
 import { cidadePorId, type Cidade } from '../../data/cidades';
@@ -755,6 +756,10 @@ export default function TelaMapaAstralResultado() {
                 <Text style={estilos.secaoSubtitulo}>
                   Calculadas pelo sistema Placidus
                 </Text>
+                {/* Nomear o sistema a tela já fazia; o que faltava era a
+                    consequência. Quem comparar com outro site vê casas
+                    diferentes e conclui que um dos dois quebrou. */}
+                <Text style={estilos.notaRodape}>{TEXTO_SISTEMA_DE_CASAS}</Text>
                 <View style={estilos.casasGrid}>
                   {CASAS.map((casa) => {
                     const cuspide = mapa.casas!.cuspides[casa.numero - 1];

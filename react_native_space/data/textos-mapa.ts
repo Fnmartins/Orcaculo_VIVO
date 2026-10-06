@@ -87,5 +87,16 @@ export const TEXTO_RETROGRADO = 'Retrógrado não quer dizer "ruim" nem "andando
 
 export const TEXTO_ELEMENTO_AUSENTE = 'Um elemento sem nenhum planeta não é falta: é um jeito de dizer que aquela energia não é a sua língua natural, e que você provavelmente a aprendeu — ou ainda vai aprender — com quem a tem de sobra.';
 
+/**
+ * A tela já dizia "Calculadas pelo sistema Placidus", o que nomeia a escolha mas
+ * não diz a consequência dela. Quem comparar o Arcanus com outro site vai ver
+ * casas diferentes para a mesma hora e o mesmo lugar, e concluir que um dos dois
+ * está quebrado — e nenhum está.
+ *
+ * Mesmo argumento da tabela caldaica na numerologia e da mão dominante na
+ * quiromancia: o que faltava não era a ressalva, era dizer que existe escolha.
+ */
+export const TEXTO_SISTEMA_DE_CASAS = 'Placidus é o sistema de casas mais usado, e é o que este mapa usa — mas não é o único. Casas inteiras, o mais antigo com registro escrito e ainda o padrão na astrologia védica, dá a cada casa exatos 30 graus e chega a outro desenho. Se você comparar com outro site e as casas não baterem, é por isso: nenhum dos dois está errado.';
+
 /** O que o mapa é, e o que ele não é. Aparece antes de qualquer interpretação. */
 export const TEXTO_ABERTURA = 'O mapa astral é uma fotografia do céu no instante em que você nasceu, lida como símbolo. Ele descreve tendências e possibilidades, nunca fatos inevitáveis — e nada aqui substitui decisão sua, orientação de saúde, jurídica ou financeira.';
