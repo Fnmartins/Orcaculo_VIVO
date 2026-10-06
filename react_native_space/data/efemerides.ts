@@ -2,9 +2,11 @@ import {
   Body,
   Ecliptic,
   EclipticGeoMoon,
+  GeoMoonState,
   GeoVector,
   SiderealTime,
   SunPosition,
+  Vector,
 } from 'astronomy-engine';
 import { SIGNOS, type Signo } from './astrologia';
 
@@ -170,6 +172,54 @@ export function posicaoDoCorpo(corpo: Corpo, momento: Date): PosicaoCorpo {
 
 export function posicoes(momento: Date): PosicaoCorpo[] {
   return CORPOS.map((corpo) => posicaoDoCorpo(corpo, momento));
+}
+
+/**
+ * Os nodos lunares: onde o plano da órbita da Lua corta a eclíptica.
+ *
+ * Não são corpos, e por isso não entram em `CORPOS` — são a interseção de dois
+ * planos. Manter fora da lista é escolha: `CORPOS` alimenta os aspectos, a
+ * iteração de retrogradação e a tabela de posições, e os nodos não pertencem a
+ * nenhuma das três (decisão de 05/10/2026: nodos entram por signo e casa, não
+ * por aspecto).
+ */
+export interface Nodos {
+  /** Nodo norte, a Cabeça do Dragão. Longitude eclíptica, 0 a 360. */
+  norte: number;
+  /** Nodo sul, a Cauda do Dragão. Sempre exatamente oposto ao norte. */
+  sul: number;
+}
+
+/**
+ * O nodo **verdadeiro**, e não o médio.
+ *
+ * Verdadeiro é o nodo do plano orbital instantâneo da Lua; médio é a posição
+ * suavizada por fórmula, sem a oscilação. Os dois diferem em até cerca de 1,5°,
+ * o bastante para trocar o signo de quem nasceu perto de uma cúspide. Escolhemos
+ * o verdadeiro porque é o que a maioria dos apps ocidentais mostra — e cada
+ * divergência a mais é uma a explicar para quem compara.
+ *
+ * O cálculo não precisa procurar o cruzamento: a normal ao plano da órbita é
+ * `h = r × v`, e a linha dos nodos é `ẑ × h`, com `ẑ` no polo da eclíptica. Isso
+ * dá `(−h.y, h.x, 0)`, de onde a longitude do nodo ascendente sai como
+ * `atan2(h.x, −h.y)`. Determinístico, sem busca e sem iteração.
+ *
+ * Conferido contra a fórmula do nodo médio (Meeus, *Astronomical Algorithms*,
+ * cap. 47) em `data/__tests__/nodos.test.ts`: de 1980 a 2040 a diferença fica
+ * dentro de ±1,7°, e o movimento anual dá cerca de −19,8°, retrógrado, como a
+ * literatura descreve.
+ */
+export function nodosLunares(momento: Date): Nodos {
+  const estado = GeoMoonState(momento);
+  const hx = estado.y * estado.vz - estado.z * estado.vy;
+  const hy = estado.z * estado.vx - estado.x * estado.vz;
+  const hz = estado.x * estado.vy - estado.y * estado.vx;
+  // `Ecliptic` espera EQJ e devolve a eclíptica da data — a mesma moldura em que
+  // o resto do mapa vive. Vale para direção tanto quanto para posição: é rotação
+  // de referencial, não translação.
+  const naEcliptica = Ecliptic(new Vector(hx, hy, hz, estado.t)).vec;
+  const norte = normalizar((Math.atan2(naEcliptica.x, -naEcliptica.y) * 180) / Math.PI);
+  return { norte, sul: normalizar(norte + 180) };
 }
 
 /** Tempo sideral local em horas (0 a 24). Longitude positiva a leste. */

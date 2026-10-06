@@ -4,10 +4,12 @@ import { type Cidade } from './cidades';
 import {
   angulos as calcularAngulos,
   grauNoSigno,
+  nodosLunares,
   posicoes as calcularPosicoes,
   signoDoGrau,
   type Angulos,
   type Corpo,
+  type Nodos,
   type PosicaoCorpo,
 } from './efemerides';
 import { type Signo } from './astrologia';
@@ -82,6 +84,13 @@ export interface MapaAstral {
   casas: Casas | null;
   /** Em que casa cai cada corpo, de 1 a 12. Nulo quando não há casas. */
   casaDoCorpo: Record<Corpo, number> | null;
+  /**
+   * O eixo dos nodos lunares, sempre presente — nem a hora nem o lugar o movem o
+   * bastante para importar. Fora dos aspectos de propósito (ver `nodosLunares`).
+   */
+  nodos: Nodos;
+  /** A casa de cada nodo. Nulo pelos mesmos dois motivos que `casas`. */
+  casaDoNodo: { norte: number; sul: number } | null;
   /**
    * As conversas entre os corpos, do aspecto mais exato para o mais frouxo.
    *
@@ -184,6 +193,14 @@ export function montarMapaAstral(dados: DadosNascimento): MapaAstral {
 
   const aspectos = calcularAspectos(entradasDoMapa(posicoes, angulos));
 
+  // Os nodos não dependem da hora: são um eixo da órbita da Lua, e um dia inteiro
+  // os move menos de um décimo de grau. Por isso saem mesmo sem hora de
+  // nascimento — a CASA deles é que depende, e some junto com as outras.
+  const nodos = nodosLunares(momento);
+  const casaDoNodo = casas
+    ? { norte: casaDoGrau(nodos.norte, casas), sul: casaDoGrau(nodos.sul, casas) }
+    : null;
+
   return {
     cidade,
     momentoUTC: momento,
@@ -197,6 +214,8 @@ export function montarMapaAstral(dados: DadosNascimento): MapaAstral {
     grauAscendente: angulos ? grauNoSigno(angulos.ascendente) : null,
     casas,
     casaDoCorpo,
+    nodos,
+    casaDoNodo,
     aspectos,
     sintese: montarSintese(posicoes, signoAscendente),
   };
