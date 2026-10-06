@@ -570,15 +570,30 @@ export default function TelaPerfil() {
                   titulo="Avaliar o App"
                   emBreve
                 />
+                {/*
+                  Termos e Privacidade já existiam em `app/legal/` e estavam
+                  marcadas "em breve" aqui, alcançáveis só pela tela de cadastro
+                  — ou seja, invisíveis para quem já tem conta.
+
+                  Créditos precisa ser alcançável por qualquer pessoa, e não é
+                  cortesia: os dados de cidades vêm do GeoNames sob Creative
+                  Commons Attribution 4.0, e atribuição é condição da licença.
+                */}
                 <MenuItem
                   icone="document-outline"
                   titulo="Termos de Uso"
-                  emBreve
+                  onPress={() => { Hapticos.impactoLeve(); router.push('/legal/termos'); }}
                 />
                 <MenuItem
                   icone="shield-outline"
                   titulo="Política de Privacidade"
-                  emBreve
+                  onPress={() => { Hapticos.impactoLeve(); router.push('/legal/privacidade'); }}
+                />
+                <MenuItem
+                  icone="information-circle-outline"
+                  titulo="Créditos e Licenças"
+                  subtitulo="De onde vêm os dados e as bibliotecas"
+                  onPress={() => { Hapticos.impactoLeve(); router.push('/legal/creditos'); }}
                 />
               </View>
             </View>
