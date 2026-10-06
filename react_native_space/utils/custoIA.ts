@@ -35,6 +35,27 @@ export interface ConsumoMedido {
 export interface PrecosIA {
   modeloEntrada: number;
   modeloSaida: number;
+  /**
+   * Dólares por milhão de caracteres sintetizados — preço **cheio**, sem franquia.
+   *
+   * A voz do app é `pt-BR-Chirp3-HD-Sadaltager`, do Chirp 3 HD, que dá 1 milhão de
+   * caracteres grátis por mês. A uns 350 caracteres por leitura, isso é perto de 2.900
+   * leituras faladas mensais que não custam nada — então, enquanto o volume for
+   * pequeno, esta conta cobra o que a fatura não cobrou.
+   *
+   * **É de propósito, e descontar a franquia aqui seria um erro.** A pergunta que a aba
+   * Custo responde é "o plano se paga?", e a franquia desaparece exatamente no volume em
+   * que a resposta importa. Preço cheio erra para o lado seguro; franquia modelada
+   * acertaria o mês fraco e mentiria no mês que decide preço — além de pedir reset
+   * mensal e rateio entre vozes, que é estado que esta função pura não tem e não deve
+   * ter. Os preços do modelo não têm franquia nenhuma, então a assimetria é só daqui.
+   *
+   * **Se a voz mudar em `supabase/functions/ia-voz/index.ts`, este preço muda com ela.**
+   * Os tiers do Google vão de US$ 4 (Standard, WaveNet) a US$ 160 (Studio) por milhão;
+   * o Chirp 3 HD está em US$ 30. Trocar a voz sem trocar o preço não dá erro em lugar
+   * nenhum — só uma conta errada de que ninguém desconfia. Em 05/10/2026 esta chave
+   * estava em US$ 10, que não é tier de ninguém, e subestimava a voz em 3×.
+   */
   vozCaractere: number;
 }
 
