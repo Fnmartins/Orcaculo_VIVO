@@ -44,6 +44,12 @@ const auditoria = (campos: Record<string, unknown> = {}) => ({
   ],
   pessoasAtivas: { mestre: 2, iniciante: 3 },
   assinantes: { mestre: 10, iniciante: 5, gratuito: 40 },
+  // Dois produtos que a cota junta no mesmo tipo 'interpretacao', e que so esta
+  // lista separa: 80.000 tokens de saida contra 8.000, a US$ 25 por milhao.
+  porOraculo: [
+    { oraculo: 'mapa', chamadas: 1, tokensEntrada: 0, tokensSaida: 80_000, caracteres: 0 },
+    { oraculo: 'tarot', chamadas: 2, tokensEntrada: 0, tokensSaida: 8_000, caracteres: 0 },
+  ],
   precos: PRECOS,
   ...campos,
 });
@@ -136,6 +142,45 @@ describe('AbaCusto', () => {
 
     expect(await screen.findByText('Não foi possível carregar o custo.')).toBeTruthy();
     fireEvent.press(screen.getByText('Tentar de novo'));
+    expect(await screen.findByText('US$ 10,00')).toBeTruthy();
+  });
+});
+
+describe('AbaCusto, o custo por produto', () => {
+  /**
+   * Este corte existe para uma pergunta só: quanto custa UMA leitura de cada
+   * coisa. É o que decide preço avulso, e é diferente do custo por plano logo
+   * acima — que responde se o plano se paga.
+   */
+  beforeEach(() => { mockLer.mockReset(); });
+
+  it('mostra o custo de uma leitura de cada produto, do mais caro ao mais barato', async () => {
+    mockLer.mockResolvedValue(auditoria());
+    render(<AbaCusto aoPerderAcesso={jest.fn()} />);
+
+    // mapa: 80.000 tokens de saída a US$ 25/milhão = US$ 2,00, em 1 leitura.
+    expect(await screen.findByText(/US\$ 2,00 por leitura/)).toBeTruthy();
+    // tarot: 8.000 a US$ 25/milhão = US$ 0,20, em 2 leituras = US$ 0,10 cada.
+    expect(screen.getByText(/US\$ 0,10 por leitura/)).toBeTruthy();
+  });
+
+  it('sem dado por produto, diz os DOIS motivos possíveis', async () => {
+    // Vazio aqui é ambíguo — ninguém usou IA, ou a leitura da tabela falhou — e a
+    // tela não sabe distinguir. Escolher um dos dois seria afirmar o que não se
+    // sabe, numa tela cuja função é auditar.
+    mockLer.mockResolvedValue(auditoria({ porOraculo: [] }));
+    render(<AbaCusto aoPerderAcesso={jest.fn()} />);
+
+    expect(await screen.findByText(/Nada medido por produto neste período/)).toBeTruthy();
+    expect(screen.getByText(/ninguém usou IA, ou a leitura da tabela de consumo falhou/)).toBeTruthy();
+  });
+
+  it('o custo por plano continua de pé mesmo sem o corte por produto', async () => {
+    // O corte por produto é extra: a function deixa ele cair sem derrubar o resto,
+    // e a aba não pode sumir por causa disso.
+    mockLer.mockResolvedValue(auditoria({ porOraculo: undefined }));
+    render(<AbaCusto aoPerderAcesso={jest.fn()} />);
+
     expect(await screen.findByText('US$ 10,00')).toBeTruthy();
   });
 });

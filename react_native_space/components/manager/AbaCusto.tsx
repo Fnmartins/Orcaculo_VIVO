@@ -8,7 +8,7 @@ import { ehAcessoNegado } from '../../services/acessoNegado';
 import { ehSessaoExpirada } from '../../services/sessaoExpirada';
 import { ROTULO_PLANO } from '../../utils/acessos';
 import {
-  custoPorPlano, custoTotal, formatarDolar, lerPrecos, ROTULO_TIPO,
+  custoPorOraculo, custoPorPlano, custoTotal, formatarDolar, lerPrecos, ROTULO_TIPO,
 } from '../../utils/custoIA';
 import { EstadoCarregamento } from './EstadoCarregamento';
 import { irParaLoginPorSessaoExpirada } from './sessao';
@@ -83,7 +83,15 @@ export function AbaCusto({ aoPerderAcesso }: PropsAbaManager) {
       assinantes: dados.assinantes,
       precos,
     });
-    return { planos, total: custoTotal(planos), faltando, confirmadoEm };
+    return {
+      planos,
+      total: custoTotal(planos),
+      // O corte que responde "quanto custa UMA leitura de cada produto", que é a
+      // pergunta do preço avulso. Ordenado por custo unitário, não por total.
+      oraculos: custoPorOraculo(dados.porOraculo, precos),
+      faltando,
+      confirmadoEm,
+    };
   }, [dados]);
 
   if (!dados || !conta) {
@@ -156,6 +164,36 @@ export function AbaCusto({ aoPerderAcesso }: PropsAbaManager) {
           )}
         </View>
       ))}
+
+      {/* O custo por PRODUTO, que é outra pergunta da mesma conta.
+          Os cards acima respondem "o plano se paga?"; este responde "quanto custa
+          uma leitura de cada coisa?", que é o que decide preço avulso. Vem de
+          `consumo_ia`, tabela separada da cota. */}
+      <View style={estilosPainel.card}>
+        <Text style={estilosPainel.titulo}>Quanto custa cada produto</Text>
+        {conta.oraculos.length === 0 ? (
+          // Vazio aqui tem dois significados e a tela não sabe distinguir, então
+          // diz os dois em vez de escolher um e mentir.
+          <Text style={estilosPainel.ajuda}>
+            Nada medido por produto neste período. Ou ninguém usou IA, ou a leitura da tabela
+            de consumo falhou — o custo por plano acima não depende dela.
+          </Text>
+        ) : (
+          <>
+            <Text style={estilosPainel.ajuda}>
+              Do mais caro por leitura para o mais barato. É este número, e não o total, que
+              decide preço avulso: muito uso de algo barato soma mais que pouco uso de algo
+              caro.
+            </Text>
+            {conta.oraculos.map((o) => (
+              <Text key={o.oraculo} style={estilos.linhaTipo}>
+                <Text style={estilos.rotuloTipo}>{o.oraculo}</Text>
+                {`: ${formatarDolar(o.porChamada)} por leitura · ${comMilhar(o.chamadas)} leitura${o.chamadas === 1 ? '' : 's'}, ${formatarDolar(o.dolares)} no total`}
+              </Text>
+            ))}
+          </>
+        )}
+      </View>
 
       <View style={estilosPainel.card}>
         <Text style={estilosPainel.titulo}>Os preços usados nesta conta</Text>

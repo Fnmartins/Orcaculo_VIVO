@@ -21,14 +21,36 @@ export const ROTULO_TIPO: Record<TipoUso, string> = {
   voz: 'Leitura falada',
 };
 
-/** Uma linha de consumo medido, agregada por plano e tipo. */
-export interface ConsumoMedido {
-  plano: string;
-  tipo: TipoUso;
-  chamadas: number;
+/**
+ * O que foi consumido, sem dizer de quem nem de quê.
+ *
+ * Separado porque a mesma multiplicação serve a dois cortes — por plano e por
+ * oráculo — e duplicar a fórmula seria o jeito mais rápido de elas divergirem.
+ */
+export interface UnidadesConsumidas {
   tokensEntrada: number;
   tokensSaida: number;
   caracteres: number;
+}
+
+/** Uma linha de consumo medido, agregada por plano e tipo. */
+export interface ConsumoMedido extends UnidadesConsumidas {
+  plano: string;
+  tipo: TipoUso;
+  chamadas: number;
+}
+
+/**
+ * Consumo agregado por PRODUTO, e não por plano.
+ *
+ * `tipo` responde "o que a cota cobrou"; `oraculo` responde "o que a pessoa
+ * abriu". Quatro produtos diferentes caem em `interpretacao` e custam valores
+ * bem diferentes — é esse corte que permite pensar em preço avulso por item,
+ * e vem da tabela `consumo_ia` (ver `supabase/consumo-por-oraculo.sql`).
+ */
+export interface ConsumoPorOraculo extends UnidadesConsumidas {
+  oraculo: string;
+  chamadas: number;
 }
 
 /** Preços em dólares por milhão de unidades, como vêm de `precos_ia`. */
@@ -101,7 +123,7 @@ function numero(valor: unknown): number {
  * uma delas preenchida. Somar as três fórmulas funciona porque o que não se aplica
  * vale zero, e evita um `if` por tipo que envelheceria a cada tipo novo.
  */
-export function custoDaLinha(linha: ConsumoMedido, precos: PrecosIA): number {
+export function custoDaLinha(linha: UnidadesConsumidas, precos: PrecosIA): number {
   const entrada = (numero(linha.tokensEntrada) / UM_MILHAO) * numero(precos.modeloEntrada);
   const saida = (numero(linha.tokensSaida) / UM_MILHAO) * numero(precos.modeloSaida);
   const voz = (numero(linha.caracteres) / UM_MILHAO) * numero(precos.vozCaractere);
@@ -220,6 +242,58 @@ export function lerPrecos(linhas: PrecoDeclarado[]): PrecosLidos {
 /** O total gasto no período, somando todos os planos. */
 export function custoTotal(planos: CustoDoPlano[]): number {
   return planos.reduce((soma, p) => soma + p.dolares, 0);
+}
+
+export interface CustoDoOraculo {
+  oraculo: string;
+  chamadas: number;
+  dolares: number;
+  /** O número que decide preço avulso: quanto custa UMA leitura deste produto. */
+  porChamada: number;
+}
+
+/**
+ * O custo de cada produto, do mais caro por chamada para o mais barato.
+ *
+ * **Ordena por `porChamada`, e não pelo total.** Total alto só diz que o produto
+ * foi muito usado; para decidir o preço de uma unidade o que importa é o custo de
+ * uma unidade. Um oráculo caríssimo usado duas vezes tem total baixo e é
+ * exatamente o que não se pode vender barato.
+ *
+ * Produto sem chamada nenhuma não aparece: diferente dos planos, onde "não gastou"
+ * é resposta sobre um plano que existe, aqui a lista é dos produtos que rodaram no
+ * período — e inventar linha zerada para cada oráculo possível encheria a tela de
+ * nada.
+ */
+export function custoPorOraculo(
+  linhas: ConsumoPorOraculo[],
+  precos: PrecosIA,
+): CustoDoOraculo[] {
+  const porOraculo = new Map<string, CustoDoOraculo>();
+
+  // Lista ausente não derruba a aba.
+  //
+  // A function deixa o corte por oráculo cair sem derrubar o resto, e o serviço
+  // põe `[]` no lugar — mas o único jeito de a tela de auditoria sumir inteira por
+  // causa de um extra é este `for`. Custou nove testes vermelhos para aparecer, e
+  // em produção custaria a tela do dono numa versão fora de passo com o servidor.
+  if (!Array.isArray(linhas)) return [];
+
+  for (const linha of linhas) {
+    const atual = porOraculo.get(linha.oraculo)
+      ?? { oraculo: linha.oraculo, chamadas: 0, dolares: 0, porChamada: 0 };
+    atual.chamadas += numero(linha.chamadas);
+    atual.dolares += custoDaLinha(linha, precos);
+    porOraculo.set(linha.oraculo, atual);
+  }
+
+  for (const item of porOraculo.values()) {
+    item.porChamada = item.chamadas > 0 ? item.dolares / item.chamadas : 0;
+  }
+
+  // Empate pelo nome, para a ordem não dançar entre aberturas da tela.
+  return [...porOraculo.values()]
+    .sort((a, b) => b.porChamada - a.porChamada || a.oraculo.localeCompare(b.oraculo));
 }
 
 /**

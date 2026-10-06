@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 import { erroDaFuncao } from './erroFuncao';
-import type { ConsumoMedido, PrecoDeclarado } from '../utils/custoIA';
+import type { ConsumoMedido, ConsumoPorOraculo, PrecoDeclarado } from '../utils/custoIA';
 
 const FUNCAO = 'admin-custo';
 
@@ -19,6 +19,15 @@ export interface AuditoriaDeCusto {
   consumo: ConsumoMedido[];
   pessoasAtivas: Record<string, number>;
   assinantes: Record<string, number>;
+  /**
+   * O mesmo consumo cortado por PRODUTO, de `consumo_ia`.
+   *
+   * Vazio é resposta legítima e tem dois significados que a tela precisa separar:
+   * ninguém usou IA no período, ou a leitura da tabela falhou — a function deixa
+   * esse corte cair sem derrubar o resto, porque o custo por plano é a auditoria
+   * principal.
+   */
+  porOraculo: ConsumoPorOraculo[];
   precos: PrecoDeclarado[];
 }
 
@@ -40,6 +49,7 @@ export async function lerAuditoriaDeCusto(dias = 30): Promise<AuditoriaDeCusto> 
     consumo: corpo.consumo ?? [],
     pessoasAtivas: corpo.pessoasAtivas ?? {},
     assinantes: corpo.assinantes ?? {},
+    porOraculo: corpo.porOraculo ?? [],
     precos: corpo.precos ?? [],
   };
 }

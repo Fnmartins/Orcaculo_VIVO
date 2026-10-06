@@ -63,6 +63,56 @@ function numero(valor: unknown): number {
   return typeof n === 'number' && Number.isFinite(n) && n > 0 ? n : 0;
 }
 
+/** Uma linha de `consumo_ia` como o driver entrega. */
+export interface LinhaConsumo {
+  oraculo?: string | null;
+  tokens_entrada?: number | string | null;
+  tokens_saida?: number | string | null;
+  caracteres?: number | string | null;
+}
+
+/** Consumo somado por PRODUTO. Ver `ConsumoPorOraculo` em `utils/custoIA.ts`. */
+export interface ConsumoDeOraculo {
+  oraculo: string;
+  chamadas: number;
+  tokensEntrada: number;
+  tokensSaida: number;
+  caracteres: number;
+}
+
+/**
+ * O consumo por oraculo, para a aba Custo saber o preco de UMA leitura de cada
+ * produto — e nao so o de uma "interpretacao", que mistura quatro.
+ *
+ * **Nao ha `quantidade` aqui, e isso nao e esquecimento.** `uso_ia` guarda um
+ * contador por (usuario, dia, tipo) e por isso tem `quantidade`; `consumo_ia` e
+ * append-only, com UMA linha por chamada. Quem copiar `agregarConsumo` e procurar
+ * `quantidade` nesta tabela somaria zero sem ver erro nenhum.
+ *
+ * Linha sem oraculo e descartada em vez de virar "sem oraculo": a coluna e NOT
+ * NULL no banco, entao linha sem ele so existe se algo estiver muito errado, e um
+ * rotulo inventado esconderia isso numa tela de auditoria.
+ */
+export function agregarPorOraculo(linhas: LinhaConsumo[]): ConsumoDeOraculo[] {
+  const porOraculo = new Map<string, ConsumoDeOraculo>();
+
+  for (const linha of linhas) {
+    const oraculo = String(linha.oraculo ?? '').trim();
+    if (!oraculo) continue;
+
+    const atual = porOraculo.get(oraculo)
+      ?? { oraculo, chamadas: 0, tokensEntrada: 0, tokensSaida: 0, caracteres: 0 };
+
+    atual.chamadas += 1;
+    atual.tokensEntrada += numero(linha.tokens_entrada);
+    atual.tokensSaida += numero(linha.tokens_saida);
+    atual.caracteres += numero(linha.caracteres);
+    porOraculo.set(oraculo, atual);
+  }
+
+  return [...porOraculo.values()];
+}
+
 export function agregarConsumo(
   linhas: LinhaUso[],
   planoPorUsuario: Record<string, string>,
