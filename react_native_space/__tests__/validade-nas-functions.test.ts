@@ -334,7 +334,9 @@ describe('o quarto oraculo: vocacao', () => {
     //
     // O mapa fica ANTES: reabrir um mapa não custa nada e não entra no limite do dia, e
     // mudar isso é regressão. A ordem é o que reverte em silêncio numa edição futura.
-    const veredito = lf.indexOf('if (!veredito.permitido)');
+    // O veredito deixou de barrar sozinho em `vencido` e `limite_dia` (o crédito avulso
+    // passa por eles); o que sobrou como portão próprio é a guarda do `desligado`.
+    const veredito = lf.indexOf("if (!veredito.permitido && veredito.motivo === 'desligado')");
     const cota = lf.indexOf('if (!cobranca.permitido) {');
     const lerMapa = lf.indexOf("if (oraculo === 'mapa') {");
     const lerVocacao = lf.indexOf("if (oraculo === 'vocacao') {");
@@ -811,5 +813,47 @@ describe('o credito avulso entra na interpretacao sem furar o cache', () => {
     // E `leituraEntregue` só vira verdadeiro na última linha antes da resposta de sucesso.
     expect(lf.match(/leituraEntregue = true;/g)?.length).toBe(1);
     expect(lf).toMatch(/leituraEntregue = true;\n\s*return resposta\(\{\n\s*\.\.\.interpretacao,/);
+  });
+
+  it('o credito avulso passa por vencido e por limite diario', () => {
+    // Sem isto a venda avulsa só serviria a assinante com cota gasta — o oposto do
+    // público que ela existe para atender: quem cancelou ou nunca assinou chega com o
+    // veredito em `vencido`.
+    expect(interp).toContain("motivo === 'desligado'");
+    // O que prende o defeito é a AUSÊNCIA do portão antigo: um `if (!veredito.permitido)`
+    // que devolve sempre barraria o comprador antes de a cobrança ser decidida.
+    expect(lf).not.toMatch(/if \(!veredito\.permitido\) \{\n\s*return/);
+    // `desligado` segue barrando, e antes da decisão de cobrança: ali o dono desligou o
+    // recurso de propósito, e o crédito não deve contorná-lo.
+    expect(lf).toMatch(
+      /if \(!veredito\.permitido && veredito\.motivo === 'desligado'\) \{\n\s*return recusaDoVeredito\(\);/,
+    );
+    expect(lf.indexOf("veredito.motivo === 'desligado'")).toBeLessThan(lf.indexOf('decidirCobranca('));
+  });
+
+  it('negativa sem credito ainda responde com a mensagem do veredito', () => {
+    // Quem venceu e não comprou precisa continuar lendo "seu acesso terminou".
+    expect(interp).toContain('mensagemDoLimite(');
+    // E o veredito responde ANTES da frase de cota dentro da negativa final: invertidos,
+    // quem cancelou leria "consultas acabaram" — a explicação errada que a regra de
+    // ordem da spec existe para evitar.
+    const final = lf.slice(lf.indexOf('if (!cobranca.permitido) {'));
+    expect(final.indexOf('recusaDoVeredito()')).toBeGreaterThan(-1);
+    expect(final.indexOf('recusaDoVeredito()')).toBeLessThan(final.indexOf('semConsultas: true'));
+  });
+
+  it('so o credito contorna o veredito: a cota do plano nao', () => {
+    // Com o veredito negado por plano vencido ou teto do dia, `consultas_restantes`
+    // não pode pagar a leitura. `decidirCobranca` põe o plano na frente do avulso, então
+    // sem isto uma cota que sobrou passaria por cima do vencimento e do limite diário —
+    // o vazamento que a validade fechou, reaberto por quem não comprou nada.
+    expect(lf).toMatch(/restantesDoPlano: veredito\.permitido \? restantes : 0,/);
+  });
+
+  it('a resposta do veredito sai de um ponto só', () => {
+    // O desligado e a negativa final precisam dizer a mesma coisa, e a mensagem do
+    // veredito tem um único chamador (o teste da cota cobrada confere o mesmo).
+    expect(lf.match(/recusaDoVeredito\(\)/g)?.length).toBe(2);
+    expect(lf.match(/const recusaDoVeredito = /g)?.length).toBe(1);
   });
 });

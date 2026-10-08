@@ -546,24 +546,40 @@ Deno.serve(async (request) => {
     ? await creditoDisponivel(supabaseAdmin, usuarioId, oraculo)
     : { estado: 'nao_tem' as const };
 
-  const cobranca = decidirCobranca({
-    semLimite,
-    restantesDoPlano: restantes,
-    temCreditoAvulso: busca.estado === 'tem',
-  });
-
   // Interruptor por plano e limite do dia, iguais aos da ia-oraculo.
   const plano = typeof perfil?.plano === 'string' ? perfil.plano : 'gratuito';
   const veredito = await conferirUso(
     supabaseAdmin, usuarioId, plano, semLimite, 'interpretacao',
     perfil?.plano_valido_ate as string | null,
   );
-  if (!veredito.permitido) {
-    return resposta({
-      erro: mensagemDoLimite(veredito, 'interpretacao'),
-      motivo: veredito.motivo,
-    }, 402);
+
+  // O veredito não conhece crédito avulso, e barrar aqui mataria o produto: quem
+  // cancelou ou nunca assinou é exatamente quem compra avulso. Então `vencido` e
+  // `limite_dia` deixam de ser finais — quem tem crédito passa por eles.
+  //
+  // `desligado` continua barrando: ali o dono desligou o recurso de propósito, e
+  // gerar assim mesmo passaria por cima de uma decisão de operação. O crédito não
+  // é consumido nesse caminho, então segue válido até vencer.
+  //
+  // A resposta de um veredito negado fica num lugar só: dois pontos a devolvem
+  // (este e a negativa final, abaixo) e os dois precisam dizer a mesma coisa.
+  const recusaDoVeredito = () => resposta({
+    erro: mensagemDoLimite(veredito, 'interpretacao'),
+    motivo: veredito.motivo,
+  }, 402);
+  if (!veredito.permitido && veredito.motivo === 'desligado') {
+    return recusaDoVeredito();
   }
+
+  const cobranca = decidirCobranca({
+    semLimite,
+    // Com o veredito negado, a cota do plano NÃO paga: o plano venceu ou o teto do dia
+    // estourou, e deixar `consultas_restantes` passar por cima disso reabriria o
+    // vazamento que a validade fechou — plano vencido seguiria gerando com a cota que
+    // sobrou. Só o crédito avulso contorna o veredito, porque foi comprado à parte.
+    restantesDoPlano: veredito.permitido ? restantes : 0,
+    temCreditoAvulso: busca.estado === 'tem',
+  });
 
   // Falha ao LER o crédito não pode virar "compre": a pessoa pode já ter
   // comprado, e o `UNIQUE` é por sessão do Stripe, não por pessoa — nada
@@ -582,7 +598,12 @@ Deno.serve(async (request) => {
   //
   // Quem barra é `cobranca`, e não a cota crua: o crédito avulso vale no lugar da cota,
   // então "sem cota" só barra quem também não tem crédito a gastar.
+  //
+  // Quando a cobrança também nega, a resposta volta a ser a do veredito: quem
+  // venceu e não comprou nada precisa ler "seu acesso terminou", e não uma
+  // mensagem nova que não explica coisa nenhuma.
   if (!cobranca.permitido) {
+    if (!veredito.permitido) return recusaDoVeredito();
     return resposta({ erro: 'Suas consultas deste período acabaram.', semConsultas: true }, 402);
   }
 
