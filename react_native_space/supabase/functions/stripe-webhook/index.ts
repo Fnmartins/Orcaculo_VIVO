@@ -122,6 +122,32 @@ Deno.serve(async (request) => {
     switch (evento.type) {
       case 'checkout.session.completed': {
         const session = evento.data.object as Stripe.Checkout.Session;
+        // Compra avulsa: uma leitura de um produto, sem assinatura.
+        //
+        // Vem antes do caminho de assinatura porque uma sessão `payment` que
+        // caísse lá ativaria um plano que ninguém pagou.
+        if (session.mode === 'payment') {
+          const usuarioId = session.metadata?.usuario_id;
+          const oraculo = session.metadata?.oraculo;
+          if (!usuarioId || !oraculo) {
+            console.error('sessao avulsa sem metadata', session.id);
+            break;
+          }
+          const NOVENTA_DIAS = 90 * 24 * 60 * 60 * 1000;
+          const { error } = await supabaseAdmin.from('compras_avulsas').insert({
+            usuario_id: usuarioId,
+            oraculo,
+            stripe_session_id: session.id,
+            expira_em: new Date(Date.now() + NOVENTA_DIAS).toISOString(),
+          });
+          // Violação de UNIQUE (23505) é o caso ESPERADO numa reentrega do Stripe,
+          // e não um defeito: significa que a compra já foi registrada. Qualquer
+          // outro erro é a pessoa ter pago sem receber, e precisa gritar.
+          if (error && error.code !== '23505') {
+            console.error('falha ao registrar compra avulsa', error.message);
+          }
+          break;
+        }
         const usuarioId = session.metadata?.usuario_id;
         const planoId = session.metadata?.plano_id as PlanoId | undefined;
         if (!usuarioId || !ehPlanoValido(planoId) || !session.subscription) {

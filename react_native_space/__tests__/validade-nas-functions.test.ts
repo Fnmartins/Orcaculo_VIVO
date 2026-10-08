@@ -566,3 +566,85 @@ describe('a medicao de custo separa por oraculo sem tocar na cota', () => {
     }
   });
 });
+
+
+describe('o webhook separa assinatura de compra avulsa', () => {
+  const webhook = funcoes.find((f) => f.nome === 'stripe-webhook')!.fonte;
+  // Só o trecho do ramo avulso até o próximo `case`. `expira_em` e `23505` já existem em
+  // outros pontos do arquivo (o livro-caixa das assinaturas e o dedupe de eventos), então
+  // conferir o arquivo inteiro deixaria os testes abaixo verdes antes de o ramo existir —
+  // verdes pelo motivo errado, que é como um ramo apagado passaria sem ninguém ver.
+  const ramoAvulso = webhook.slice(
+    webhook.indexOf("session.mode === 'payment'"),
+    webhook.indexOf("case 'invoice.paid'"),
+  );
+
+  it('ramifica por `session.mode` antes de ativar plano', () => {
+    // Sem esta ramificação, uma compra avulsa cairia no caminho da assinatura e
+    // ativaria um plano que ninguém pagou.
+    expect(webhook).toMatch(/session\.mode === 'payment'/);
+  });
+
+  it('o ramo avulso vem ANTES da recusa por falta de assinatura', () => {
+    // Só presença não basta: a sessão avulsa não tem `plano_id` nem `subscription`, então
+    // se o ramo ficasse depois do `return resposta(400)` do caminho de assinatura, ela seria
+    // recusada antes de chegar nele — e a pessoa pagaria sem ganhar nada.
+    const ramo = webhook.indexOf("session.mode === 'payment'");
+    const recusa = webhook.indexOf('!session.subscription');
+    expect(ramo).toBeGreaterThan(-1);
+    expect(recusa).toBeGreaterThan(-1);
+    expect(ramo).toBeLessThan(recusa);
+  });
+
+  it('grava a sessão, que é o que torna o webhook idempotente', () => {
+    // O Stripe repete a entrega. A garantia é o UNIQUE no banco, e para ele
+    // valer a coluna precisa ser gravada.
+    expect(ramoAvulso).toContain('stripe_session_id');
+  });
+
+  it('grava validade, e não deixa o crédito aberto para sempre', () => {
+    expect(ramoAvulso).toContain('expira_em');
+  });
+
+  it('trata violacao de UNIQUE como reentrega, e nao como defeito', () => {
+    // 23505 é unique_violation. Sem esta distinção, toda reentrega do Stripe
+    // gritaria no log, e o log de erro deixaria de significar alguma coisa.
+    //
+    // Confere a COMPARAÇÃO, e não só o número: o comentário do ramo também cita 23505,
+    // então `toContain` continuaria verde com o código apagado.
+    expect(ramoAvulso).toMatch(/\.code\s*!==\s*'23505'/);
+  });
+});
+
+describe('o checkout avulso vende só o que tem preço', () => {
+  const avulso = funcoes.find((f) => f.nome === 'criar-checkout-avulso')!.fonte;
+
+  it('é compra, e não assinatura', () => {
+    // `subscription` aqui ativaria um plano recorrente por uma venda única.
+    expect(avulso).toContain("mode: 'payment'");
+    expect(avulso).not.toContain("mode: 'subscription'");
+  });
+
+  it('a lista de vendáveis é fechada no código, e não vem do pedido', () => {
+    // Um oráculo chegando pelo corpo da requisição viraria venda de algo sem preço.
+    expect(avulso).toContain("VENDAVEIS = ['mapa', 'vocacao']");
+  });
+
+  it('devolve `checkoutUrl`, o mesmo nome da function irmã', () => {
+    // `services/stripe.ts` lê `checkoutUrl`. Devolver `url` faria quem copiasse
+    // o serviço existente receber `undefined`, sem erro de compilação.
+    expect(avulso).toContain('checkoutUrl: session.url');
+  });
+
+  it('aborta em erro de leitura do perfil ANTES de criar cliente na Stripe', () => {
+    // `perfil` nulo por falha e `perfil` nulo por não haver cliente são
+    // indistinguíveis, e o segundo caminho cria cliente. Inverter duplica cliente.
+    expect(avulso.indexOf('erroPerfil')).toBeLessThan(avulso.indexOf('customers.create'));
+    // A linha acima sozinha passa mesmo se o `if` for apagado: a primeira ocorrência de
+    // `erroPerfil` é a desestruturação, que sempre vem antes. O que impede o cliente
+    // duplicado é o `if` que devolve a resposta, e é ele que se confere aqui.
+    const guarda = avulso.indexOf('if (erroPerfil)');
+    expect(guarda).toBeGreaterThan(-1);
+    expect(guarda).toBeLessThan(avulso.indexOf('customers.create'));
+  });
+});
