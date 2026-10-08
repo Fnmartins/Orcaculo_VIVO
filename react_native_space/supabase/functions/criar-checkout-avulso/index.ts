@@ -108,6 +108,15 @@ Deno.serve(async (request) => {
       // `payment`, e não `subscription`: é uma compra, não uma assinatura. O
       // webhook ramifica por este campo.
       mode: 'payment',
+      // Trava, não preferência. Sem esta linha os métodos vêm do painel da
+      // Stripe, e pix ou boleto ligados lá fariam a pessoa pagar sem receber: o
+      // `completed` chega com `payment_status` diferente de 'paid', a guarda do
+      // webhook barra, e o `async_payment_succeeded` que confirmaria o pagamento
+      // cai no `default` do switch — sem crédito e sem erro no log.
+      //
+      // Abrir pix ou boleto aqui exige tratar aquele evento ANTES. O acoplamento
+      // é de propósito: as duas coisas têm de mudar juntas.
+      payment_method_types: ['card'],
       customer: customerId,
       line_items: [{ price: preco.stripe_price_id, quantity: 1 }],
       currency: moedaFinal,

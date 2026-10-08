@@ -666,4 +666,10 @@ describe('o checkout avulso vende só o que tem preço', () => {
     expect(guarda).toBeGreaterThan(-1);
     expect(guarda).toBeLessThan(avulso.indexOf('customers.create'));
   });
+
+  it('aceita só cartão, até alguém tratar a confirmação tardia', () => {
+    // Pix e boleto chegam como `completed` sem estar pagos, e o evento que
+    // confirma o pagamento não é tratado: a pessoa pagaria sem receber.
+    expect(avulso).toContain("payment_method_types: ['card']");
+  });
 });
