@@ -118,7 +118,11 @@ Deno.serve(async (request) => {
       allow_promotion_codes: true,
     });
 
-    return resposta({ url: session.url });
+    // `checkoutUrl`, e não `url`: é o nome que `criar-checkout-stripe` já usa e
+    // que `services/stripe.ts` lê. Duas functions que fazem a mesma coisa com
+    // nomes diferentes fazem quem copiar o serviço existente falhar sem erro de
+    // compilação — o campo simplesmente vem `undefined`.
+    return resposta({ checkoutUrl: session.url });
   } catch (erro) {
     console.error('Erro ao criar checkout', erro instanceof Error ? erro.message : erro);
     return resposta({ erro: 'Não foi possível iniciar o pagamento' }, 500);
