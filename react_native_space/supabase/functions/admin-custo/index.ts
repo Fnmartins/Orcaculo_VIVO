@@ -8,7 +8,10 @@
 //
 // Esta function SO LE. Nenhuma escrita, nenhuma chamada a modelo, nenhum custo.
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { agregarConsumo, type LinhaUso } from '../_shared/agregarUso.ts';
+import {
+  agregarConsumo, agregarPorOraculo,
+  type ConsumoDeOraculo, type LinhaConsumo, type LinhaUso,
+} from '../_shared/agregarUso.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -135,6 +138,23 @@ Deno.serve(async (request) => {
     assinantes[plano] = count ?? 0;
   }
 
+  // 4b) O consumo por PRODUTO, da tabela separada.
+  //
+  // Vem de `consumo_ia` e nao de `uso_ia` porque aquela e a tabela da cota, lida
+  // com `maybeSingle()` por (usuario, dia, tipo) — dividi-la por oraculo afrouxaria
+  // o limite diario em silencio. Ver `supabase/consumo-por-oraculo.sql`.
+  //
+  // Falhar aqui NAO derruba a aba: o custo por plano e a auditoria principal e ja
+  // esta pronto acima. Sem este corte a tela avisa e o resto continua de pe, que e
+  // melhor do que a pessoa nao ver custo nenhum por causa do extra.
+  let porOraculo: ConsumoDeOraculo[] = [];
+  const { data: linhasOraculo, error: erroOraculo } = await supabaseAdmin
+    .from('consumo_ia')
+    .select('oraculo, tokens_entrada, tokens_saida, caracteres')
+    .gte('dia', desde);
+  if (erroOraculo) console.error('falha ao ler consumo_ia', erroOraculo.message);
+  else porOraculo = agregarPorOraculo((linhasOraculo ?? []) as LinhaConsumo[]);
+
   // 5) Os precos declarados, com a data em que foram confirmados.
   const { data: precos, error: erroPrecos } = await supabaseAdmin
     .from('precos_ia').select('chave, descricao, dolar_por_milhao, confirmado_em, fonte');
@@ -150,6 +170,7 @@ Deno.serve(async (request) => {
     consumo,
     pessoasAtivas,
     assinantes,
+    porOraculo,
     precos: precos ?? [],
   });
 });

@@ -1,6 +1,6 @@
 import {
-  custoDaLinha, custoPorPlano, custoTotal, formatarDolar, lerPrecos,
-  type ConsumoMedido, type EntradaCusto, type PrecosIA,
+  custoDaLinha, custoPorOraculo, custoPorPlano, custoTotal, formatarDolar, lerPrecos,
+  type ConsumoMedido, type ConsumoPorOraculo, type EntradaCusto, type PrecosIA,
 } from '../custoIA';
 
 /**
@@ -217,5 +217,64 @@ describe('formatarDolar', () => {
   it('zero é zero mesmo', () => {
     expect(formatarDolar(0)).toBe('US$ 0,00');
     expect(formatarDolar(NaN)).toBe('US$ 0,00');
+  });
+});
+
+describe('custoPorOraculo', () => {
+  const precos: PrecosIA = { modeloEntrada: 4, modeloSaida: 20, vozCaractere: 30 };
+  const l = (oraculo: string, entrada: number, saida: number): ConsumoPorOraculo => ({
+    oraculo, chamadas: 1, tokensEntrada: entrada, tokensSaida: saida, caracteres: 0,
+  });
+
+  it('ordena pelo custo de UMA leitura, e nao pelo total', () => {
+    // O coracao desta funcao. O barato usado muito soma mais que o caro usado
+    // pouco — e e exatamente o caro que nao se pode vender barato. Ordenar por
+    // total poria o produto errado no topo da decisao de preco.
+    const barato = Array.from({ length: 100 }, () => l('pergunta', 1000, 500));
+    const caro = [l('mapa', 5000, 40000)];
+    const r = custoPorOraculo([...barato, ...caro], precos);
+    expect(r[0].oraculo).toBe('mapa');
+    // ...embora o total da pergunta seja maior:
+    const pergunta = r.find((x) => x.oraculo === 'pergunta')!;
+    expect(pergunta.dolares).toBeGreaterThan(r[0].dolares);
+  });
+
+  it('soma varias linhas do mesmo produto antes de dividir', () => {
+    const r = custoPorOraculo([l('tarot', 1000, 1000), l('tarot', 3000, 3000)], precos);
+    expect(r[0].chamadas).toBe(2);
+    // (4000/1e6*4) + (4000/1e6*20) = 0,016 + 0,08 = 0,096, em duas chamadas.
+    expect(r[0].dolares).toBeCloseTo(0.096, 9);
+    expect(r[0].porChamada).toBeCloseTo(0.048, 9);
+  });
+
+  it('a voz entra por caractere, nao por token', () => {
+    const r = custoPorOraculo([
+      { oraculo: 'voz', chamadas: 1, tokensEntrada: 0, tokensSaida: 0, caracteres: 1_000_000 },
+    ], precos);
+    expect(r[0].dolares).toBeCloseTo(30, 9);
+  });
+
+  it('produto sem chamada nao divide por zero', () => {
+    const r = custoPorOraculo([
+      { oraculo: 'tarot', chamadas: 0, tokensEntrada: 0, tokensSaida: 0, caracteres: 0 },
+    ], precos);
+    expect(r[0].porChamada).toBe(0);
+    expect(Number.isFinite(r[0].porChamada)).toBe(true);
+  });
+
+  it('empate no custo por leitura e desempatado pelo nome, para a ordem nao dancar', () => {
+    const r = custoPorOraculo([l('tarot', 10, 10), l('buzios', 10, 10)], precos);
+    expect(r.map((x) => x.oraculo)).toEqual(['buzios', 'tarot']);
+  });
+
+  it('lista ausente nao derruba a conta', () => {
+    // Pegou nove testes vermelhos da AbaCusto: o servidor pode nao mandar o campo
+    // (a function deixa esse corte cair sem derrubar o resto), e ai a tela de
+    // auditoria inteira sumia por causa de um extra.
+    expect(custoPorOraculo(undefined as unknown as ConsumoPorOraculo[], precos)).toEqual([]);
+  });
+
+  it('sem consumo nenhum devolve lista vazia', () => {
+    expect(custoPorOraculo([], precos)).toEqual([]);
   });
 });

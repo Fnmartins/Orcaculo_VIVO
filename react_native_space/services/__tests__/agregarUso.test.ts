@@ -1,5 +1,5 @@
 import {
-  agregarConsumo, SEM_PLANO, type LinhaUso,
+  agregarConsumo, agregarPorOraculo, SEM_PLANO, type LinhaConsumo, type LinhaUso,
 } from '../../supabase/functions/_shared/agregarUso';
 
 /**
@@ -123,5 +123,51 @@ describe('agregarConsumo', () => {
     ], PLANOS);
     expect(consumo[0].tokensSaida).toBe(100);
     expect(consumo[0].tokensEntrada).toBe(0);
+  });
+});
+
+describe('agregarPorOraculo', () => {
+  /** `consumo_ia` e append-only: uma linha por chamada, sem coluna `quantidade`. */
+  const linha = (oraculo: string, entrada: number, saida: number): LinhaConsumo => ({
+    oraculo, tokens_entrada: entrada, tokens_saida: saida, caracteres: 0,
+  });
+
+  it('conta UMA chamada por linha, e nao procura `quantidade`', () => {
+    // O defeito que isto pega e o copia-e-cola de `agregarConsumo`: la o contador
+    // vem da coluna `quantidade`, que nao existe aqui. Quem copiasse somaria zero
+    // chamada e nao veria erro nenhum — so um custo por leitura absurdo.
+    const r = agregarPorOraculo([linha('tarot', 10, 20), linha('tarot', 30, 40)]);
+    expect(r).toEqual([
+      { oraculo: 'tarot', chamadas: 2, tokensEntrada: 40, tokensSaida: 60, caracteres: 0 },
+    ]);
+  });
+
+  it('separa produtos que a cota junta no mesmo tipo', () => {
+    // E para isto que a tabela existe: tarot e mapa sao os dois 'interpretacao'.
+    const r = agregarPorOraculo([linha('tarot', 100, 200), linha('mapa', 5, 5)]);
+    expect(r.map((x) => x.oraculo).sort()).toEqual(['mapa', 'tarot']);
+    expect(r.find((x) => x.oraculo === 'mapa')?.tokensEntrada).toBe(5);
+  });
+
+  it('numero que chega como texto vira numero', () => {
+    // `bigint` sai do driver como string, e '10' + '20' daria '1020'.
+    const r = agregarPorOraculo([
+      { oraculo: 'voz', tokens_entrada: '0', tokens_saida: '0', caracteres: '343' },
+      { oraculo: 'voz', tokens_entrada: null, tokens_saida: null, caracteres: '7' },
+    ]);
+    expect(r[0].caracteres).toBe(350);
+    expect(r[0].chamadas).toBe(2);
+  });
+
+  it('linha sem oraculo e descartada, e nao vira rotulo inventado', () => {
+    // A coluna e NOT NULL: linha sem ela so existe se algo estiver muito errado,
+    // e um rotulo tipo 'sem oraculo' esconderia isso numa tela de auditoria.
+    const r = agregarPorOraculo([{ oraculo: '', tokens_entrada: 9 }, linha('tarot', 1, 1)]);
+    expect(r).toHaveLength(1);
+    expect(r[0].oraculo).toBe('tarot');
+  });
+
+  it('lista vazia devolve lista vazia, sem explodir', () => {
+    expect(agregarPorOraculo([])).toEqual([]);
   });
 });
