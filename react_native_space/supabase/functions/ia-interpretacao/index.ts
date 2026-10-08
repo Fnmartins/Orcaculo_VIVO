@@ -9,6 +9,8 @@
 // qualquer pessoa usaria a chave paga do projeto para gerar o que quisesse.
 import Anthropic from 'npm:@anthropic-ai/sdk@^0.70';
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { decidirCobranca } from '../_shared/avulso-regras.ts';
+import { creditoDisponivel, devolverCredito, reivindicarCredito } from '../_shared/avulso.ts';
 import { exigirEscrita } from '../_shared/escritas.ts';
 // As regras de voz vivem em _shared desde que a ia-pergunta nasceu: duas
 // cópias de regra de segurança acabam divergindo, e a que some é sempre a que
@@ -537,6 +539,19 @@ Deno.serve(async (request) => {
   const semLimite = perfil?.is_super_admin === true;
   const restantes = typeof perfil?.consultas_restantes === 'number' ? perfil.consultas_restantes : 0;
 
+  // O crédito avulso é lido só para os dois produtos vendáveis: tarô e búzios
+  // não estão à venda avulsa, e uma consulta a mais por leitura deles seria
+  // custo sem uso.
+  const busca = (oraculo === 'mapa' || oraculo === 'vocacao')
+    ? await creditoDisponivel(supabaseAdmin, usuarioId, oraculo)
+    : { estado: 'nao_tem' as const };
+
+  const cobranca = decidirCobranca({
+    semLimite,
+    restantesDoPlano: restantes,
+    temCreditoAvulso: busca.estado === 'tem',
+  });
+
   // Interruptor por plano e limite do dia, iguais aos da ia-oraculo.
   const plano = typeof perfil?.plano === 'string' ? perfil.plano : 'gratuito';
   const veredito = await conferirUso(
@@ -550,13 +565,24 @@ Deno.serve(async (request) => {
     }, 402);
   }
 
+  // Falha ao LER o crédito não pode virar "compre": a pessoa pode já ter
+  // comprado, e o `UNIQUE` é por sessão do Stripe, não por pessoa — nada
+  // impediria a segunda compra. Só importa para quem seria barrado; quem tem
+  // cota do plano passa de qualquer jeito.
+  if (!cobranca.permitido && busca.estado === 'erro') {
+    return resposta({ erro: 'Não foi possível conferir seu acesso agora. Tente de novo.' }, 503);
+  }
+
   // A cota do período fica DEPOIS do veredito, e a ordem importa pelo mesmo motivo de
   // vencido vir antes de desligado em `decidirUso`. O webhook da Stripe zera
   // `consultas_restantes` E `plano_valido_ate` no mesmo update do cancelamento: com esta
   // checagem na frente, quem cancelou lia "suas consultas deste período acabaram" do
   // servidor e "seu acesso terminou" no semáforo da mesma tela — duas explicações para
   // uma pessoa, e a do servidor manda para o lugar errado. Vencimento responde primeiro.
-  if (!semLimite && restantes <= 0) {
+  //
+  // Quem barra é `cobranca`, e não a cota crua: o crédito avulso vale no lugar da cota,
+  // então "sem cota" só barra quem também não tem crédito a gastar.
+  if (!cobranca.permitido) {
     return resposta({ erro: 'Suas consultas deste período acabaram.', semConsultas: true }, 402);
   }
 
@@ -584,6 +610,26 @@ Deno.serve(async (request) => {
     }
   }
 
+  // Reivindicar antes de gerar, e não depois: quem perde a corrida para aqui,
+  // sem gastar chamada de IA. Os dois `return` de cache estão acima, então uma
+  // releitura nunca chega a este ponto e nunca come a compra.
+  //
+  // `idReivindicado` é o crédito que ESTA execução reivindicou, e só ele autoriza a
+  // devolução no `finally`: a devolução não confere de quem é o crédito, então
+  // devolver um que não foi reivindicado aqui desfaria o gasto de outra requisição.
+  let idReivindicado: number | null = null;
+  if (cobranca.fonte === 'avulso' && busca.estado === 'tem') {
+    const ganhou = await reivindicarCredito(supabaseAdmin, busca.id, chave);
+    if (!ganhou) {
+      return resposta({ erro: 'Esta leitura já está sendo gerada. Aguarde um instante.' }, 409);
+    }
+    idReivindicado = busca.id;
+  }
+
+  // Fica verdadeiro na última linha antes da resposta de sucesso. O `finally` o
+  // consulta: toda outra saída do `try` — recusa do modelo, resposta cortada, fora do
+  // formato, exceção — é uma leitura que não saiu.
+  let leituraEntregue = false;
   try {
     const anthropic = new Anthropic({ apiKey: anthropicKey });
     const mensagem = await anthropic.messages.create({
@@ -644,11 +690,15 @@ Deno.serve(async (request) => {
       if (erroGuardar) console.error('falha ao guardar interpretacao', erroGuardar.message);
     }
 
-    // Só desconta depois que a leitura existe.
-    if (!semLimite) {
+    // Só desconta depois que a leitura existe. O avulso já foi reivindicado antes de
+    // gerar; aqui só resta o plano.
+    if (cobranca.fonte === 'plano') {
       exigirEscrita('perfis.consultas_restantes', await supabaseAdmin
         .from('perfis').update({ consultas_restantes: restantes - 1 }).eq('id', usuarioId));
     }
+    // O que sobra no PLANO depois desta leitura. Paga com crédito avulso, a cota do
+    // plano não se mexeu: `restantes - 1` mostraria -1 a quem tem zero.
+    const restantesDepois = cobranca.fonte === 'plano' ? restantes - 1 : restantes;
     // Os tokens da resposta vao para o contador: e o que faz a auditoria de custo
     // por plano (item 31) ser medida, em vez de estimada sobre media inventada.
     await registrarUso(supabaseAdmin, usuarioId, 'interpretacao', oraculo, {
@@ -656,10 +706,11 @@ Deno.serve(async (request) => {
       saida: mensagem.usage?.output_tokens,
     });
 
+    leituraEntregue = true;
     return resposta({
       ...interpretacao,
       oraculo,
-      restantes: semLimite ? null : restantes - 1,
+      restantes: semLimite ? null : restantesDepois,
       uso: {
         entrada: mensagem.usage?.input_tokens ?? null,
         saida: mensagem.usage?.output_tokens ?? null,
@@ -668,5 +719,13 @@ Deno.serve(async (request) => {
   } catch (erro) {
     console.error('falha na interpretação', erro instanceof Error ? erro.message : erro);
     return resposta({ erro: 'Não foi possível aprofundar agora. Tente de novo.' }, 502);
+  } finally {
+    // A leitura não saiu, e o crédito já estava reivindicado. Sem devolver, a
+    // pessoa perderia o que pagou por uma falha nossa. Fica aqui e não no `catch`
+    // porque o `try` tem três saídas de falha que não passam por ele (recusa,
+    // resposta cortada, fora do formato) — e uma saída nova também ficaria coberta.
+    if (idReivindicado !== null && !leituraEntregue) {
+      await devolverCredito(supabaseAdmin, idReivindicado);
+    }
   }
 });

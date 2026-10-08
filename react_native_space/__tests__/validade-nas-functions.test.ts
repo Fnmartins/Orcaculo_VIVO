@@ -57,12 +57,21 @@ describe('validade nas Edge Functions de IA', () => {
     //
     // Fica aqui e não num teste de comportamento porque nada executa estas functions: é a
     // ordem no TEXTO que precisa ser prendida.
-    const comGuardaDeCota = comCota.filter((f) => f.fonte.includes('restantes <= 0'));
+    //
+    // A `ia-interpretacao` deixou de comparar `restantes` com zero: quem decide é
+    // `decidirCobranca`, que aceita o crédito avulso no lugar da cota. Mudou o TEXTO da
+    // guarda, não a regra que este teste prende — por isso a âncora é uma por function.
+    const GUARDA_DE_COTA: Record<string, string> = {
+      'ia-interpretacao': 'if (!cobranca.permitido) {',
+      'ia-oraculo': 'restantes <= 0',
+    };
+    const guardaDe = (nome: string) => GUARDA_DE_COTA[nome] ?? 'restantes <= 0';
+    const comGuardaDeCota = comCota.filter((f) => f.fonte.includes(guardaDe(f.nome)));
     expect(comGuardaDeCota.map((f) => f.nome).sort())
       .toEqual(['ia-interpretacao', 'ia-oraculo']);
     for (const { nome, fonte } of comGuardaDeCota) {
       // O nome entra na asserção para a falha dizer QUAL function inverteu a ordem.
-      const vencimentoAntesDaCota = fonte.indexOf('conferirUso(') < fonte.indexOf('restantes <= 0');
+      const vencimentoAntesDaCota = fonte.indexOf('conferirUso(') < fonte.indexOf(guardaDe(nome));
       expect({ function: nome, vencimentoAntesDaCota })
         .toEqual({ function: nome, vencimentoAntesDaCota: true });
     }
@@ -326,7 +335,7 @@ describe('o quarto oraculo: vocacao', () => {
     // O mapa fica ANTES: reabrir um mapa não custa nada e não entra no limite do dia, e
     // mudar isso é regressão. A ordem é o que reverte em silêncio numa edição futura.
     const veredito = lf.indexOf('if (!veredito.permitido)');
-    const cota = lf.indexOf('if (!semLimite && restantes <= 0)');
+    const cota = lf.indexOf('if (!cobranca.permitido) {');
     const lerMapa = lf.indexOf("if (oraculo === 'mapa') {");
     const lerVocacao = lf.indexOf("if (oraculo === 'vocacao') {");
     expect(veredito).toBeGreaterThan(-1);
@@ -696,5 +705,111 @@ describe('o checkout avulso vende só o que tem preço', () => {
     // recebe. A linha veio copiada do molde de assinatura, e é por esse caminho que ela
     // volta: quem copiar o molde de novo a traz junto.
     expect(avulso).not.toContain('allow_promotion_codes');
+  });
+});
+
+describe('o credito avulso entra na interpretacao sem furar o cache', () => {
+  const interp = funcoes.find((f) => f.nome === 'ia-interpretacao')!.fonte;
+  // Os trechos de várias linhas abaixo usam esta cópia: a árvore de quem usa Windows
+  // é CRLF e o índice é LF.
+  const lf = interp.replace(/\r\n/g, '\n');
+
+  it('o credito é lido ANTES da decisão de cobrança', () => {
+    expect(interp).toContain('creditoDisponivel(');
+    expect(interp).toContain('decidirCobranca(');
+    expect(interp.indexOf('creditoDisponivel(')).toBeLessThan(interp.indexOf('decidirCobranca('));
+  });
+
+  it('o credito é reivindicado ANTES de gerar, e nao depois', () => {
+    // Depois seria verificar-depois-agir: dois cliques simultâneos gerariam os
+    // dois, e só o segundo `update` falharia — duas leituras por uma compra.
+    //
+    // O `-1` precisa ser barrado de propósito: `indexOf` devolve -1 quando a chamada
+    // não existe, e -1 é menor que qualquer posição. Sem esta linha o teste passaria
+    // com a reivindicação apagada.
+    expect(interp.indexOf('reivindicarCredito(')).toBeGreaterThan(-1);
+    expect(interp.indexOf('reivindicarCredito('))
+      .toBeLessThan(interp.indexOf('anthropic.messages.create'));
+  });
+
+  it('o retorno do cache não passa por reivindicarCredito', () => {
+    // Os dois `return` de cache estão acima do ponto de reivindicação. Se a
+    // reivindicação subisse para antes deles, uma releitura comeria a compra.
+    expect(interp.indexOf('reivindicarCredito(')).toBeGreaterThan(interp.indexOf('doCache: true'));
+  });
+
+  it('os DOIS retornos de cache ficam acima da reivindicação, e não só o do mapa', () => {
+    // `indexOf('doCache: true')` acha o do MAPA, que é o primeiro. Uma reivindicação
+    // posta entre o cache do mapa e o da vocação passaria no teste acima — e ainda
+    // assim comeria a compra de quem reabre uma vocação já guardada, que é o caso que
+    // a spec manda prender primeiro. O 2 também é de propósito: um terceiro retorno de
+    // cache pede que alguém olhe esta ordem de novo.
+    expect(lf.match(/doCache: true/g)?.length).toBe(2);
+    expect(interp.indexOf('reivindicarCredito(')).toBeGreaterThan(interp.lastIndexOf('doCache: true'));
+  });
+
+  it('a geração que falha devolve o crédito', () => {
+    // Sem isto, um 502 da Anthropic faria a pessoa perder o que pagou.
+    expect(interp).toContain('devolverCredito(');
+  });
+
+  it('falha ao LER o crédito não vira "sem acesso"', () => {
+    // `erro` e `nao_tem` são estados diferentes: tratar os dois igual mandaria
+    // quem já comprou comprar de novo, e nada impede a segunda compra.
+    expect(interp).toContain("estado === 'erro'");
+  });
+
+  it('a falha de leitura responde 503 e vem ANTES da guarda de cota', () => {
+    // Depois da guarda, quem teve a leitura falhando já teria levado o 402 de
+    // "consultas acabaram" — a mesma frase de quem não comprou nada, e o caminho
+    // direto para a segunda compra. O teste acima só prova que o estado é conferido;
+    // este prova que a conferência chega a tempo e que o código é 503, não 402.
+    expect(lf).toMatch(
+      /if \(!cobranca\.permitido && busca\.estado === 'erro'\) \{\n\s*return resposta\(\{[^}]*\}, 503\);/,
+    );
+    expect(lf.indexOf("busca.estado === 'erro'"))
+      .toBeLessThan(lf.indexOf('if (!cobranca.permitido) {'));
+  });
+
+  it('só o plano desconta de consultas_restantes', () => {
+    // Era `if (!semLimite)`. Com o avulso isso descontaria também a cota do plano de
+    // quem já pagou o item à parte — duas cobranças por uma leitura, e
+    // `consultas_restantes` abaixo de zero.
+    expect(lf).toMatch(
+      /if \(cobranca\.fonte === 'plano'\) \{\n\s*exigirEscrita\('perfis\.consultas_restantes'/,
+    );
+    expect(lf).not.toMatch(/if \(!semLimite\) \{\n\s*exigirEscrita/);
+  });
+
+  it('o crédito volta por QUALQUER saída sem leitura, e por um ponto só', () => {
+    // Dentro do `try` há saídas de falha que não passam pelo `catch`: recusa do modelo
+    // (422), resposta cortada e resposta fora do formato (502). Devolver só no `catch`
+    // deixaria a pessoa perder o que pagou nessas três. O `finally` cobre todas, e
+    // cobre as que alguém acrescentar depois.
+    //
+    // Um ponto só: `devolverCredito` zera `consumido_em` sem condição, então chamá-lo
+    // duas vezes pode devolver o crédito que OUTRA requisição já reivindicou.
+    expect(lf.match(/devolverCredito\(/g)?.length).toBe(1);
+    const final = lf.indexOf('} finally {');
+    // O `catch` externo é o último do arquivo; o anterior é o da validação do formato.
+    expect(final).toBeGreaterThan(lf.lastIndexOf('} catch (erro) {'));
+    expect(lf.slice(final)).toContain('devolverCredito(');
+  });
+
+  it('só devolve o que ESTA execução reivindicou, e nunca depois de entregar', () => {
+    // Sem a primeira metade, uma leitura paga por plano (ou um pedido que nem chegou à
+    // reivindicação) devolveria um crédito alheio. Sem a segunda, o crédito voltaria
+    // junto com uma leitura já entregue: duas por uma compra.
+    expect(lf.slice(lf.indexOf('} finally {')))
+      .toMatch(/idReivindicado !== null && !leituraEntregue/);
+    // `idReivindicado` só recebe valor depois de `reivindicarCredito` confirmar que
+    // ganhou — a corrida perdida devolve 409 antes de chegar nesta linha.
+    expect(lf.match(/idReivindicado = /g)?.length).toBe(1);
+    expect(lf).toMatch(
+      /if \(!ganhou\) \{\n\s*return resposta\(\{[^}]*\}, 409\);\n\s*\}\n\s*idReivindicado = busca\.id;/,
+    );
+    // E `leituraEntregue` só vira verdadeiro na última linha antes da resposta de sucesso.
+    expect(lf.match(/leituraEntregue = true;/g)?.length).toBe(1);
+    expect(lf).toMatch(/leituraEntregue = true;\n\s*return resposta\(\{\n\s*\.\.\.interpretacao,/);
   });
 });
