@@ -38,7 +38,7 @@ alter table public.compras_avulsas enable row level security;
 -- O dono roda este arquivo no editor SQL, e pode rodar duas vezes — na dúvida
 -- se a primeira pegou, por exemplo. Sem isto, a segunda execução falha em
 -- "policy already exists", e o erro não diz se o resto funcionou. Mesmo padrão
--- dos outros nove .sql do repo.
+-- dos demais .sql do repo.
 drop policy if exists "compras_avulsas: a pessoa le as suas" on public.compras_avulsas;
 
 -- A pessoa lê as PRÓPRIAS compras: a tela precisa dizer "você tem um Mapa
@@ -48,7 +48,12 @@ create policy "compras_avulsas: a pessoa le as suas"
   on public.compras_avulsas for select
   using (auth.uid() = usuario_id);
 
-revoke insert, update, delete on public.compras_avulsas from anon, authenticated;
+-- O Supabase dá todos os privilégios a anon e authenticated em tabela nova, e
+-- `revoke insert, update, delete` deixaria truncate, references e trigger. Numa
+-- tabela que guarda dinheiro, tira tudo e devolve só a leitura (mesmo padrão de
+-- `cidades.sql`); a policy acima restringe essa leitura às linhas da própria pessoa.
+revoke all on public.compras_avulsas from anon, authenticated;
+grant select on public.compras_avulsas to authenticated;
 grant select, insert, update on public.compras_avulsas to service_role;
 grant usage, select on sequence public.compras_avulsas_id_seq to service_role;
 

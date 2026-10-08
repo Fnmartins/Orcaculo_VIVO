@@ -31,7 +31,10 @@ describe('decidirCobranca', () => {
   it('quem é isento não gasta nada de ninguém', () => {
     // `semLimite` é admin e testador. Descontar deles sujaria a medição de custo
     // com consumo que não é de cliente.
-    const d = decidirCobranca(estado({ semLimite: true, temCreditoAvulso: true }));
+    //
+    // Cota sobrando e avulso guardado de propósito: o isento precisa vir ANTES do
+    // plano, e com cota zero trocar essas duas checagens não quebraria o teste.
+    const d = decidirCobranca(estado({ semLimite: true, restantesDoPlano: 5, temCreditoAvulso: true }));
     expect(d).toEqual({ permitido: true, fonte: 'isento' });
   });
 
