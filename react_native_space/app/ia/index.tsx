@@ -39,7 +39,11 @@ const TIPOS = [
     id: 'quiromancia' as const,
     titulo: 'Leitura de Mão',
     subtitulo: 'Quiromancia por IA',
-    descricao: 'As linhas da sua palma guardam segredos únicos. A IA analisa linha da vida, do coração e do destino.',
+    // Dizia "linha da vida, do coração e do destino", e o destino não é uma das
+    // seções entregues — a leitura traz coração, cabeça, vida e os cruzamentos.
+    // Prometer seção que não vem é a imprecisão que ninguém reporta como defeito
+    // e todo mundo sente como promessa quebrada.
+    descricao: 'A IA descreve o que aparece na sua palma e lê as linhas do coração, da cabeça e da vida, com os cruzamentos entre elas.',
     icone: 'hand-left-outline' as const,
     corPrimaria: '#C0392B',
     corSecundaria: '#E74C3C',

@@ -61,10 +61,15 @@ const SECOES: Record<Profundidade, Record<Tipo, string[]>> = {
     quiromancia: ['O que aparece na imagem', 'Leitura simbólica', 'Convite'],
   },
   completa: {
+    // A asa entrou em 05/10/2026 e vem logo depois das formas, porque é ela que
+    // orienta tudo que vier abaixo. "A borda e os lados" cobre duas das três
+    // faixas de tempo numa seção só: a leitura fica fiel sem a xícara virar uma
+    // lista de oito itens de tempo, que custaria mais e leria pior.
     cafe: [
       'O que aparece na imagem',
       'Formas principais',
-      'A borda da xícara',
+      'A asa e o que a cerca',
+      'A borda e os lados',
       'O fundo da xícara',
       'Símbolos secundários',
       'Leitura de conjunto',
@@ -94,12 +99,31 @@ const O_QUE_OLHAR: Record<Tipo, string> = {
   cafe:
     'A foto é da borra de café no fundo de uma xícara. Descreva as formas que '
     + 'realmente aparecem nela — manchas, linhas, aglomerados, espaços vazios — '
-    + 'e só então o que elas evocam na tradição da tasseografia.',
+    + 'e só então o que elas evocam na tradição da tasseografia.\n'
+    // A asa entrou em 05/10/2026, pela auditoria. Sem ela a leitura tinha só o
+    // eixo do tempo (borda perto, fundo longe) e perdia o eixo de ASSUNTO, que
+    // na tradição se orienta inteiro pela asa. Se a asa não estiver na foto, o
+    // modelo precisa dizer isso em vez de fingir que sabe onde ela está.
+    + 'Na tasseografia a asa é o ponto de referência, o "domínio" de quem consulta: '
+    + 'a região junto dela fala de vínculo, casa e família; a oposta, do que se ganha '
+    + 'e se gasta; o que fica de um lado é o estado atual, do outro o que vem. '
+    + 'Se a asa não aparecer na foto ou não der para saber onde ela está, diga isso na '
+    + 'seção dela e leia só pelas faixas de tempo — não invente a orientação.\n'
+    + 'As faixas de tempo são três: a borda é o que está perto, os lados são o meio '
+    + 'do caminho, e o fundo é o mais distante.',
   quiromancia:
     'A foto é da palma de uma mão, a mão dominante de quem consulta. Descreva as '
     + 'linhas que realmente aparecem — coração, cabeça, vida, destino quando visível '
     + '—, seu traçado, profundidade e cruzamentos, e só então o que a quiromancia '
-    + 'associa a elas.',
+    + 'associa a elas.\n'
+    // Reforço específico, acrescentado em 05/10/2026. A regra geral contra
+    // prognóstico de saúde já cobria isto, mas a linha da VIDA é a única que
+    // convida ao erro pelo próprio nome, e é a que assusta.
+    + 'A linha da vida NÃO indica quanto tempo a pessoa vive, e você nunca deve '
+    + 'sugerir isso, nem por insinuação, nem falando em "linha curta" como se fosse '
+    + 'aviso. Ela fala de vitalidade e de como a pessoa gasta e repõe energia. '
+    + 'Interrupção, corte ou traçado fino nela são mudança de fase e de ritmo, '
+    + 'nunca tempo de vida nem doença.',
 };
 
 function instrucoes(tipo: Tipo, profundidade: Profundidade): string {
