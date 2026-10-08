@@ -124,7 +124,14 @@ Deno.serve(async (request) => {
       metadata: { usuario_id: usuario.id, oraculo, tipo: 'avulso' },
       success_url: `${appBaseUrl}/pagamento/sucesso?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appBaseUrl}/planos`,
-      allow_promotion_codes: true,
+      // Sem cupom, de propósito. Um cupom de 100% pode fazer a sessão chegar com
+      // `payment_status` diferente de 'paid' — e a guarda do webhook, que existe
+      // para não creditar antes de receber, barraria quem usou o cupom.
+      //
+      // Qual valor a Stripe usa num total zero em `mode: 'payment'` não está
+      // confirmado, e alargar a guarda no palpite arriscaria creditar pagamento
+      // adiado. Religar isto exige conferir o comportamento em modo de teste
+      // primeiro. A assinatura segue aceitando cupom; só a venda avulsa não.
     });
 
     // `checkoutUrl`, e não `url`: é o nome que `criar-checkout-stripe` já usa e

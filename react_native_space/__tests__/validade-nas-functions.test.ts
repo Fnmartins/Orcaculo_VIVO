@@ -625,6 +625,23 @@ describe('o webhook separa assinatura de compra avulsa', () => {
     expect(guarda).toBeLessThan(gravacao);
   });
 
+  it('a guarda do pagamento interrompe de fato, e não só avisa', () => {
+    // Sem o `break`, a execução seguiria para o insert: o aviso no log seria o
+    // único sinal de que creditamos antes de receber. A posição da guarda sozinha
+    // não prova nada — o que importa é ela cortar o caminho.
+    const guarda = webhook.indexOf("session.payment_status !== 'paid'");
+    const gravacao = webhook.indexOf("from('compras_avulsas')");
+    expect(guarda).toBeGreaterThan(-1);
+    expect(gravacao).toBeGreaterThan(guarda);
+    const trecho = webhook.slice(guarda, gravacao);
+    expect(trecho).toContain('break;');
+    // E o `break` tem de ser o DESTE bloco. Só `toContain` aceitaria o `break` de outro
+    // ramo que caísse no recorte (a checagem de metadata, se alguém a pusesse depois da
+    // guarda), e a guarda sem o seu continuaria verde. `[^}]*` impede de cruzar o `}` que
+    // fecha o bloco da guarda.
+    expect(trecho).toMatch(/^session\.payment_status !== 'paid'\) \{[^}]*\bbreak;/);
+  });
+
   it('uma falha de gravação sobe para o catch, em vez de virar 200', () => {
     // Devolver 200 faria o Stripe não repetir a entrega e deixaria o dedupe gravado: quem
     // pagou ficaria sem a leitura, com uma linha de log como único rastro. Lançar manda o
@@ -671,5 +688,13 @@ describe('o checkout avulso vende só o que tem preço', () => {
     // Pix e boleto chegam como `completed` sem estar pagos, e o evento que
     // confirma o pagamento não é tratado: a pessoa pagaria sem receber.
     expect(avulso).toContain("payment_method_types: ['card']");
+  });
+
+  it('não aceita cupom, até alguém conferir o total zero em modo de teste', () => {
+    // Um cupom de 100% pode fazer a sessão chegar com `payment_status` diferente de
+    // 'paid', e a guarda do webhook barraria quem usou o cupom: pagou (ou quase) e não
+    // recebe. A linha veio copiada do molde de assinatura, e é por esse caminho que ela
+    // volta: quem copiar o molde de novo a traz junto.
+    expect(avulso).not.toContain('allow_promotion_codes');
   });
 });
