@@ -133,6 +133,18 @@ Deno.serve(async (request) => {
             console.error('sessao avulsa sem metadata', session.id);
             break;
           }
+          // Pix e boleto confirmam depois: o `completed` chega com `payment_status`
+          // diferente de 'paid', e o dinheiro entra num evento posterior
+          // (`checkout.session.async_payment_succeeded`). Creditar aqui daria a
+          // leitura antes de receber.
+          //
+          // Hoje esses métodos simplesmente NÃO creditam, porque o evento posterior
+          // não é tratado. É limitação declarada, não esquecimento: ligar pix ou
+          // boleto para compra avulsa exige tratar aquele evento antes.
+          if (session.payment_status !== 'paid') {
+            console.warn('sessao avulsa ainda nao paga', session.id, session.payment_status);
+            break;
+          }
           const NOVENTA_DIAS = 90 * 24 * 60 * 60 * 1000;
           const { error } = await supabaseAdmin.from('compras_avulsas').insert({
             usuario_id: usuarioId,
@@ -140,11 +152,15 @@ Deno.serve(async (request) => {
             stripe_session_id: session.id,
             expira_em: new Date(Date.now() + NOVENTA_DIAS).toISOString(),
           });
-          // Violação de UNIQUE (23505) é o caso ESPERADO numa reentrega do Stripe,
-          // e não um defeito: significa que a compra já foi registrada. Qualquer
-          // outro erro é a pessoa ter pago sem receber, e precisa gritar.
+          // Violação de UNIQUE (23505) é o caso ESPERADO numa reentrega do Stripe:
+          // significa que a compra já foi registrada, e seguir é o certo.
+          //
+          // Qualquer OUTRO erro é a pessoa ter pago sem receber, e precisa ser alto.
+          // Devolver 200 aqui faria o Stripe não repetir a entrega e o dedupe ficar
+          // gravado: a compra se perderia com uma linha de log como único rastro.
+          // Repetir é seguro — o `UNIQUE` impede vender duas vezes.
           if (error && error.code !== '23505') {
-            console.error('falha ao registrar compra avulsa', error.message);
+            throw new Error(`falha ao registrar compra avulsa: ${error.message}`);
           }
           break;
         }

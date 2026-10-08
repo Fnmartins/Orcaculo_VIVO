@@ -614,6 +614,25 @@ describe('o webhook separa assinatura de compra avulsa', () => {
     // então `toContain` continuaria verde com o código apagado.
     expect(ramoAvulso).toMatch(/\.code\s*!==\s*'23505'/);
   });
+
+  it('não credita antes de o pagamento confirmar', () => {
+    // Pix e boleto chegam como `completed` com `payment_status` != 'paid'.
+    const guarda = ramoAvulso.indexOf("session.payment_status !== 'paid'");
+    expect(guarda).toBeGreaterThan(-1);
+    // E a guarda vem ANTES da gravação: depois do insert ela não impediria crédito nenhum.
+    const gravacao = ramoAvulso.indexOf("from('compras_avulsas')");
+    expect(gravacao).toBeGreaterThan(-1);
+    expect(guarda).toBeLessThan(gravacao);
+  });
+
+  it('uma falha de gravação sobe para o catch, em vez de virar 200', () => {
+    // Devolver 200 faria o Stripe não repetir a entrega e deixaria o dedupe gravado: quem
+    // pagou ficaria sem a leitura, com uma linha de log como único rastro. Lançar manda o
+    // erro ao `catch` do webhook, que libera o dedupe e responde 500 para o Stripe repetir.
+    // Repetir é seguro porque o UNIQUE transforma a segunda gravação em 23505.
+    expect(ramoAvulso).toMatch(/throw new Error\(`falha ao registrar compra avulsa/);
+    expect(ramoAvulso).not.toMatch(/console\.error\('falha ao registrar/);
+  });
 });
 
 describe('o checkout avulso vende só o que tem preço', () => {
