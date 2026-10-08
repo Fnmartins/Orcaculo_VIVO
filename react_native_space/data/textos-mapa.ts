@@ -98,5 +98,19 @@ export const TEXTO_ELEMENTO_AUSENTE = 'Um elemento sem nenhum planeta não é fa
  */
 export const TEXTO_SISTEMA_DE_CASAS = 'Placidus é o sistema de casas mais usado, e é o que este mapa usa — mas não é o único. Casas inteiras, o mais antigo com registro escrito e ainda o padrão na astrologia védica, dá a cada casa exatos 30 graus e chega a outro desenho. Se você comparar com outro site e as casas não baterem, é por isso: nenhum dos dois está errado.';
 
+/**
+ * O que os nodos são, antes de qualquer significado.
+ *
+ * Mesmo cuidado de `TEXTO_RETROGRADO`: quem lê "nodo norte em Áries" supõe mais
+ * um planeta, e eles não são corpo nenhum — são a interseção de dois planos. A
+ * escolha entre nodo verdadeiro e médio também vai declarada, pelo mesmo
+ * argumento de `TEXTO_SISTEMA_DE_CASAS`.
+ */
+export const TEXTO_NODOS = 'Os nodos não são planetas: são os dois pontos onde o caminho da Lua cruza o caminho aparente do Sol. Por isso andam sempre juntos, em lados opostos do mapa, e andam para trás — dão a volta inteira a cada dezoito anos e meio. Este mapa usa o nodo verdadeiro, que é o mais comum nos apps ocidentais; escolas que usam o nodo médio chegam a até um grau e meio daqui.';
+
+export const TEXTO_NODO_NORTE = 'A Cabeça do Dragão aponta para o lado que ainda não é confortável: a direção em que você cresce quando escolhe o que não é automático. O signo e a casa dizem onde isso acontece.';
+
+export const TEXTO_NODO_SUL = 'A Cauda do Dragão é o terreno conhecido — o que você já faz bem, às vezes bem demais, e para onde volta quando quer descansar ou se esconder. Não é defeito: é repertório pronto.';
+
 /** O que o mapa é, e o que ele não é. Aparece antes de qualquer interpretação. */
 export const TEXTO_ABERTURA = 'O mapa astral é uma fotografia do céu no instante em que você nasceu, lida como símbolo. Ele descreve tendências e possibilidades, nunca fatos inevitáveis — e nada aqui substitui decisão sua, orientação de saúde, jurídica ou financeira.';

@@ -35,6 +35,7 @@ import {
   TEXTO_ABERTURA, TEXTO_ASCENDENTE, TEXTO_CORPO, TEXTO_ELEMENTO,
   TEXTO_ELEMENTO_AUSENTE, TEXTO_QUALIDADE, TEXTO_RETROGRADO,
   TEXTO_SISTEMA_DE_CASAS,
+  TEXTO_NODOS, TEXTO_NODO_NORTE, TEXTO_NODO_SUL,
 } from '../../data/textos-mapa';
 import { rotuloDoOffset } from '../../utils/fuso';
 import { cidadePorId, type Cidade } from '../../data/cidades';
@@ -813,6 +814,50 @@ export default function TelaMapaAstralResultado() {
             )}
           </Animated.View>
 
+          {/* O eixo dos nodos.
+              Vem depois das casas porque a leitura deles é "signo e casa", e fica
+              no MESMO portão pago do resto do mapa profundo: pôr os nodos no
+              gratuito moveria a linha comercial, e isso não é decisão de quem
+              implementa. Eles não entram na seção de conexões logo abaixo — ficam
+              fora dos aspectos de propósito (ver `nodosLunares`). */}
+          <Animated.View style={[estilos.secao, { opacity: fadeAnim }]}>
+            <Text style={estilos.secaoTitulo}>O eixo dos nodos</Text>
+            {temMapaCompleto ? (
+              <>
+                <View style={estilos.nodoItem}>
+                  <Text style={estilos.nodoNome}>Nodo norte, a Cabeça do Dragão</Text>
+                  <Text style={estilos.casaSigno}>
+                    {escreverGrau(mapa.nodos.norte)}
+                    {mapa.casaDoNodo ? `, casa ${mapa.casaDoNodo.norte}` : ''}
+                  </Text>
+                  <Text style={estilos.nodoTexto}>{TEXTO_NODO_NORTE}</Text>
+                </View>
+                <View style={estilos.nodoItem}>
+                  <Text style={estilos.nodoNome}>Nodo sul, a Cauda do Dragão</Text>
+                  <Text style={estilos.casaSigno}>
+                    {escreverGrau(mapa.nodos.sul)}
+                    {mapa.casaDoNodo ? `, casa ${mapa.casaDoNodo.sul}` : ''}
+                  </Text>
+                  <Text style={estilos.nodoTexto}>{TEXTO_NODO_SUL}</Text>
+                </View>
+                <Text style={estilos.notaRodape}>{TEXTO_NODOS}</Text>
+                {/* Os nodos existem sem a hora; a casa deles, não. Dizer isso
+                    evita a pessoa achar que faltou dado por erro nosso. */}
+                {!mapa.casaDoNodo && (
+                  <Text style={estilos.notaRodape}>
+                    O signo dos nodos não depende da hora de nascimento, e por isso aparece de
+                    qualquer jeito. A casa depende, e volta junto com as doze.
+                  </Text>
+                )}
+              </>
+            ) : (
+              <Text style={estilos.avisoHonesto}>
+                Onde você já tem repertório e para onde cresce. O eixo dos nodos entra a partir
+                do plano Iniciante.
+              </Text>
+            )}
+          </Animated.View>
+
           {/* As conexões: o que os corpos fazem UNS COM OS OUTROS.
               Calculávamos os aspectos e só a IA os via. Aqui eles aparecem
               para quem lê, que é de onde vem a sensação de mapa e não de
@@ -1159,6 +1204,30 @@ const estilos = StyleSheet.create({
     fontSize: 14,
     color: Cores.textoSecundario,
     marginBottom: Espacamento.md,
+  },
+
+  // Os dois nodos são um eixo, e a tela mostra isso dando a eles cards iguais e
+  // vizinhos, em vez de uma lista onde um pareceria mais importante que o outro.
+  nodoItem: {
+    backgroundColor: Cores.cardFundo,
+    borderWidth: 1,
+    borderColor: Cores.cardBorda,
+    borderRadius: RaioBorda.lg,
+    padding: Espacamento.md,
+    marginBottom: Espacamento.sm,
+  },
+  nodoNome: {
+    fontFamily: Fontes.corpoSemibold,
+    fontSize: 15,
+    color: Cores.textoClaro,
+    marginBottom: 2,
+  },
+  nodoTexto: {
+    fontFamily: Fontes.corpo,
+    fontSize: 13.5,
+    color: Cores.textoSecundario,
+    lineHeight: 21,
+    marginTop: Espacamento.xs,
   },
   // Card Principal
   cardPrincipal: {

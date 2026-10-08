@@ -159,11 +159,29 @@ distribuições. Não encontrei tela de créditos nem de licenças de terceiros 
 conhecidos desde a antiguidade como *Caput* e *Cauda Draconis*, cabeça e cauda do dragão. É a
 ausência mais visível para quem comparar o Arcanus com outro app.
 
-**4. Quíron.** Descoberto em 1977 e hoje padrão na astrologia psicológica. Mais opcional que
-os nodos; Lilith cai na mesma categoria.
+> **Feito em 05/10/2026**, com duas escolhas declaradas.
+>
+> **Nodo verdadeiro, não médio.** O verdadeiro é o nodo do plano orbital instantâneo da Lua;
+> o médio é a posição suavizada por fórmula. Os dois diferem em até ~1,5°, o bastante para
+> trocar o signo de quem nasceu perto de uma cúspide. Escolhemos o verdadeiro porque é o que
+> a maioria dos apps ocidentais mostra, e cada divergência a mais é uma a explicar.
+>
+> **Fora dos aspectos.** Os nodos entram por signo e casa, e não na tabela de aspectos. Os
+> orbes de `data/aspectos.ts` foram escolhidos para corpos — com orbe maior para os
+> luminares, por serem luminares —, e orbe de aspecto a nodo é outra convenção, que pede
+> pesquisa e decisão próprias. Fica registrado como possível, não como pendência.
+>
+> O cálculo não procura o cruzamento: a normal ao plano da órbita é `h = r × v`, e a linha
+> dos nodos é `ẑ × h`. Conferido contra a fórmula do nodo médio de Meeus (cap. 47) em
+> `data/__tests__/nodos.test.ts` — de 1980 a 2040 a diferença fica dentro de ±1,7°, e o
+> movimento anual dá cerca de −19,8°, retrógrado. São duas contas independentes chegando ao
+> mesmo lugar: o oráculo do teste não passa pela `astronomy-engine` nem pelos nossos vetores.
+>
+> Os nodos aparecem **mesmo sem hora de nascimento** — um dia inteiro os move menos de um
+> décimo de grau. A casa deles é que depende da hora, e some junto com as outras.
 
-Os itens 2 a 4 não tornam errado o que existe. O item 1 é o único que precisa acontecer
-independentemente do roadmap.
+**4. Quíron.** Descoberto em 1977 e hoje padrão na astrologia psicológica. Mais opcional que
+os nodos; Lilith cai na mesma categoria. **É o que resta desta auditoria.**
 
 ## Fontes
 
