@@ -35,6 +35,12 @@ create index if not exists compras_avulsas_disponivel_idx
 
 alter table public.compras_avulsas enable row level security;
 
+-- O dono roda este arquivo no editor SQL, e pode rodar duas vezes — na dúvida
+-- se a primeira pegou, por exemplo. Sem isto, a segunda execução falha em
+-- "policy already exists", e o erro não diz se o resto funcionou. Mesmo padrão
+-- dos outros nove .sql do repo.
+drop policy if exists "compras_avulsas: a pessoa le as suas" on public.compras_avulsas;
+
 -- A pessoa lê as PRÓPRIAS compras: a tela precisa dizer "você tem um Mapa
 -- disponível até tal dia". Escrita é só do service_role — crédito que o cliente
 -- pudesse inserir seria crédito de graça.
