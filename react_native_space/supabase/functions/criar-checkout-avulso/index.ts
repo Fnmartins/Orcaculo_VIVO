@@ -40,6 +40,11 @@ Deno.serve(async (request) => {
     // Dois produtos, e a lista é fechada aqui de propósito: um oráculo que
     // chegasse pelo corpo da requisição viraria venda de algo sem preço.
     const VENDAVEIS = ['mapa', 'vocacao'];
+    // Para onde a pessoa volta se desistir do pagamento: o começo de cada oráculo.
+    // Fica ao lado de `VENDAVEIS` porque as duas listas têm de andar juntas, e um
+    // teste acusa a divergência. Produto sem destino aqui cai em `/`, que é
+    // verdadeiro para qualquer um, em vez de ser mandado para o oráculo errado.
+    const ROTA_DO_ORACULO: Record<string, string> = { mapa: 'mapa-astral', vocacao: 'vocacao' };
 
     const { oraculo, moeda } = await request.json() as { oraculo?: string; moeda?: string };
     if (typeof oraculo !== 'string' || !VENDAVEIS.includes(oraculo)) {
@@ -130,7 +135,7 @@ Deno.serve(async (request) => {
       // pessoa acabou de decidir não fazer. Volta ao começo do oráculo, e não à tela
       // do resultado, que precisa de `cidadeId`, `lat` e `lon` nos parâmetros e
       // devolve nulo sem eles — e esses dados não atravessam o checkout.
-      cancel_url: `${appBaseUrl}/${oraculo === 'mapa' ? 'mapa-astral' : 'vocacao'}`,
+      cancel_url: `${appBaseUrl}/${ROTA_DO_ORACULO[oraculo] ?? ''}`,
       // Sem cupom, de propósito. Um cupom de 100% pode fazer a sessão chegar com
       // `payment_status` diferente de 'paid' — e a guarda do webhook, que existe
       // para não creditar antes de receber, barraria quem usou o cupom.

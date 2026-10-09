@@ -39,8 +39,8 @@ export default function PagamentoSucesso() {
           <Text style={estilos.texto}>
             {avulso
               ? produto
-                ? `Você já pode gerar ${produto.nome}. O direito de gerar vale 90 dias, e a leitura, depois de gerada, fica no seu histórico enquanto sua conta existir.`
-                : 'Você já pode gerar a leitura que comprou. O direito de gerar vale 90 dias, e a leitura, depois de gerada, fica no seu histórico enquanto sua conta existir.'
+                ? `Você já pode gerar ${produto.nome}. O direito de gerar vale 90 dias, e a leitura, depois de gerada, fica no seu histórico enquanto sua conta existir. Pode levar alguns segundos para o crédito aparecer.`
+                : 'Você já pode gerar a leitura que comprou. O direito de gerar vale 90 dias, e a leitura, depois de gerada, fica no seu histórico enquanto sua conta existir. Pode levar alguns segundos para o crédito aparecer.'
               : 'Seu plano está sendo liberado. Pode levar alguns segundos para aparecer.'}
           </Text>
           <Button variante="primary" label={produto ? produto.acao : 'Voltar ao início'} larguraTotal

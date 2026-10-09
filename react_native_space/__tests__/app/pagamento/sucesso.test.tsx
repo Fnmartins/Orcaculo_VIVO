@@ -79,9 +79,23 @@ describe('quem comprou uma leitura avulsa', () => {
     expect(screen.getByText('Pagamento confirmado!')).toBeTruthy();
     expect(
       screen.getByText(
-        'Você já pode gerar a leitura da sua vocação. O direito de gerar vale 90 dias, e a leitura, depois de gerada, fica no seu histórico enquanto sua conta existir.',
+        'Você já pode gerar a leitura da sua vocação. O direito de gerar vale 90 dias, e a leitura, depois de gerada, fica no seu histórico enquanto sua conta existir. Pode levar alguns segundos para o crédito aparecer.',
       ),
     ).toBeTruthy();
+  });
+
+  it.each([
+    ['com o nome da leitura', 'vocacao'],
+    ['sem o nome da leitura', 'xyz'],
+  ])('avisa que o crédito pode levar alguns segundos, %s', (_caso, oraculo) => {
+    // É dinheiro, não cortesia. O crédito nasce no webhook, e o webhook pode atrasar. Quem
+    // volta ao oráculo antes disso encontra crédito zero e a oferta de comprar de novo a
+    // mesma leitura que acabou de pagar. A assinatura já avisa da mesma latência ("pode
+    // levar alguns segundos para aparecer"); sem o aviso aqui, a compra avulsa diz "você
+    // já pode gerar" sem ressalva e a pessoa não tem por que esperar.
+    mockParams = { session_id: 's1', compra: 'avulso', oraculo };
+    render(<PagamentoSucesso />);
+    expect(screen.getByText(/Pode levar alguns segundos para o crédito aparecer\./)).toBeTruthy();
   });
 
   it.each([
@@ -127,7 +141,7 @@ describe('o produto vem da URL, logo da pessoa', () => {
     expect(screen.getByText('Pagamento confirmado!')).toBeTruthy();
     expect(
       screen.getByText(
-        'Você já pode gerar a leitura que comprou. O direito de gerar vale 90 dias, e a leitura, depois de gerada, fica no seu histórico enquanto sua conta existir.',
+        'Você já pode gerar a leitura que comprou. O direito de gerar vale 90 dias, e a leitura, depois de gerada, fica no seu histórico enquanto sua conta existir. Pode levar alguns segundos para o crédito aparecer.',
       ),
     ).toBeTruthy();
     expect(screen.queryByText(/undefined/)).toBeNull();

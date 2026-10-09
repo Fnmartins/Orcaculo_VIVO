@@ -740,9 +740,39 @@ describe('o checkout avulso devolve a pessoa ao lugar certo', () => {
     // resultado também não serve: ela devolve nulo sem `cidadeId`, `lat` e `lon`, e esses
     // dados não atravessam o checkout.
     expect(avulso).not.toMatch(/cancel_url:\s*`\$\{appBaseUrl\}\/planos`/);
-    expect(avulso).toContain(
-      "cancel_url: `${appBaseUrl}/${oraculo === 'mapa' ? 'mapa-astral' : 'vocacao'}`",
-    );
+    expect(avulso).toContain("cancel_url: `${appBaseUrl}/${ROTA_DO_ORACULO[oraculo] ?? ''}`");
+  });
+
+  it('o destino do cancelamento sai de uma tabela, e não de um ternário sobre `oraculo`', () => {
+    // Um ternário que testa só 'mapa' manda QUALQUER outro produto para `/vocacao`: com
+    // dois vendáveis funciona, e o terceiro cancelaria para o oráculo errado sem um erro
+    // em lugar nenhum. A tabela tem destino explícito por produto, e o que falta nela cai
+    // em `/`, que é verdadeiro para todos.
+    const linha = avulso.split('\n').find((l) => l.includes('cancel_url:'))!;
+    expect(linha).toBeDefined();
+    expect(linha).not.toMatch(/oraculo\s*={2,3}/);
+    expect(linha).not.toMatch(/\s\?\s/);
+    // O fallback é a raiz: sem ele, produto fora da tabela viraria `.../undefined`.
+    expect(linha).toContain("?? ''");
+  });
+
+  it('a tabela de destinos cobre exatamente os produtos vendáveis', () => {
+    // As duas listas moram lado a lado e têm de andar juntas: vendável sem destino cai
+    // na raiz sem aviso, e destino sem vendável é código morto que parece cobertura.
+    const vendaveis = /VENDAVEIS = \[([^\]]*)\]/.exec(avulso)![1].match(/'([^']+)'/g)!;
+    const tabela = /ROTA_DO_ORACULO[^=]*=\s*\{([^}]*)\}/.exec(avulso)![1];
+    const chaves = [...tabela.matchAll(/(\w+):/g)].map((m) => `'${m[1]}'`);
+    expect([...chaves].sort()).toEqual([...vendaveis].sort());
+  });
+
+  it('cada destino da tabela é uma pasta que existe em app/', () => {
+    // Destino digitado errado mandaria a pessoa que desistiu para uma tela inexistente.
+    const tabela = /ROTA_DO_ORACULO[^=]*=\s*\{([^}]*)\}/.exec(avulso)![1];
+    const destinos = [...tabela.matchAll(/\w+:\s*'([^']+)'/g)].map((m) => m[1]);
+    expect(destinos.length).toBeGreaterThan(0);
+    for (const destino of destinos) {
+      expect(existsSync(join(__dirname, '..', 'app', destino, 'index.tsx'))).toBe(true);
+    }
   });
 
   it('a success_url da assinatura não muda: é ela que mantém correto o texto de quem assina', () => {
