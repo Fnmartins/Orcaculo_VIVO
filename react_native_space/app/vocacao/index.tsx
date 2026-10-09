@@ -140,9 +140,10 @@ export default function TelaVocacao() {
   // - Quem tem crédito: volta da Stripe sem plano nenhum. Olhando só `temMapaCompleto`, a
   //   tela seguiria trancada e ainda ofereceria uma segunda compra de um crédito que ela não
   //   deixa gastar.
-  // - Quem gastou: a leitura que pagou mora no servidor e fica para sempre (promessa dos
-  //   Termos). A leitura na tela é estado local, e sair da tela a apaga: com o portão
-  //   fechado, quem já pagou seria convidado a pagar de novo para ver o que já comprou.
+  // - Quem gastou: a leitura que pagou mora no servidor e fica no histórico enquanto a conta
+  //   existir (promessa dos Termos). A leitura na tela é estado local, e sair da tela a
+  //   apaga: com o portão fechado, quem já pagou seria convidado a pagar de novo para ver o
+  //   que já comprou.
   // - Quem falhou: a leitura do crédito caiu, e não sabemos se a pessoa pagou. Esconder o
   //   botão de quem pagou é pior que mostrá-lo a quem não pagou, porque o servidor é o
   //   portão de verdade e recusa (402) quem não tem nada.
