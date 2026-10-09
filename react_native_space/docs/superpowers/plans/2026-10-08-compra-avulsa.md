@@ -714,7 +714,7 @@ git commit -m "feat(avulso): gastar credito avulso quando a cota do plano acabou
 
 **Arquivos:**
 - Criar: `services/avulso.ts`
-- Criar: `services/__tests__/avulso.test.ts`
+- Criar: `services/__tests__/avulso-cliente.test.ts`
 - Criar: `hooks/useCreditoAvulso.ts`
 - Modificar: `app/vocacao/index.tsx`, no bloco da leitura (hoje linhas 282-331)
 - Modificar: `app/mapa-astral/resultado.tsx`, no bloco "O que isso forma junto" (hoje linhas 612-685)
@@ -740,6 +740,22 @@ git commit -m "feat(avulso): gastar credito avulso quando a cota do plano acabou
 >    doze casas — conteúdo de PLANO, que o crédito não libera. O crédito paga
 >    exatamente uma chamada de `ia-interpretacao`. A oferta vai no bloco da
 >    leitura, que é o que ela entrega.
+> 3. **O arquivo de teste colidia com um que já existe.** O texto original mandava
+>    criar `services/__tests__/avulso.test.ts`. Esse nome está ocupado desde a
+>    Task 3 por 167 linhas e 14 testes de `supabase/functions/_shared/avulso.ts`
+>    — o módulo do servidor. Ele vive em `services/__tests__/` porque o Jest do
+>    app é o que testa os módulos compartilhados das Edge Functions, que rodam no
+>    Deno e ficam fora do `tsc`. Escrever por cima apagaria a prova de que o
+>    crédito não é reivindicado duas vezes nem devolvido indevidamente. O teste
+>    desta tarefa passa a se chamar `services/__tests__/avulso-cliente.test.ts`;
+>    `services/avulso.ts` mantém o nome, e o `jest.mock('../supabase', ...)`
+>    continua valendo porque o caminho relativo é o mesmo.
+>
+>    O scan de pré-voo não pegou isto porque o plano **nunca nomeou** o teste da
+>    Task 3 — quem o criou foi o implementador, por conta própria e com razão. A
+>    lição: a tabela de conflitos lida do texto do plano não vê arquivos que as
+>    tarefas criaram além do que o plano pediu. Antes de despachar uma tarefa que
+>    *cria* arquivo, olhar o disco, e não só o plano.
 
 - [ ] **Passo 1: Escrever o teste que falha**
 
@@ -773,7 +789,7 @@ describe('creditosDaPessoa', () => {
 - [ ] **Passo 2: Rodar e ver falhar**
 
 ```bash
-npx jest services/__tests__/avulso.test.ts
+npx jest services/__tests__/avulso-cliente.test.ts
 ```
 
 Esperado: FAIL, módulo não encontrado.
@@ -828,7 +844,7 @@ export async function comprarAvulso(
 - [ ] **Passo 4: Rodar e ver passar**
 
 ```bash
-npx jest services/__tests__/avulso.test.ts
+npx jest services/__tests__/avulso-cliente.test.ts
 ```
 
 Esperado: PASS, 2 testes.
@@ -1013,7 +1029,7 @@ Esperado: sem erro de tipo e suíte inteira verde.
 - [ ] **Passo 9: Commit**
 
 ```bash
-git add services/avulso.ts services/__tests__/avulso.test.ts hooks/useCreditoAvulso.ts app/mapa-astral/resultado.tsx app/vocacao/index.tsx
+git add services/avulso.ts services/__tests__/avulso-cliente.test.ts hooks/useCreditoAvulso.ts app/mapa-astral/resultado.tsx app/vocacao/index.tsx
 git commit -m "feat(avulso): comprar uma leitura sem assinar"
 ```
 
@@ -1101,6 +1117,274 @@ git commit -m "docs(legal): o que a compra avulsa entrega, e quem processa o pag
 
 ---
 
+### Task 9: Quem pagou alcança o que pagou
+
+**Acrescentada em 08/10/2026**, depois que a re-revisão da Task 6 achou uma dívida
+Importante que já existia desde a primeira rodada. Não é refação da Task 6: ela está
+aprovada, com 1099 testes verdes, e esta é uma brecha vizinha, independente e testável
+sozinha.
+
+**O que está furado.** Na vocação, a leitura guardada é lida **depois** do portão e da
+cobrança — decisão deliberada, comentada no código: a chave da vocação é grossa (signos e
+graus de poucas peças), o acerto entre pessoas diferentes é comum, e uma leitura guardada
+antes do portão iria de graça a quem está com o plano vencido. No mapa é o contrário: a
+chave carrega a posição exata de dez corpos, quase não se repete, e o cache fica antes do
+portão.
+
+A consequência: o crédito é reivindicado **antes** de gerar. Se a geração der certo, a
+leitura for guardada e a resposta se perder no caminho — worker morto, rede do celular
+caindo no instante errado — o crédito ficou gasto. Quem tentar de novo, na vocação, leva
+402 no portão **antes** de alcançar a leitura que ele pagou e que já está no banco. No
+mapa não acontece, porque lá o cache vem primeiro.
+
+Perder o que se pagou é o que a spec já proíbe na linha "crédito nunca é consumido quando
+a resposta vem do cache". Este é o caso vizinho: o crédito **foi** consumido, a leitura
+existe, e o comprador não alcança.
+
+**O que esta tarefa NÃO cobre, de propósito.** Se o worker morrer **antes** de guardar a
+leitura, o crédito fica gasto sem nada no banco, e nem este conserto alcança. Autorizar a
+geração nesse caso abriria gerações ilimitadas de graça enquanto a gravação falhasse — uma
+chamada paga à Anthropic por tentativa. O caminho aqui **só serve cache, nunca gera**.
+Esse subcaso raro fica para o dono resolver à mão, e ele tem o dado para isso:
+`compras_avulsas.consumido_chave` guarda exatamente qual leitura gastou qual compra, que é
+o motivo pelo qual a coluna existe.
+
+**Arquivos:**
+- Modificar: `supabase/functions/_shared/avulso.ts`
+- Modificar: `supabase/functions/ia-interpretacao/index.ts`
+- Testar: `services/__tests__/avulso.test.ts` (o do servidor, que já existe, com 14 testes — **acrescente**, não substitua)
+- Testar: `__tests__/validade-nas-functions.test.ts`
+
+**Interfaces:**
+- Consome: a tabela `compras_avulsas` (Task 1) e `chaveDoMapa`, que já vive em `ia-interpretacao/index.ts`.
+- Produz: `creditoJaGastoNesta(cliente, usuarioId, oraculo, chave): Promise<boolean>` em `_shared/avulso.ts`.
+
+- [ ] **Passo 1: Escrever os testes que falham**
+
+Em `services/__tests__/avulso.test.ts`, use o `clienteFalso` que já está no arquivo:
+
+```ts
+describe('creditoJaGastoNesta', () => {
+  it('diz que sim quando existe compra consumida com esta chave', async () => {
+    const { cliente } = clienteFalso({ data: [{ id: 7 }], error: null });
+    await expect(creditoJaGastoNesta(cliente, 'u1', 'vocacao', 'ch1')).resolves.toBe(true);
+  });
+
+  it('diz que nao quando nao ha nenhuma', async () => {
+    const { cliente } = clienteFalso({ data: [], error: null });
+    await expect(creditoJaGastoNesta(cliente, 'u1', 'vocacao', 'ch1')).resolves.toBe(false);
+  });
+
+  it('falha de leitura responde NAO, e nao sim', async () => {
+    // Falhar para "sim" entregaria leitura guardada a quem o portao barraria.
+    // Falhar para "nao" só mantém a recusa que a pessoa já teria tido.
+    const { cliente } = clienteFalso({ data: null, error: { message: 'x' } });
+    await expect(creditoJaGastoNesta(cliente, 'u1', 'vocacao', 'ch1')).resolves.toBe(false);
+  });
+
+  it('casa pessoa, oraculo E chave, e exige consumo', async () => {
+    const { cliente, chamadas } = clienteFalso({ data: [], error: null });
+    await creditoJaGastoNesta(cliente, 'u1', 'vocacao', 'ch1');
+    const eq = chamadas.filter((c) => c.metodo === 'eq').map((c) => c.args);
+    expect(eq).toEqual([['usuario_id', 'u1'], ['oraculo', 'vocacao'], ['consumido_chave', 'ch1']]);
+    // Sem isto, um credito ainda NAO gasto daria direito a leitura de graca.
+    expect(chamadas.some((c) => c.metodo === 'not')).toBe(true);
+  });
+});
+```
+
+Acrescente `creditoJaGastoNesta` ao `import` no topo do arquivo. O tipo `Metodo` do
+`clienteFalso` precisa ganhar `'not'`; se o falso não tiver `not`, acrescente seguindo a
+forma dos outros métodos encadeáveis.
+
+Em `__tests__/validade-nas-functions.test.ts`:
+
+```ts
+  it('o direito de quem ja pagou e conferido ANTES do portao', () => {
+    // Depois do portao nao serve para nada: o 402 ja teria voltado.
+    const direito = interp.indexOf('creditoJaGastoNesta(');
+    const portao = interp.indexOf('!vereditoContornavel');
+    expect(direito).toBeGreaterThan(-1);
+    expect(portao).toBeGreaterThan(-1);
+    expect(direito).toBeLessThan(portao);
+  });
+
+  it('o caminho de quem ja pagou nunca gera, so devolve o guardado', () => {
+    // Autorizar geracao ali abriria chamada paga ilimitada enquanto a gravacao
+    // falhasse. Entre a conferencia do direito e o seu return nao entra Anthropic.
+    const direito = interp.indexOf('creditoJaGastoNesta(');
+    const geracao = interp.indexOf('anthropic.messages.create');
+    expect(interp.slice(direito, geracao)).not.toContain('anthropic.messages.create');
+  });
+```
+
+- [ ] **Passo 2: Rodar e ver falhar**
+
+```bash
+npx jest services/__tests__/avulso.test.ts __tests__/validade-nas-functions.test.ts
+```
+
+Esperado: FAIL nos seis novos. Os 14 que já estavam ali continuam passando.
+
+- [ ] **Passo 3: A pergunta ao banco**
+
+No fim de `supabase/functions/_shared/avulso.ts`:
+
+```ts
+/**
+ * Esta pessoa já gastou um crédito NESTA leitura exata?
+ *
+ * Existe por causa de um furo estreito: o crédito é reivindicado antes de gerar, e
+ * se a resposta se perder depois de a leitura ser guardada, o comprador de vocação
+ * leva 402 no portão antes de alcançar o que pagou — porque na vocação o cache é
+ * lido depois do portão, de propósito.
+ *
+ * Não abre nada para mais ninguém. O direito é da COMPRA, casado com a chave que
+ * ela gastou, e a chave sai dos dados de nascimento da própria pessoa.
+ *
+ * **Falha de leitura responde `false`.** Responder `true` entregaria leitura
+ * guardada a quem o portão barraria; responder `false` só mantém a recusa que a
+ * pessoa já teria tido de qualquer jeito.
+ */
+export async function creditoJaGastoNesta(
+  cliente: ClienteSupabase,
+  usuarioId: string,
+  oraculo: string,
+  chave: string,
+): Promise<boolean> {
+  const { data, error } = await cliente
+    .from('compras_avulsas')
+    .select('id')
+    .eq('usuario_id', usuarioId)
+    .eq('oraculo', oraculo)
+    .eq('consumido_chave', chave)
+    // Gasto, e não apenas comprado: um crédito ainda disponível daria direito a
+    // leitura de graça e seguiria valendo, o que é cobrar zero por duas.
+    .not('consumido_em', 'is', null)
+    .limit(1);
+  if (error) {
+    console.error('falha ao conferir credito ja gasto', error.message);
+    return false;
+  }
+  return Array.isArray(data) && data.length > 0;
+}
+```
+
+Use o mesmo tipo de cliente que as outras funções deste arquivo já recebem — não
+introduza um tipo novo.
+
+- [ ] **Passo 4: Extrair a leitura do guardado**
+
+Hoje `ia-interpretacao/index.ts` lê `interpretacoes_mapa` em dois lugares, com o mesmo
+bloco de oito linhas: contar reuso e devolver com `doCache: true`. Esta tarefa
+acrescentaria um terceiro. Extraia **uma** função no próprio arquivo, acima do handler, e
+faça os dois pontos existentes passarem a usá-la:
+
+```ts
+/**
+ * A leitura já escrita, se existir, com o contador de reuso somado.
+ *
+ * Uma função, e não o bloco repetido: eram dois pontos iguais e esta tarefa traria o
+ * terceiro. Três cópias de "conta o reuso e devolve" é onde uma delas para de contar
+ * sem ninguém notar.
+ */
+async function lerGuardada(
+  cliente: ReturnType<typeof createClient>,
+  chave: string,
+): Promise<Record<string, unknown> | null> {
+  const { data, error } = await cliente
+    .from('interpretacoes_mapa').select('conteudo, usos').eq('chave', chave).maybeSingle();
+  if (error) {
+    console.error('falha ao ler interpretacao guardada', error.message);
+    return null;
+  }
+  if (!data?.conteudo) return null;
+  const usos = typeof data.usos === 'number' ? data.usos : 1;
+  const { error: erroContar } = await cliente
+    .from('interpretacoes_mapa').update({ usos: usos + 1 }).eq('chave', chave);
+  if (erroContar) console.error('falha ao contar reuso', erroContar.message);
+  return data.conteudo as Record<string, unknown>;
+}
+```
+
+Se o tipo do cliente não casar, use o mesmo tipo que `creditoDisponivel` recebe em
+`_shared/avulso.ts`. Ao trocar os dois pontos existentes, **não mude o que eles
+devolvem**: os dois respondem `resposta({ ...conteudo, oraculo, doCache: true })`, e a
+suíte tem teste que depende de `doCache: true` aparecer antes do ponto de reivindicação.
+
+- [ ] **Passo 5: Conferir o direito antes do portão**
+
+Duas mudanças em `ia-interpretacao/index.ts`. Primeiro, suba o cálculo da chave da
+vocação para antes do portão — `chaveDoMapa` é hash de texto, calcular mais cedo não muda
+nada — e tire a atribuição de dentro do bloco de vocação, que passa a usar a chave já
+calculada:
+
+```ts
+  // A chave da vocação sai daqui para cima porque o direito de quem já pagou é
+  // conferido ANTES do portão. O prefixo entra no TEXTO que vira hash, e não na
+  // função: assim as chaves de mapa já guardadas continuam valendo, e uma vocação
+  // nunca cai na linha de um mapa.
+  if (oraculo === 'vocacao') {
+    chave = await chaveDoMapa(`vocacao:${dados}`);
+  }
+```
+
+Depois, logo antes de `const recusaDoVeredito = ...`, o caminho de quem já pagou:
+
+```ts
+  // Quem já gastou um crédito NESTA leitura alcança ela sempre, mesmo barrado pelo
+  // portão. Sem isto, o comprador de vocação cuja resposta se perdeu depois de a
+  // leitura ser guardada leva 402 antes de chegar ao cache: o crédito foi gasto, a
+  // leitura está no banco, e ele não alcança o que pagou.
+  //
+  // Só serve o guardado, e nunca gera: autorizar geração aqui abriria chamada paga
+  // ilimitada enquanto a gravação falhasse. Se não houver leitura guardada, este
+  // caminho não faz nada e a requisição segue para o portão normal.
+  if (oraculo === 'vocacao'
+      && await creditoJaGastoNesta(supabaseAdmin, usuarioId, oraculo, chave)) {
+    const guardada = await lerGuardada(supabaseAdmin, chave);
+    if (guardada) return resposta({ ...guardada, oraculo, doCache: true });
+  }
+```
+
+Acrescente `creditoJaGastoNesta` ao `import` de `'../_shared/avulso.ts'` que já existe no
+topo. **Não** mexa no portão, na cobrança, na reivindicação nem no `finally`: este caminho
+devolve antes de todos eles, e é por isso que ele não precisa de nenhuma guarda a mais lá
+embaixo.
+
+- [ ] **Passo 6: Rodar tudo**
+
+```bash
+npx jest
+npx tsc --noEmit
+node scripts/conferir-functions.js
+```
+
+Esperado: suíte inteira verde, sem erro de tipo, sintaxe das functions ok. Confira que o
+total de testes **subiu** em relação a antes: se algum dos 14 testes antigos de
+`avulso.test.ts` desapareceu, você substituiu em vez de acrescentar.
+
+- [ ] **Passo 7: Mutar e ver vermelho**
+
+Antes de dizer que terminou, quebre cada coisa de propósito e confirme que algo acusa:
+
+1. `creditoJaGastoNesta` devolvendo `true` no erro de leitura.
+2. A conferência do direito movida para **depois** do portão.
+3. O `.not('consumido_em', 'is', null)` removido.
+4. O `return` do caminho de quem já pagou trocado por deixar seguir.
+
+Se alguma dessas ficar verde, o teste que faltava é o que você escreve. Relate as quatro
+no relatório, com o número de vermelhos de cada.
+
+- [ ] **Passo 8: Commit**
+
+```bash
+git add supabase/functions/_shared/avulso.ts supabase/functions/ia-interpretacao/index.ts services/__tests__/avulso.test.ts __tests__/validade-nas-functions.test.ts
+git commit -m "fix(avulso): quem pagou alcanca a leitura guardada mesmo barrado"
+```
+
+---
+
 ## O que o dono faz, e o plano não
 
 1. **Rodar `supabase/compra-avulsa.sql`** no editor SQL do Supabase.
@@ -1111,9 +1395,17 @@ git commit -m "docs(legal): o que a compra avulsa entrega, e quem processa o pag
 
 ## Autorrevisão
 
-**Cobertura da spec.** Tabela própria com UNIQUE: Task 1. Precedência: Tasks 2 e 6. Não gastar em cache: Task 6, com teste de ordem. Checkout `mode: payment`: Task 4. Ramificação do webhook: Task 5. Telas de compra: Task 7. Termos: Task 8. Validade de 90 dias: Tasks 1 e 5.
+**Cobertura da spec.** Tabela própria com UNIQUE: Task 1. Precedência: Tasks 2 e 6. Não gastar em cache: Task 6, com teste de ordem. Checkout `mode: payment`: Task 4. Ramificação do webhook: Task 5. Telas de compra: Task 7. Termos: Task 8. Validade de 90 dias: Tasks 1 e 5. Alcançar a leitura já paga quando o crédito já foi gasto nela: Task 9.
 
 **Lacuna conhecida:** a spec cita uma lista de compras no Perfil, e este plano não a implementa. `creditosDaPessoa` já entrega o dado; a listagem é trabalho de tela sem risco e cabe melhor numa entrega própria. Fica registrado em vez de fingir que foi coberto.
+
+**Lacunas que as revisões acharam e que ficam registradas, não consertadas** *(08/10/2026)*:
+
+1. **Crédito gasto com o worker morto ANTES de guardar a leitura.** A Task 9 cobre o caso em que a leitura foi guardada e a resposta se perdeu. Se nada foi guardado, o crédito queima sem entrega, e autorizar a geração nesse caso abriria chamada paga ilimitada enquanto a gravação falhasse. O dono tem o dado para resolver à mão: `compras_avulsas.consumido_chave` casa cada venda com a leitura que a gastou.
+2. **`reivindicarCredito` devolve `false` em erro de transporte mesmo se o `UPDATE` gravou**, e quem chama trata como corrida perdida — o crédito queima sem nada gerado. Consertar pede mudar o contrato de `_shared/avulso.ts` para distinguir "perdi a corrida" de "pode ter gravado"; a revisão classificou como Menor.
+3. **`decidirAcesso` como função pura.** As decisões de acesso de `ia-interpretacao` continuam em linha no handler, vigiadas por testes que leem o código-fonte como texto. Recusado de propósito durante a execução — refatorar o caminho do dinheiro com tarefas restantes — e o revisor observou o argumento mais forte a favor: a tabela de acesso que ele gerou executando as funções reais só existe como script de scratchpad, e extrair as decisões é o que a transformaria em teste. Vale para depois do merge.
+4. **O interruptor do dono barra o comprador com a mensagem errada.** `recursoLigado` vale para o plano da pessoa e o crédito é por produto. Hoje `interpretacao_ligada` é `true` para `gratuito` (`supabase/perguntas.sql:92-96`), então ninguém é afetado. Virou guarda operacional, na segunda emenda da Task 6: não desligar esse interruptor enquanto a venda avulsa estiver no ar.
+5. **A Política de Privacidade não declara o provedor de IA** entre quem recebe dados, embora as leituras mandem data de nascimento, perguntas escritas e fotos para lá. É mais grave que o nome do processador de pagamento que a Task 8 conserta, mas é juízo jurídico do dono e entrega própria — transferência internacional, base legal, e se foto de mão conta como dado sensível.
 
 **Sem placeholders.** Todo passo de código traz o código. Os dois lugares que mandam *ler antes de escrever* (Tasks 4 e 6) são instrução, não vaguidão: no primeiro, copiar o bloco de customer de memória duplica cliente na Stripe; no segundo, a ordem entre validade e cota é garantida por teste existente.
 
