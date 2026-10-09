@@ -148,7 +148,7 @@ describe('compra avulsa no resultado do mapa astral', () => {
   it('diz o prazo do direito e que a leitura gerada fica, antes de a pessoa pagar', () => {
     render(<TelaMapaAstralResultado />);
     expect(screen.getByText(/O direito de gerar vale 90 dias/)).toBeTruthy();
-    expect(screen.getByText(/depois de gerada, fica para sempre/)).toBeTruthy();
+    expect(screen.getByText(/depois de gerada, fica no seu histórico enquanto sua conta existir/)).toBeTruthy();
   });
 
   it('com consulta para gastar, não oferece a compra', () => {

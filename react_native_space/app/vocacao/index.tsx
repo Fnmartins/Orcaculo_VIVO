@@ -192,7 +192,7 @@ export default function TelaVocacao() {
         </Text>
       </Pressable>
       <Text style={estilos.emConstrucaoTexto}>
-        O direito de gerar vale 90 dias. A leitura, depois de gerada, fica para sempre.
+        O direito de gerar vale 90 dias. A leitura, depois de gerada, fica no seu histórico enquanto sua conta existir.
       </Text>
     </>
   );

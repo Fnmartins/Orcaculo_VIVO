@@ -23,13 +23,13 @@ export default function TelaPrivacidade() {
             'Dados de cadastro: nome e e-mail informados na criação da conta.',
             'Dados de uso: histórico de consultas e leituras, preferências, intenções e progresso dentro do aplicativo.',
             'Conteúdo opcional que você fornece: foto de perfil e imagens enviadas para funcionalidades específicas (por exemplo, análises que dependem de imagem).',
-            'Dados de pagamento: quando você contrata um plano ou compra um item avulso, o pagamento é processado pela Stripe. Não coletamos nem armazenamos os dados do seu cartão — recebemos apenas a confirmação e a situação da transação.',
+            'Dados de pagamento: quando você contrata um plano ou compra um item avulso, o pagamento é processado pela Stripe. Não coletamos nem armazenamos os dados do seu cartão. Recebemos apenas a confirmação e a situação da transação.',
           ],
         },
         {
           titulo: 'Como usamos os dados',
           paragrafos: [
-            'Usamos seus dados para: criar e manter sua conta; oferecer e personalizar as experiências do aplicativo; registrar seu histórico; processar pagamentos e liberar os planos; enviar comunicações essenciais (como confirmação de e-mail e recuperação de senha); e melhorar e proteger o serviço.',
+            'Usamos seus dados para: criar e manter sua conta; oferecer e personalizar as experiências do aplicativo; registrar seu histórico; processar pagamentos e liberar os planos e as compras avulsas; enviar comunicações essenciais (como confirmação de e-mail e recuperação de senha); e melhorar e proteger o serviço.',
             'A base legal para esses tratamentos é a execução do contrato com você, o cumprimento de obrigações legais e o legítimo interesse, conforme o caso.',
           ],
         },

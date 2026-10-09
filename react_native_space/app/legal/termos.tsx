@@ -50,8 +50,8 @@ export default function TelaTermos() {
           titulo: 'Compra avulsa',
           paragrafos: [
             'Além dos planos, alguns conteúdos podem ser comprados individualmente. A compra avulsa dá direito a gerar UMA leitura do item comprado, na sua conta.',
-            'O direito de gerar essa leitura vale por 90 (noventa) dias a partir da confirmação do pagamento. A leitura já gerada permanece no seu histórico por tempo indeterminado, independentemente desse prazo.',
-            'Se você tiver um plano ativo com consultas disponíveis, elas são usadas antes do crédito avulso — o crédito comprado fica guardado para quando as consultas do plano acabarem.',
+            'O direito de gerar essa leitura vale por 90 (noventa) dias a partir da confirmação do pagamento. A leitura já gerada permanece no seu histórico enquanto sua conta existir, independentemente desse prazo.',
+            'Se você tiver um plano ativo com consultas disponíveis, elas são usadas antes do crédito avulso. O crédito comprado fica guardado para quando as consultas do plano acabarem.',
             'O direito de arrependimento de 7 (sete) dias previsto no Código de Defesa do Consumidor se aplica à compra avulsa. Caso a leitura já tenha sido gerada, entre em contato para tratarmos o caso.',
           ],
         },
@@ -60,6 +60,7 @@ export default function TelaTermos() {
           paragrafos: [
             'Você pode cancelar um plano a qualquer momento; o cancelamento encerra a renovação seguinte, mantendo o acesso até o fim do período já pago.',
             'Nos termos do Código de Defesa do Consumidor, você pode solicitar o cancelamento com reembolso em até 7 (sete) dias corridos a partir da contratação (direito de arrependimento). Para isso, entre em contato conosco pelo e-mail informado ao final.',
+            'As regras acima valem para planos e assinaturas. Para compras avulsas, o arrependimento está descrito na seção "Compra avulsa".',
           ],
         },
         {

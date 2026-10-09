@@ -608,7 +608,7 @@ describe('compra avulsa na vocação', () => {
   it('diz o prazo do direito e que a leitura gerada fica, antes de a pessoa pagar', () => {
     renderComPlano({ temAcesso: false });
     expect(screen.getByText(/O direito de gerar vale 90 dias/)).toBeTruthy();
-    expect(screen.getByText(/depois de gerada, fica para sempre/)).toBeTruthy();
+    expect(screen.getByText(/depois de gerada, fica no seu histórico enquanto sua conta existir/)).toBeTruthy();
   });
 
   it('tocar em comprar pede o checkout da vocação e abre o endereço que voltou', async () => {
