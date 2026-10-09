@@ -18,9 +18,19 @@ export interface CreditoAvulso {
    * já se comprou, e na vocação não pode esconder o botão de quem talvez tenha pago.
    */
   falhou: boolean;
+  /**
+   * Ainda não chegou a PRIMEIRA resposta. Antes dela o hook não sabe nada, e "zero crédito"
+   * seria um palpite: quem já comprou veria a oferta de compra por uma ida ao banco, e dois
+   * toques ali comprariam de novo. A tela não oferece compra enquanto `lendo`.
+   *
+   * Verdadeiro só até a primeira resposta, certa ou errada, e nunca mais: uma releitura (foco
+   * ou volta do navegador) não o liga de novo. Se ligasse, a oferta sumiria e reapareceria na
+   * cara de quem está lendo a tela. Durante a releitura vale o que a leitura anterior trouxe.
+   */
+  lendo: boolean;
 }
 
-const SEM_LEITURA: CreditoAvulso = { credito: 0, gastou: false, falhou: false };
+const SEM_LEITURA: CreditoAvulso = { credito: 0, gastou: false, falhou: false, lendo: true };
 
 /**
  * O que a pessoa tem de compra avulsa DESTE produto.
@@ -55,12 +65,13 @@ export function useCreditoAvulso(oraculo: 'mapa' | 'vocacao'): CreditoAvulso {
               credito: c.porOraculo[oraculo] ?? 0,
               gastou: (c.consumidasPorOraculo[oraculo] ?? 0) > 0,
               falhou: c.falhou,
+              lendo: false,
             });
           })
           // Sem isto, uma rejeição vira erro não tratado e derruba a tela. Rejeitar é falha de
           // leitura, igual a qualquer outra: `falhou`, e não "zero".
           .catch(() => {
-            if (vivo) setEstado({ ...SEM_LEITURA, falhou: true });
+            if (vivo) setEstado({ ...SEM_LEITURA, falhou: true, lendo: false });
           });
       };
 

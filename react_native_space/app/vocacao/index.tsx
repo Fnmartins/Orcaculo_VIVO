@@ -56,8 +56,8 @@ const SECOES: { chave: 'ondeRende' | 'ambiente' | 'drena' | 'passo'; rotulo: str
 
 export default function TelaVocacao() {
   const { perfil, carregando } = useAuth();
-  const { temAcesso } = usePlano();
-  const { credito, gastou, falhou } = useCreditoAvulso('vocacao');
+  const { temAcesso, podeFazerConsulta } = usePlano();
+  const { credito, gastou, falhou, lendo } = useCreditoAvulso('vocacao');
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -149,9 +149,16 @@ export default function TelaVocacao() {
   const leituraAberta = temMapaCompleto || credito > 0 || gastou || falhou;
 
   // A compra se oferece a quem não tem plano nem crédito, e a quem já gastou um crédito: quem
-  // quer a leitura de outros dados de nascimento precisa poder comprar de novo. Nunca na
-  // falha: não se convida a comprar sem saber se já se comprou.
-  const ofertarAvulso = !temMapaCompleto && credito === 0 && !falhou;
+  // quer a leitura de outros dados de nascimento precisa poder comprar de novo. Nunca antes
+  // de saber (`lendo`) nem na falha: não se convida a comprar sem saber se já se comprou, e
+  // dois toques nessa janela comprariam de novo. O portão acima NÃO espera a leitura: ele
+  // abre quando a resposta chega, e um piscar de cartão trancado custa menos que uma oferta
+  // que a pessoa já aceitou.
+  const ofertarAvulso = !temMapaCompleto && credito === 0 && !falhou && !lendo;
+
+  // O semáforo não chuta: sem saber do crédito (ainda lendo, ou a leitura falhou), não diz
+  // nada, em vez de acusar acesso vencido a quem pode ter acabado de pagar.
+  const creditoDoSemaforo = lendo || falhou ? 'desconhecido' : credito;
 
   // Dois toques seguidos abririam dois checkouts, e isso é dinheiro. O botão fica desabilitado
   // enquanto o pagamento abre, como `carregandoIA` faz com o botão da leitura.
@@ -355,16 +362,18 @@ export default function TelaVocacao() {
                   </View>
                 ) : leituraAberta ? (
                   <>
-                    <SemaforoUso tipo="interpretacao" rotulo="Aprofundamentos" creditoAvulso={credito} />
+                    <SemaforoUso tipo="interpretacao" rotulo="Aprofundamentos" creditoAvulso={creditoDoSemaforo} />
                     <Text style={estilos.secaoSubtitulo}>
                       Acima está o que o seu mapa mostra. Aqui está a leitura: o que isso diz sobre
                       onde você tende a render, o que te sustenta, o que desgasta e um passo concreto.
                     </Text>
                     {erroIA && <Text style={estilos.avisoHonesto}>{erroIA}</Text>}
                     {/* O botão abaixo gasta o crédito, e quem o toca tem de saber disso
-                        antes. Só sem plano: com plano o servidor gasta a cota do plano
-                        primeiro, e a frase seria falsa. */}
-                    {credito > 0 && !temMapaCompleto ? (
+                        antes. Só quando o servidor vai cobrar do crédito: com cota no plano
+                        ele gasta a cota primeiro, e a frase seria falsa. `podeFazerConsulta`
+                        é a aproximação dessa precedência que o app já usa (a mesma do
+                        mapa), e não uma conta nova. */}
+                    {credito > 0 && !podeFazerConsulta() ? (
                       <Text style={estilos.avisoHonesto}>
                         Ler agora usa uma das suas leituras avulsas.
                       </Text>
@@ -401,7 +410,7 @@ export default function TelaVocacao() {
                     >
                       <Text style={estilos.botaoPlanosTexto}>Ver os planos</Text>
                     </Pressable>
-                    {ofertaAvulso}
+                    {ofertarAvulso ? ofertaAvulso : null}
                   </View>
                 )}
               </Animated.View>

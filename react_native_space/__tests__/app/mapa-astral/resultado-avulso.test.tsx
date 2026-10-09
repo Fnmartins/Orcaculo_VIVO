@@ -60,9 +60,10 @@ jest.mock('../../../hooks/usePlano', () => ({
 // vocação a quem não tem nenhum de mapa e conferir que a tela não confunde os dois.
 let mockCreditos: Record<string, number> = {};
 let mockFalhou = false;
+let mockLendo = false;
 jest.mock('../../../hooks/useCreditoAvulso', () => ({
   useCreditoAvulso: (oraculo: string) => ({
-    credito: mockCreditos[oraculo] ?? 0, gastou: false, falhou: mockFalhou,
+    credito: mockCreditos[oraculo] ?? 0, gastou: false, falhou: mockFalhou, lendo: mockLendo,
   }),
 }));
 
@@ -118,6 +119,7 @@ beforeEach(() => {
   mockPodeConsultar = false;
   mockCreditos = {};
   mockFalhou = false;
+  mockLendo = false;
   mockMoeda = 'brl';
   mockComprar.mockResolvedValue('https://checkout.stripe.com/c/pay/cs_teste');
   abrirURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
@@ -197,6 +199,50 @@ describe('compra avulsa no resultado do mapa astral', () => {
     expect(screen.queryByText(/O direito de gerar vale 90 dias/)).toBeNull();
     // A leitura continua à mão: o servidor é quem decide se ela sai.
     expect(screen.getByText(/Ler a minha combinação/)).toBeTruthy();
+  });
+
+  it('enquanto a primeira leitura do crédito não chega, não convida a comprar', () => {
+    // Antes da resposta a tela não sabe se a pessoa já comprou, e dois toques nessa janela
+    // comprariam de novo. A trava de toque duplo não cobre isto: o problema é a oferta estar
+    // na tela antes de sabermos.
+    mockLendo = true;
+    render(<TelaMapaAstralResultado />);
+    expect(screen.queryByText(OFERTA)).toBeNull();
+    expect(screen.queryByText(/O direito de gerar vale 90 dias/)).toBeNull();
+    // A leitura segue à mão: o servidor decide.
+    expect(screen.getByText(/Ler a minha combinação/)).toBeTruthy();
+  });
+
+  it('quando a resposta chega sem crédito, a oferta aparece', () => {
+    mockLendo = true;
+    const { rerender } = render(<TelaMapaAstralResultado />);
+    expect(screen.queryByText(OFERTA)).toBeNull();
+
+    mockLendo = false;
+    rerender(<TelaMapaAstralResultado />);
+    expect(screen.getByText(OFERTA)).toBeTruthy();
+  });
+
+  it('o semáforo recebe o crédito só quando se sabe dele', () => {
+    mockCreditos = { mapa: 2 };
+    render(<TelaMapaAstralResultado />);
+    expect(mockSemaforo).toHaveBeenLastCalledWith(expect.objectContaining({ creditoAvulso: 2 }));
+  });
+
+  it('enquanto lê, o semáforo recebe "desconhecido": não acusa acesso vencido a quem pode ter pago', () => {
+    mockLendo = true;
+    render(<TelaMapaAstralResultado />);
+    expect(mockSemaforo).toHaveBeenLastCalledWith(
+      expect.objectContaining({ creditoAvulso: 'desconhecido' }),
+    );
+  });
+
+  it('se a leitura falhou, o semáforo recebe "desconhecido"', () => {
+    mockFalhou = true;
+    render(<TelaMapaAstralResultado />);
+    expect(mockSemaforo).toHaveBeenLastCalledWith(
+      expect.objectContaining({ creditoAvulso: 'desconhecido' }),
+    );
   });
 
   it('o botão de comprar é texto puro: sem a borda dos botões de assinatura', () => {

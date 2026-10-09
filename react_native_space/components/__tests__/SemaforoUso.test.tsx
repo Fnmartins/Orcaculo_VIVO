@@ -182,3 +182,77 @@ describe('o crédito avulso no lugar do cadeado', () => {
     expect(await screen.findByText('Aprofundamentos: 4 de 5 ainda hoje.')).toBeTruthy();
   });
 });
+
+/**
+ * `'desconhecido'`: ainda não leu o crédito, ou a leitura falhou. No lugar do cadeado o
+ * semáforo não diz nada, porque o cadeado afirmaria "acesso terminou" a quem pode ter acabado
+ * de pagar. Só o ramo do cadeado muda; e sem a prop, nada muda para quem não conhece a compra.
+ */
+describe('crédito avulso desconhecido', () => {
+  it('no lugar do cadeado, não renderiza nada', () => {
+    perfil().plano_valido_ate = null;
+    render(<SemaforoUso tipo="interpretacao" rotulo="Aprofundamentos" creditoAvulso="desconhecido" />);
+    expect(screen.toJSON()).toBeNull();
+    expect(screen.queryByLabelText('Acesso vencido')).toBeNull();
+    expect(screen.queryByText(/acesso terminou/)).toBeNull();
+    expect(screen.queryByText(/leitura avulsa|leituras avulsas/)).toBeNull();
+  });
+
+  it('com o acesso vencido por plano que terminou, também não renderiza nada', () => {
+    perfil().plano = 'iniciante';
+    perfil().plano_valido_ate = '2020-01-01T00:00:00Z';
+    render(<SemaforoUso tipo="interpretacao" rotulo="Aprofundamentos" creditoAvulso="desconhecido" />);
+    expect(screen.toJSON()).toBeNull();
+  });
+
+  it('com acesso, o semáforo segue mostrando o número do dia', async () => {
+    // Só o ramo do cadeado é afetado.
+    perfil().plano_valido_ate = '2099-01-01T00:00:00Z';
+    mockLerUso.mockResolvedValueOnce({ ligado: true, usadoHoje: 1, limiteDia: 5 });
+    render(<SemaforoUso tipo="interpretacao" rotulo="Aprofundamentos" creditoAvulso="desconhecido" />);
+    expect(await screen.findByText('Aprofundamentos: 4 de 5 ainda hoje.')).toBeTruthy();
+  });
+
+  it('recurso desligado para o plano: o aviso segue dito', async () => {
+    perfil().plano_valido_ate = '2099-01-01T00:00:00Z';
+    mockLerUso.mockResolvedValueOnce({ ligado: false, usadoHoje: 0, limiteDia: null });
+    render(<SemaforoUso tipo="interpretacao" rotulo="Aprofundamentos" creditoAvulso="desconhecido" />);
+    expect(await screen.findByText('Aprofundamentos não está no seu plano.')).toBeTruthy();
+  });
+
+  it('sem sessão, nada muda: continua sem renderizar', () => {
+    mockSessao = null;
+    perfil().plano_valido_ate = null;
+    render(<SemaforoUso tipo="interpretacao" rotulo="Aprofundamentos" creditoAvulso="desconhecido" />);
+    expect(screen.toJSON()).toBeNull();
+  });
+});
+
+describe('sem a prop `creditoAvulso`, nada muda (as outras telas não a passam)', () => {
+  it('o cadeado aparece, com a data, como sempre', () => {
+    perfil().plano_valido_ate = '2025-10-10T15:00:00Z';
+    render(<SemaforoUso tipo="interpretacao" rotulo="Aprofundamentos" />);
+    expect(screen.getByLabelText('Acesso vencido')).toBeTruthy();
+    expect(screen.getByText(/10\/10/)).toBeTruthy();
+  });
+
+  it('o cadeado ainda leva aos planos', () => {
+    perfil().plano_valido_ate = null;
+    render(<SemaforoUso tipo="voz" rotulo="Leituras faladas" />);
+    fireEvent.press(screen.getByLabelText('Acesso vencido'));
+    expect(mockPush).toHaveBeenCalledWith('/planos');
+  });
+
+  it('`undefined` explícito é o mesmo que ausente', () => {
+    perfil().plano_valido_ate = null;
+    render(<SemaforoUso tipo="interpretacao" rotulo="Aprofundamentos" creditoAvulso={undefined} />);
+    expect(screen.getByLabelText('Acesso vencido')).toBeTruthy();
+  });
+
+  it('o semáforo com número segue igual, sem a prop', async () => {
+    perfil().plano_valido_ate = '2099-01-01T00:00:00Z';
+    mockLerUso.mockResolvedValueOnce({ ligado: true, usadoHoje: 2, limiteDia: 5 });
+    render(<SemaforoUso tipo="pergunta" rotulo="Perguntas" />);
+    expect(await screen.findByText('Perguntas: 3 de 5 ainda hoje.')).toBeTruthy();
+  });
+});

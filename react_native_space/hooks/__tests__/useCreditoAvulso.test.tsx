@@ -56,9 +56,9 @@ beforeEach(() => {
 afterEach(() => { escuta.mockRestore(); });
 
 describe('useCreditoAvulso', () => {
-  it('começa sem nada: sem ter lido, não afirma crédito nem falha', () => {
+  it('começa sem nada: sem ter lido, não afirma crédito nem falha, e diz que está lendo', () => {
     const { result } = renderHook(() => useCreditoAvulso('vocacao'));
-    expect(result.current).toEqual({ credito: 0, gastou: false, falhou: false });
+    expect(result.current).toEqual({ credito: 0, gastou: false, falhou: false, lendo: true });
     expect(mockCreditos).not.toHaveBeenCalled();
   });
 
@@ -85,7 +85,9 @@ describe('useCreditoAvulso', () => {
     mockCreditos.mockResolvedValue(leitura({ consumidasPorOraculo: { vocacao: 2 } }));
     const vocacao = renderHook(() => useCreditoAvulso('vocacao'));
     await ganharFoco();
-    expect(vocacao.result.current).toEqual({ credito: 0, gastou: true, falhou: false });
+    expect(vocacao.result.current).toEqual({
+      credito: 0, gastou: true, falhou: false, lendo: false,
+    });
 
     // Gastar um crédito de vocação não reabre a leitura de mapa.
     const mapa = renderHook(() => useCreditoAvulso('mapa'));
@@ -97,7 +99,7 @@ describe('useCreditoAvulso', () => {
     mockCreditos.mockResolvedValue(leitura({ falhou: true }));
     const { result } = renderHook(() => useCreditoAvulso('vocacao'));
     await ganharFoco();
-    expect(result.current).toEqual({ credito: 0, gastou: false, falhou: true });
+    expect(result.current).toEqual({ credito: 0, gastou: false, falhou: true, lendo: false });
   });
 
   it('serviço que rejeita não derruba a tela: vira `falhou`', async () => {
@@ -105,7 +107,7 @@ describe('useCreditoAvulso', () => {
     mockCreditos.mockRejectedValue(new Error('rede caiu'));
     const { result } = renderHook(() => useCreditoAvulso('vocacao'));
     await ganharFoco();
-    expect(result.current).toEqual({ credito: 0, gastou: false, falhou: true });
+    expect(result.current).toEqual({ credito: 0, gastou: false, falhou: true, lendo: false });
   });
 
   it('relê ao ganhar foco de novo: quem volta da Stripe vê o crédito recém-comprado', async () => {
@@ -213,5 +215,63 @@ describe('useCreditoAvulso quando o app volta do navegador', () => {
     await ganharFoco();
     await ganharFoco();
     expect(result.current.credito).toBe(2);
+  });
+});
+
+/**
+ * `lendo` é verdadeiro até a PRIMEIRA resposta e nunca mais. Antes dela o hook não sabe se a
+ * pessoa já comprou, e a tela não pode oferecer compra. Depois, uma releitura não o liga de
+ * novo: a oferta sumiria e reapareceria na cara de quem está lendo a tela.
+ */
+describe('useCreditoAvulso: o estado `lendo`', () => {
+  it('fica verdadeiro enquanto a primeira resposta não chega', async () => {
+    mockCreditos.mockReturnValue(new Promise(() => {}));
+    const { result } = renderHook(() => useCreditoAvulso('vocacao'));
+    await ganharFoco();
+    expect(result.current.lendo).toBe(true);
+  });
+
+  it('vira falso com a primeira resposta', async () => {
+    mockCreditos.mockResolvedValue(leitura());
+    const { result } = renderHook(() => useCreditoAvulso('vocacao'));
+    await ganharFoco();
+    expect(result.current.lendo).toBe(false);
+  });
+
+  it('vira falso também quando a primeira resposta é falha', async () => {
+    mockCreditos.mockResolvedValue(leitura({ falhou: true }));
+    const { result } = renderHook(() => useCreditoAvulso('vocacao'));
+    await ganharFoco();
+    expect(result.current.lendo).toBe(false);
+  });
+
+  it('vira falso também quando a primeira leitura rejeita', async () => {
+    mockCreditos.mockRejectedValue(new Error('rede caiu'));
+    const { result } = renderHook(() => useCreditoAvulso('vocacao'));
+    await ganharFoco();
+    expect(result.current.lendo).toBe(false);
+  });
+
+  it('uma releitura por foco não o liga de novo, e o que valia continua valendo', async () => {
+    mockCreditos.mockResolvedValueOnce(leitura({ porOraculo: { vocacao: 1 } }));
+    const { result } = renderHook(() => useCreditoAvulso('vocacao'));
+    await ganharFoco();
+    expect(result.current).toEqual({ credito: 1, gastou: false, falhou: false, lendo: false });
+
+    mockCreditos.mockReturnValueOnce(new Promise(() => {}));
+    await ganharFoco();
+
+    expect(result.current).toEqual({ credito: 1, gastou: false, falhou: false, lendo: false });
+  });
+
+  it('uma releitura pela volta do navegador também não o liga de novo', async () => {
+    mockCreditos.mockResolvedValueOnce(leitura());
+    const { result } = renderHook(() => useCreditoAvulso('vocacao'));
+    await ganharFoco();
+
+    mockCreditos.mockReturnValueOnce(new Promise(() => {}));
+    await act(async () => { mudarSituacao!('active'); });
+
+    expect(result.current.lendo).toBe(false);
   });
 });

@@ -58,9 +58,13 @@ jest.mock('../../../contexts/AuthContext', () => ({
 // O gate só abre para `mapa_completo`. Responder "sim" a qualquer recurso deixaria a tela
 // trocar de recurso (`consulta_premium`, por exemplo) sem que teste nenhum notasse.
 let mockAcesso = false;
+// `podeFazerConsulta` é a aproximação que o app já usa para "a cota do plano ainda cobre":
+// só a frase do crédito a consulta. Falso por padrão, que é o do comprador sem plano.
+let mockPodeConsultar = false;
 jest.mock('../../../hooks/usePlano', () => ({
   usePlano: () => ({
     temAcesso: (recurso: string) => recurso === 'mapa_completo' && mockAcesso,
+    podeFazerConsulta: () => mockPodeConsultar,
   }),
 }));
 
@@ -76,11 +80,13 @@ jest.mock('../../../services/ia', () => ({
 let mockCreditos: Record<string, number> = {};
 let mockGastou: Record<string, boolean> = {};
 let mockFalhou = false;
+let mockLendo = false;
 jest.mock('../../../hooks/useCreditoAvulso', () => ({
   useCreditoAvulso: (oraculo: string) => ({
     credito: mockCreditos[oraculo] ?? 0,
     gastou: mockGastou[oraculo] ?? false,
     falhou: mockFalhou,
+    lendo: mockLendo,
   }),
 }));
 
@@ -196,6 +202,8 @@ beforeEach(() => {
   mockCreditos = {};
   mockGastou = {};
   mockFalhou = false;
+  mockLendo = false;
+  mockPodeConsultar = false;
   mockMoeda = 'brl';
   mockGerarLeitura.mockResolvedValue(LEITURA);
   mockComprar.mockResolvedValue('https://checkout.stripe.com/c/pay/cs_teste');
@@ -542,10 +550,28 @@ describe('compra avulsa na vocação', () => {
     expect(frase).toBeLessThan(botao);
   });
 
-  it('com plano, a frase do crédito não aparece: o servidor gasta a cota do plano primeiro', () => {
+  it('com cota no plano, a frase do crédito não aparece: o servidor gasta a cota primeiro', () => {
+    // A frase é uma afirmação sobre dinheiro. Dizer "usa uma leitura avulsa" a quem o
+    // servidor cobraria da cota é dizer que gastou o que não gastou.
     mockCreditos = { vocacao: 1 };
+    mockPodeConsultar = true;
     renderComPlano({ temAcesso: true });
     expect(screen.queryByText(/Ler agora usa uma das suas leituras avulsas/)).toBeNull();
+  });
+
+  it('sem plano mas com cota sobrando, a frase também não aparece', () => {
+    mockCreditos = { vocacao: 1 };
+    mockPodeConsultar = true;
+    renderComPlano({ temAcesso: false });
+    expect(screen.getByText(/Ler minha vocação/i)).toBeTruthy();
+    expect(screen.queryByText(/Ler agora usa uma das suas leituras avulsas/)).toBeNull();
+  });
+
+  it('plano sem cota e com crédito: o servidor cobra do crédito, e a frase aparece', () => {
+    mockCreditos = { vocacao: 1 };
+    mockPodeConsultar = false;
+    renderComPlano({ temAcesso: true });
+    expect(screen.getByText(/Ler agora usa uma das suas leituras avulsas/)).toBeTruthy();
   });
 
   it('sem crédito, a frase do crédito não aparece', () => {
@@ -750,5 +776,89 @@ describe('quando a leitura do crédito falha', () => {
     fireEvent.press(screen.getByText(/Ler minha vocação/i));
     await waitFor(() => expect(screen.getByText('Onde você rende')).toBeTruthy());
     expect(mockGerarLeitura).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * Antes da primeira resposta a tela não sabe se a pessoa já comprou. O portão não espera
+ * (fica fechado e abre quando a resposta chega: um piscar de cartão trancado custa pouco), mas
+ * a oferta de compra espera: oferecer uma compra que a pessoa já fez é cobrar duas vezes.
+ */
+describe('enquanto a primeira leitura do crédito não chega', () => {
+  it('não convida a comprar', () => {
+    mockLendo = true;
+    renderComPlano({ temAcesso: false });
+    expect(screen.queryByText('Comprar só esta leitura')).toBeNull();
+    expect(screen.queryByText(/O direito de gerar vale 90 dias/)).toBeNull();
+  });
+
+  it('o portão fica fechado, sem esperar: o cartão trancado segue na tela', () => {
+    mockLendo = true;
+    renderComPlano({ temAcesso: false });
+    expect(screen.queryByText(/Ler minha vocação/i)).toBeNull();
+    expect(screen.getByText('Ver os planos')).toBeTruthy();
+  });
+
+  it('quando a resposta chega sem crédito, a oferta aparece', () => {
+    mockLendo = true;
+    const { rerender } = renderComPlano({ temAcesso: false });
+    expect(screen.queryByText('Comprar só esta leitura')).toBeNull();
+
+    mockLendo = false;
+    rerender(<TelaVocacao />);
+    expect(screen.getByText('Comprar só esta leitura')).toBeTruthy();
+  });
+
+  it('quando a resposta chega com crédito, o portão abre e a oferta nunca aparece', () => {
+    mockLendo = true;
+    const { rerender } = renderComPlano({ temAcesso: false });
+    expect(screen.queryByText(/Ler minha vocação/i)).toBeNull();
+
+    mockLendo = false;
+    mockCreditos = { vocacao: 1 };
+    rerender(<TelaVocacao />);
+    expect(screen.getByText(/Ler minha vocação/i)).toBeTruthy();
+    expect(screen.queryByText('Comprar só esta leitura')).toBeNull();
+  });
+
+  it('quando a resposta chega com compra já gasta, o portão abre e a oferta aparece', () => {
+    mockLendo = true;
+    const { rerender } = renderComPlano({ temAcesso: false });
+
+    mockLendo = false;
+    mockGastou = { vocacao: true };
+    rerender(<TelaVocacao />);
+    expect(screen.getByText(/Ler minha vocação/i)).toBeTruthy();
+    expect(screen.getByText('Comprar só esta leitura')).toBeTruthy();
+  });
+});
+
+/**
+ * O semáforo não chuta: sem saber do crédito (lendo, ou a leitura falhou), não diz nada. O
+ * cadeado afirmaria "acesso terminou" a quem pode ter acabado de pagar.
+ */
+describe('o semáforo quando não se sabe do crédito', () => {
+  it('com a leitura falha, o comprador não lê "Seu acesso terminou" nem promessa de crédito', () => {
+    mockFalhou = true;
+    renderComPlano({ temAcesso: false, compradorSemPlano: true });
+    // O botão da leitura abriu (o `falhou` abre o portão) e o semáforo ao lado fica calado.
+    expect(screen.getByText(/Ler minha vocação/i)).toBeTruthy();
+    expect(screen.queryByLabelText('Acesso vencido')).toBeNull();
+    expect(screen.queryByText(/acesso terminou/)).toBeNull();
+    expect(screen.queryByText(/leitura avulsa|leituras avulsas/)).toBeNull();
+  });
+
+  it('enquanto lê, o semáforo também se cala, até para quem tem o plano vencido', () => {
+    // Sem a primeira resposta não se sabe do crédito, e o cadeado seria um palpite.
+    mockLendo = true;
+    renderComPlano({ temAcesso: true, acessoVencido: true });
+    expect(screen.queryByLabelText('Acesso vencido')).toBeNull();
+  });
+
+  it('quem gastou e não tem crédito novo lê o cadeado, que aqui é verdadeiro', () => {
+    // Sabemos que o crédito é zero (a leitura respondeu): o cadeado não mente.
+    mockGastou = { vocacao: true };
+    renderComPlano({ temAcesso: false, compradorSemPlano: true });
+    expect(screen.getByLabelText('Acesso vencido')).toBeTruthy();
   });
 });

@@ -122,7 +122,7 @@ export default function TelaMapaAstralResultado() {
     lat: string; lon: string; fuso: string; offsetPadrao: string;
   }>();
   const { temAcesso, podeFazerConsulta } = usePlano();
-  const { credito, falhou } = useCreditoAvulso('mapa');
+  const { credito, falhou, lendo } = useCreditoAvulso('mapa');
   // Quem decide oferecer é `podeFazerConsulta`, que o app já usa, e não uma
   // conta nova nesta tela: seriam duas verdades sobre acesso, e a que liberasse
   // indevido seria a que ninguém notaria. É o mesmo argumento do comentário de
@@ -131,9 +131,14 @@ export default function TelaMapaAstralResultado() {
   // update). Sem crédito na mão e sem consulta para gastar é exatamente quando
   // a compra avulsa é a resposta.
   //
-  // Nunca quando a leitura do crédito falhou: "zero" por queda de rede pode ser quem já
-  // pagou, e convidá-lo a comprar de novo é cobrar duas vezes.
-  const ofertarAvulso = credito === 0 && !falhou && !podeFazerConsulta();
+  // Nunca antes de saber (`lendo`) nem quando a leitura do crédito falhou: "zero" por não ter
+  // chegado a resposta, ou por queda de rede, pode ser quem já pagou, e convidá-lo a comprar
+  // de novo é cobrar duas vezes.
+  const ofertarAvulso = credito === 0 && !falhou && !lendo && !podeFazerConsulta();
+
+  // O semáforo não chuta: sem saber do crédito (ainda lendo, ou a leitura falhou), não diz
+  // nada, em vez de acusar acesso vencido a quem pode ter acabado de pagar.
+  const creditoDoSemaforo = lendo || falhou ? 'desconhecido' : credito;
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -697,7 +702,7 @@ export default function TelaMapaAstralResultado() {
               </View>
             ) : (
               <>
-                <SemaforoUso tipo="interpretacao" rotulo="Aprofundamentos" creditoAvulso={credito} />
+                <SemaforoUso tipo="interpretacao" rotulo="Aprofundamentos" creditoAvulso={creditoDoSemaforo} />
                 <Text style={estilos.secaoSubtitulo}>
                   Acima está o que cada peça do mapa significa. Isto aqui é a leitura da sua
                   combinação — o que Sol, Lua e Ascendente fazem juntos em você.

@@ -31,10 +31,17 @@ interface Props {
   /** Rótulo curto do que está sendo contado. */
   rotulo: string;
   /**
-   * Quantas leituras avulsas a pessoa comprou e ainda não gastou, deste produto. Só
-   * informa: quem decide se a leitura sai é o servidor.
+   * O crédito avulso da pessoa neste produto. Só informa: quem decide se a leitura sai é o
+   * servidor. Quatro estados, e o quarto é a ausência:
+   * - número maior que zero: no lugar do cadeado, uma faixa que diz que há leitura para usar;
+   * - zero: o cadeado, como sempre;
+   * - `'desconhecido'`: no lugar do cadeado, nada. Ainda não leu, ou a leitura falhou, e o
+   *   cadeado afirmaria que o acesso terminou a quem pode ter acabado de pagar. Um literal, e
+   *   não `null`: a diferença entre `null` e `undefined` numa prop opcional é o tipo de
+   *   distinção que quebra em silêncio meses depois;
+   * - ausente: o cadeado, exatamente como era. Quem não conhece compra avulsa não passa nada.
    */
-  creditoAvulso?: number;
+  creditoAvulso?: number | 'desconhecido';
 }
 
 export function SemaforoUso({ tipo, rotulo, creditoAvulso }: Props) {
@@ -75,7 +82,12 @@ export function SemaforoUso({ tipo, rotulo, creditoAvulso }: Props) {
     //
     // Só aqui, e não no `!uso.ligado` mais abaixo: lá o servidor barra mesmo quem tem
     // crédito (recurso desligado vence o crédito, de propósito), e o aviso é verdadeiro.
-    if ((creditoAvulso ?? 0) > 0) {
+    //
+    // Sem saber do crédito, o semáforo não afirma nada: "semáforo apagado é melhor que
+    // semáforo chutando", como o comentário do topo já diz. O cadeado seria uma afirmação
+    // falsa para um comprador, e a faixa verde, outra para quem não comprou.
+    if (creditoAvulso === 'desconhecido') return null;
+    if (typeof creditoAvulso === 'number' && creditoAvulso > 0) {
       return (
         <View style={estilos.faixa}>
           <View style={[estilos.ponto, { backgroundColor: VERDE }]} />
