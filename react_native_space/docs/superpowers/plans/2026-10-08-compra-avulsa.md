@@ -742,7 +742,7 @@ git commit -m "feat(avulso): gastar credito avulso quando a cota do plano acabou
 >    leitura, que é o que ela entrega.
 > 3. **O arquivo de teste colidia com um que já existe.** O texto original mandava
 >    criar `services/__tests__/avulso.test.ts`. Esse nome está ocupado desde a
->    Task 3 por 167 linhas e 14 testes de `supabase/functions/_shared/avulso.ts`
+>    Task 3 por 163 linhas e 12 testes de `supabase/functions/_shared/avulso.ts`
 >    — o módulo do servidor. Ele vive em `services/__tests__/` porque o Jest do
 >    app é o que testa os módulos compartilhados das Edge Functions, que rodam no
 >    Deno e ficam fora do `tsc`. Escrever por cima apagaria a prova de que o
@@ -1102,16 +1102,43 @@ Confira se `privacidade.tsx` também tem essa propriedade; se tiver, atualize as
 duas. Se o valor não for exatamente "setembro de 2026", **pare e pergunte** em
 vez de adivinhar o que a data deveria ser.
 
-- [ ] **Passo 4: Rodar**
+- [ ] **Passo 4: O teste que tranca as duas correções**
+
+*Acrescentado em 08/10/2026, no despacho.* O texto original desta tarefa não pedia
+teste nenhum, e isso era falha dele: nada trancaria a correção do processador de
+pagamento, que é uma afirmação de **fato** num documento legal — o tipo de coisa que
+volta sozinha na próxima edição de texto.
+
+Crie `__tests__/app/legal/documentos.test.tsx` afirmando, sobre as duas telas
+renderizadas:
+
+1. **"Mercado Pago" não aparece em nenhuma das duas.** Comente por que o teste existe:
+   o nome errado esteve lá, e na Política de Privacidade ele declara quem recebe os
+   dados de pagamento da pessoa, o que é transparência de LGPD, não cosmética.
+2. **"Stripe" aparece nas duas.**
+3. **Os Termos têm a seção "Compra avulsa"**, e o texto dela diz os 90 dias e que a
+   leitura gerada permanece.
+4. **Os Termos continuam tendo "Cancelamento e reembolso"** com o arrependimento de 7
+   dias. Essa seção já existia; o teste existe para a nova não ter comido a antiga.
+5. **As duas telas dizem "outubro de 2026"**.
+
+Siga a forma das suítes de tela que já existem — `__tests__/app/home-cadeado.tsx` é um
+exemplo — incluindo os mocks que elas usam. Se as telas legais renderizarem sem mock
+nenhum, melhor: não acrescente mock que não precisa.
+
+- [ ] **Passo 5: Rodar**
 
 ```bash
 npx tsc --noEmit && npx jest
 ```
 
-- [ ] **Passo 5: Commit**
+Antes de dar a tarefa por feita, mute o que importa: devolva "Mercado Pago" a um dos
+dois arquivos e veja se acusa; remova a seção "Compra avulsa" e veja se acusa.
+
+- [ ] **Passo 6: Commit**
 
 ```bash
-git add app/legal/termos.tsx app/legal/privacidade.tsx
+git add app/legal/termos.tsx app/legal/privacidade.tsx __tests__/app/legal/documentos.test.tsx
 git commit -m "docs(legal): o que a compra avulsa entrega, e quem processa o pagamento"
 ```
 
@@ -1152,7 +1179,7 @@ o motivo pelo qual a coluna existe.
 **Arquivos:**
 - Modificar: `supabase/functions/_shared/avulso.ts`
 - Modificar: `supabase/functions/ia-interpretacao/index.ts`
-- Testar: `services/__tests__/avulso.test.ts` (o do servidor, que já existe, com 14 testes — **acrescente**, não substitua)
+- Testar: `services/__tests__/avulso.test.ts` (o do servidor, que já existe, com 12 testes — **acrescente**, não substitua)
 - Testar: `__tests__/validade-nas-functions.test.ts`
 
 **Interfaces:**
@@ -1224,7 +1251,7 @@ Em `__tests__/validade-nas-functions.test.ts`:
 npx jest services/__tests__/avulso.test.ts __tests__/validade-nas-functions.test.ts
 ```
 
-Esperado: FAIL nos seis novos. Os 14 que já estavam ali continuam passando.
+Esperado: FAIL nos seis novos. Os 12 que já estavam ali continuam passando.
 
 - [ ] **Passo 3: A pergunta ao banco**
 
@@ -1361,7 +1388,7 @@ node scripts/conferir-functions.js
 ```
 
 Esperado: suíte inteira verde, sem erro de tipo, sintaxe das functions ok. Confira que o
-total de testes **subiu** em relação a antes: se algum dos 14 testes antigos de
+total de testes **subiu** em relação a antes: se algum dos 12 testes antigos de
 `avulso.test.ts` desapareceu, você substituiu em vez de acrescentar.
 
 - [ ] **Passo 7: Mutar e ver vermelho**
@@ -1385,6 +1412,176 @@ git commit -m "fix(avulso): quem pagou alcanca a leitura guardada mesmo barrado"
 
 ---
 
+### Task 10: A tela de sucesso não pode mentir
+
+**Acrescentada em 08/10/2026**, a partir de um achado da revisão da Task 7 que estava
+fora do diff e sem dono em tarefa nenhuma.
+
+**O que está errado.** `app/pagamento/sucesso.tsx` é estático: não lê parâmetro nenhum e
+diz, para todo mundo, **"Assinatura confirmada!"** e "Seu plano está sendo liberado".
+Quem acabou de comprar uma leitura avulsa não assinou nada e não vai receber plano nenhum.
+A última tela do caminho que esta branch cria afirma duas coisas falsas a quem pagou, e o
+botão manda para o início em vez de para a leitura que a pessoa comprou.
+
+E o `cancel_url` do checkout avulso aponta para `/planos` — quem desiste da compra avulsa
+cai justamente na página de assinatura que ele decidiu não assinar.
+
+**Por que não voltar para a tela do resultado.** `app/mapa-astral/resultado.tsx:117,144`
+lê `cidadeId`, `lat`, `lon` de `useLocalSearchParams` e **devolve `null`** sem eles. Esses
+dados não atravessam o checkout da Stripe, então mandar de volta para lá renderiza tela
+vazia. Por isso o cancelamento volta ao começo do oráculo: `/mapa-astral` e `/vocacao`.
+
+**Arquivos:**
+- Modificar: `supabase/functions/criar-checkout-avulso/index.ts`
+- Modificar: `app/pagamento/sucesso.tsx`
+- Criar: `__tests__/app/pagamento/sucesso.test.tsx`
+
+**Interfaces:**
+- Consome: `oraculo` (`'mapa' | 'vocacao'`), que a function já valida contra `VENDAVEIS`.
+- Produz: os parâmetros `compra=avulso` e `oraculo=<produto>` na `success_url` da compra avulsa. A `success_url` da assinatura **não muda**, e é o que mantém o texto atual correto para quem assina.
+
+- [ ] **Passo 1: Escrever o teste que falha**
+
+```tsx
+// __tests__/app/pagamento/sucesso.test.tsx
+import React from 'react';
+import { render } from '@testing-library/react-native';
+import PagamentoSucesso from '../../../app/pagamento/sucesso';
+
+const mockParams = jest.fn();
+jest.mock('expo-router', () => ({
+  router: { replace: jest.fn(), push: jest.fn() },
+  useLocalSearchParams: () => mockParams(),
+}));
+
+describe('PagamentoSucesso', () => {
+  it('quem assinou continua lendo que a assinatura foi confirmada', () => {
+    mockParams.mockReturnValue({ session_id: 's1' });
+    const { getByText } = render(<PagamentoSucesso />);
+    expect(getByText('Assinatura confirmada!')).toBeTruthy();
+  });
+
+  it('quem comprou avulso NAO le que assinou', () => {
+    // Dizer "Assinatura confirmada" e "seu plano esta sendo liberado" a quem
+    // comprou uma leitura e nao assinou nada sao duas afirmacoes falsas na
+    // ultima tela do caminho que cobra.
+    mockParams.mockReturnValue({ session_id: 's1', compra: 'avulso', oraculo: 'vocacao' });
+    const { queryByText } = render(<PagamentoSucesso />);
+    expect(queryByText('Assinatura confirmada!')).toBeNull();
+    expect(queryByText(/plano está sendo liberado/)).toBeNull();
+  });
+
+  it('a compra avulsa diz o que foi comprado e leva para la', () => {
+    mockParams.mockReturnValue({ session_id: 's1', compra: 'avulso', oraculo: 'vocacao' });
+    const { getByText, getByLabelText } = render(<PagamentoSucesso />);
+    expect(getByText(/Pagamento confirmado/)).toBeTruthy();
+    expect(getByLabelText('Ler a minha vocação')).toBeTruthy();
+  });
+
+  it('oraculo desconhecido nao inventa nome de produto', () => {
+    // Parametro vem da URL, logo e da pessoa: nao da para confiar no valor.
+    mockParams.mockReturnValue({ session_id: 's1', compra: 'avulso', oraculo: 'xyz' });
+    const { getByText } = render(<PagamentoSucesso />);
+    expect(getByText(/Pagamento confirmado/)).toBeTruthy();
+  });
+});
+```
+
+- [ ] **Passo 2: Rodar e ver falhar**
+
+```bash
+npx jest __tests__/app/pagamento/sucesso.test.tsx
+```
+
+Esperado: FAIL em três dos quatro.
+
+- [ ] **Passo 3: A tela passa a saber o que foi comprado**
+
+Em `app/pagamento/sucesso.tsx`, troque `import { router } from 'expo-router'` por
+`import { router, useLocalSearchParams } from 'expo-router'` e, dentro do componente:
+
+```tsx
+  const params = useLocalSearchParams<{ compra?: string; oraculo?: string }>();
+  // O parâmetro vem da URL, logo vem da pessoa: nada aqui confia no valor. Produto
+  // desconhecido cai na versão sem nome, que é verdadeira de qualquer jeito.
+  const avulso = params.compra === 'avulso';
+  const PRODUTO: Record<string, { nome: string; rota: string; acao: string }> = {
+    mapa: { nome: 'a leitura do seu mapa', rota: '/mapa-astral', acao: 'Ler o meu mapa' },
+    vocacao: { nome: 'a leitura da sua vocação', rota: '/vocacao', acao: 'Ler a minha vocação' },
+  };
+  const produto = avulso ? PRODUTO[params.oraculo ?? ''] ?? null : null;
+```
+
+O título e o texto passam a depender disso. Quem assina **continua lendo exatamente o que
+lia** — é o que o primeiro teste tranca:
+
+```tsx
+          <Text style={estilos.titulo}>
+            {avulso ? 'Pagamento confirmado!' : 'Assinatura confirmada!'}
+          </Text>
+          <Text style={estilos.texto}>
+            {avulso
+              ? produto
+                ? `Você já pode gerar ${produto.nome}. O direito de gerar vale 90 dias, e a leitura, depois de gerada, fica para sempre.`
+                : 'Você já pode gerar a leitura que comprou. O direito de gerar vale 90 dias, e a leitura, depois de gerada, fica para sempre.'
+              : 'Seu plano está sendo liberado. Pode levar alguns segundos para aparecer.'}
+          </Text>
+          <Button
+            variante="primary"
+            label={produto ? produto.acao : 'Voltar ao início'}
+            larguraTotal
+            accessibilityLabel={produto ? produto.acao : 'Voltar ao início'}
+            onPress={() => router.replace(produto ? produto.rota : '/')}
+          />
+```
+
+Se `Button` não aceitar `accessibilityLabel`, use a prop que ele já tem para isso; não
+mude a assinatura do componente compartilhado por causa desta tela.
+
+- [ ] **Passo 4: As URLs do checkout avulso**
+
+Em `supabase/functions/criar-checkout-avulso/index.ts:125-126`:
+
+```ts
+      // `compra=avulso` existe para a tela de sucesso não dizer "Assinatura
+      // confirmada" a quem comprou uma leitura. A `success_url` da assinatura não
+      // muda, e é isso que mantém o texto dela correto.
+      success_url: `${appBaseUrl}/pagamento/sucesso?session_id={CHECKOUT_SESSION_ID}&compra=avulso&oraculo=${oraculo}`,
+      // Desistir da compra avulsa não pode cair em `/planos`: é a assinatura que a
+      // pessoa acabou de decidir não fazer. Volta ao começo do oráculo, e não à tela
+      // do resultado, que precisa de `cidadeId`, `lat` e `lon` nos parâmetros e
+      // devolve nulo sem eles — e esses dados não atravessam o checkout.
+      cancel_url: `${appBaseUrl}/${oraculo === 'mapa' ? 'mapa-astral' : 'vocacao'}`,
+```
+
+`oraculo` já está validado contra `VENDAVEIS` acima neste arquivo, então os dois valores
+possíveis são conhecidos. **Não** toque em `criar-checkout-stripe`.
+
+- [ ] **Passo 5: Rodar tudo**
+
+```bash
+npx jest
+npx tsc --noEmit
+node scripts/conferir-functions.js
+```
+
+- [ ] **Passo 6: Mutar e ver vermelho**
+
+1. `avulso` fixo em `false`.
+2. O título da compra avulsa voltando a "Assinatura confirmada!".
+3. `PRODUTO[params.oraculo ?? '']` sem o `?? null`, para ver se o produto desconhecido acusa.
+
+Relate quantos vermelhos cada uma deixa.
+
+- [ ] **Passo 7: Commit**
+
+```bash
+git add app/pagamento/sucesso.tsx __tests__/app/pagamento/sucesso.test.tsx supabase/functions/criar-checkout-avulso/index.ts
+git commit -m "fix(avulso): a tela de sucesso diz o que a pessoa comprou"
+```
+
+---
+
 ## O que o dono faz, e o plano não
 
 1. **Rodar `supabase/compra-avulsa.sql`** no editor SQL do Supabase.
@@ -1392,10 +1589,12 @@ git commit -m "fix(avulso): quem pagou alcanca a leitura guardada mesmo barrado"
 3. **Inserir os `price_id`** em `public.precos_avulsos`, com o valor decidido a partir da aba Custo por produto.
 4. **Deployar** `criar-checkout-avulso`, `stripe-webhook` e `ia-interpretacao`.
 5. **Decidir o arrependimento depois da leitura gerada.** O texto dos Termos remete ao contato, que é a saída honesta enquanto não houver política.
+6. **Revogar as credenciais do Mercado Pago, se forem reais.** A Task 8 corrigiu os documentos legais, que diziam que o pagamento era processado por lá. Mas `react_native_space/.env` (fora do git) ainda tem `MERCADOPAGO_ACCESS_TOKEN` e `EXPO_PUBLIC_MERCADOPAGO_PUBLIC_KEY`, e **nenhum código desta base usa nenhuma das duas**. Nem eu nem os implementadores lemos os valores, de propósito. Se o token de acesso for de uma conta real, é credencial viva de um serviço que o app não usa: revogue no painel do Mercado Pago e tire as duas linhas do `.env`. Por causa do prefixo `EXPO_PUBLIC_`, o nome da chave pública aparece em builds antigos em `dist/` — o que vaza é o nome, não o segredo, mas é mais um motivo para limpar.
+7. **Decidir se a coluna morta sai.** `supabase_schema.sql:137`, na raiz do repositório, tem `mp_preference_id`, resto da mesma história. Não mexi: é esquema de banco em produção e a decisão de remover coluna é sua.
 
 ## Autorrevisão
 
-**Cobertura da spec.** Tabela própria com UNIQUE: Task 1. Precedência: Tasks 2 e 6. Não gastar em cache: Task 6, com teste de ordem. Checkout `mode: payment`: Task 4. Ramificação do webhook: Task 5. Telas de compra: Task 7. Termos: Task 8. Validade de 90 dias: Tasks 1 e 5. Alcançar a leitura já paga quando o crédito já foi gasto nela: Task 9.
+**Cobertura da spec.** Tabela própria com UNIQUE: Task 1. Precedência: Tasks 2 e 6. Não gastar em cache: Task 6, com teste de ordem. Checkout `mode: payment`: Task 4. Ramificação do webhook: Task 5. Telas de compra: Task 7. Termos: Task 8. Validade de 90 dias: Tasks 1 e 5. Alcançar a leitura já paga quando o crédito já foi gasto nela: Task 9. A tela de sucesso e o cancelamento dizerem a verdade sobre a compra avulsa: Task 10.
 
 **Lacuna conhecida:** a spec cita uma lista de compras no Perfil, e este plano não a implementa. `creditosDaPessoa` já entrega o dado; a listagem é trabalho de tela sem risco e cabe melhor numa entrega própria. Fica registrado em vez de fingir que foi coberto.
 
