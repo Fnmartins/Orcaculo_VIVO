@@ -34,7 +34,7 @@ const LIBERADO: AcessoDoPlano = { liberado: true, venceuEm: null };
 describe('decidirUso', () => {
   it('deixa passar quem ainda não bateu no limite do dia', () => {
     expect(decidirUso('pergunta', gratuito, 1, false, LIBERADO)).toEqual({
-      permitido: true, usadoHoje: 1, limiteDia: 2,
+      permitido: true, usadoHoje: 1, limiteDia: 2, recursoLigado: true,
     });
   });
 
@@ -193,7 +193,7 @@ describe('acessoDoPlano', () => {
 });
 
 describe('mensagemDoLimite', () => {
-  const base = { permitido: false, usadoHoje: 0, limiteDia: null };
+  const base = { permitido: false, usadoHoje: 0, limiteDia: null, recursoLigado: true };
 
   it('vencido com data escreve a data', () => {
     const texto = mensagemDoLimite(
@@ -248,7 +248,7 @@ describe('mensagemDoLimite', () => {
   it('desligado e limite continuam como eram, nos quatro tipos', () => {
     // Os quatro chamadores não foram tocados nesta entrega: se o texto derivar, ninguém
     // reclama e a frase errada vai para a tela. Por isso os quatro vão fixados inteiros.
-    const desligado = { ...base, motivo: 'desligado' as const };
+    const desligado = { ...base, motivo: 'desligado' as const, recursoLigado: false };
     expect(mensagemDoLimite(desligado, 'imagem'))
       .toBe('A leitura por imagem não está disponível no seu plano.');
     expect(mensagemDoLimite(desligado, 'interpretacao'))
@@ -281,7 +281,7 @@ describe('fraseDoVencimento', () => {
     // strings de producao nao podem mudar por causa dessa refatoracao.
     const veredito = {
       permitido: false, motivo: 'vencido' as const, usadoHoje: 0,
-      limiteDia: null, venceuEm: '2026-09-29T00:05:12+00:00',
+      limiteDia: null, recursoLigado: true, venceuEm: '2026-09-29T00:05:12+00:00',
     };
     expect(mensagemDoLimite(veredito, 'interpretacao'))
       .toBe('Seu acesso terminou em 28/09. Atualize seu plano para continuar.');
@@ -337,5 +337,76 @@ describe('validadeComCarencia', () => {
     const gravado = validadeComCarencia(fimDoPeriodo);
     const depois = new Date(Date.parse(gravado) + 1000);
     expect(acessoDoPlano(gravado, depois, false).liberado).toBe(false);
+  });
+});
+
+describe('decidirUso: recursoLigado é um fato à parte do motivo', () => {
+  const VENCIDO: AcessoDoPlano = { liberado: false, venceuEm: '2026-10-10T00:00:00Z' };
+  const LIGADA: ConfiguracaoIA = {
+    imagem_ligada: true, interpretacao_ligada: true,
+    pergunta_ligada: true, voz_ligada: true, limite_dia: 3,
+  };
+  const DESLIGADA: ConfiguracaoIA = { ...LIGADA, interpretacao_ligada: false };
+
+  it('quem venceu com o recurso desligado recebe vencido E recursoLigado falso', () => {
+    // O motivo segue sendo 'vencido' — a ordem de `decidirUso` existe para quem venceu
+    // ler a mensagem certa, e não mudou. Mas o motivo esconde o recurso desligado, e quem
+    // decide por crédito avulso precisa do fato: sem ele, o crédito passaria por cima de um
+    // recurso que o dono desligou.
+    expect(decidirUso('interpretacao', DESLIGADA, 0, false, VENCIDO)).toMatchObject({
+      permitido: false, motivo: 'vencido', recursoLigado: false,
+    });
+  });
+
+  it('quem venceu com o recurso ligado recebe recursoLigado verdadeiro', () => {
+    expect(decidirUso('interpretacao', LIGADA, 0, false, VENCIDO)).toMatchObject({
+      permitido: false, motivo: 'vencido', recursoLigado: true,
+    });
+  });
+
+  it('configuração ausente conta como ligado, vencido ou não', () => {
+    // A mesma tolerância que deixa passar quem está em dia: falha nossa de leitura não
+    // pode desligar, para o crédito avulso, um recurso que ninguém desligou.
+    expect(decidirUso('interpretacao', null, 0, false, VENCIDO).recursoLigado).toBe(true);
+    expect(decidirUso('interpretacao', null, 0, false, LIBERADO).recursoLigado).toBe(true);
+  });
+
+  it('o fato acompanha o tipo pedido, e não o plano inteiro', () => {
+    // `gratuito` tem a imagem desligada e a interpretação ligada. Um `recursoLigado`
+    // calculado sobre o campo errado daria o mesmo valor para os dois tipos.
+    expect(decidirUso('imagem', gratuito, 0, false, VENCIDO).recursoLigado).toBe(false);
+    expect(decidirUso('interpretacao', gratuito, 0, false, VENCIDO).recursoLigado).toBe(true);
+  });
+
+  it('vai em TODO veredito, e não só no que chega a olhar a configuração', () => {
+    // Cada linha percorre um retorno diferente de `decidirUso`: super-admin, vencido, sem
+    // configuração, desligado, sem limite diário, teto do dia e o caminho comum. Se um
+    // retorno novo esquecer o campo, o `tsc` reclama; se alguém o calcular só em parte
+    // deles, é aqui que aparece.
+    const casos: Array<{
+      nome: string; config: ConfiguracaoIA | null; usado: number; semLimite: boolean;
+      acesso: AcessoDoPlano; ligado: boolean;
+    }> = [
+      { nome: 'super-admin', config: DESLIGADA, usado: 0, semLimite: true, acesso: VENCIDO, ligado: false },
+      { nome: 'vencido', config: DESLIGADA, usado: 0, semLimite: false, acesso: VENCIDO, ligado: false },
+      { nome: 'sem configuração', config: null, usado: 0, semLimite: false, acesso: LIBERADO, ligado: true },
+      { nome: 'desligado', config: DESLIGADA, usado: 0, semLimite: false, acesso: LIBERADO, ligado: false },
+      { nome: 'sem limite diário', config: { ...LIGADA, limite_dia: 0 }, usado: 9, semLimite: false, acesso: LIBERADO, ligado: true },
+      { nome: 'teto do dia', config: LIGADA, usado: 3, semLimite: false, acesso: LIBERADO, ligado: true },
+      { nome: 'caminho comum', config: LIGADA, usado: 1, semLimite: false, acesso: LIBERADO, ligado: true },
+    ];
+    for (const c of casos) {
+      const v = decidirUso('interpretacao', c.config, c.usado, c.semLimite, c.acesso);
+      // O nome entra na asserção para a falha dizer QUAL retorno perdeu o campo.
+      expect({ caso: c.nome, recursoLigado: v.recursoLigado })
+        .toEqual({ caso: c.nome, recursoLigado: c.ligado });
+    }
+  });
+
+  it('o super-admin passa mesmo com o recurso desligado, e o fato continua dizendo a verdade', () => {
+    // `permitido` é sobre a pessoa; `recursoLigado`, sobre o plano. Os dois podem divergir.
+    expect(decidirUso('interpretacao', DESLIGADA, 0, true, LIBERADO)).toMatchObject({
+      permitido: true, recursoLigado: false,
+    });
   });
 });

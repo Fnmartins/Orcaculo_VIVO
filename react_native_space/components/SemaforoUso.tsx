@@ -78,7 +78,7 @@ export function SemaforoUso({ tipo, rotulo }: Props) {
         <Text style={estilos.trancadoTexto}>
           {mensagemDoLimite({
             permitido: false, motivo: 'vencido', usadoHoje: 0,
-            limiteDia: null, venceuEm: acesso.venceuEm,
+            limiteDia: null, recursoLigado: true, venceuEm: acesso.venceuEm,
           }, tipo)}
         </Text>
         <Ionicons name="chevron-forward" size={14} color={Cores.textoSecundario} />

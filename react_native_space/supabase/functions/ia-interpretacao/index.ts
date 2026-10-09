@@ -554,12 +554,18 @@ Deno.serve(async (request) => {
   );
 
   // O veredito não conhece crédito avulso, e barrar aqui mataria o produto: quem
-  // cancelou ou nunca assinou é exatamente quem compra avulso. Então `vencido` e
-  // `limite_dia` deixam de ser finais — quem tem crédito passa por eles.
+  // cancelou ou nunca assinou é exatamente quem compra avulso. Então o crédito
+  // contorna `vencido`, e contorna `limite_dia` só quando a cota do plano também
+  // acabou.
   //
-  // `desligado` continua barrando: ali o dono desligou o recurso de propósito, e
-  // gerar assim mesmo passaria por cima de uma decisão de operação. O crédito não
-  // é consumido nesse caminho, então segue válido até vencer.
+  // A lista é do que o crédito contorna, e todo o resto é final: um motivo novo em
+  // `decidirUso` nasce barrado, e não contornável sem ninguém tocar aqui.
+  //
+  // Recurso desligado barra todo mundo, e a guarda olha `recursoLigado`, e não o
+  // motivo: `decidirUso` devolve 'vencido' antes de olhar se o recurso está ligado,
+  // então quem venceu — o público do crédito avulso — nunca recebe 'desligado'. Sem
+  // o fato, o crédito passaria por cima de um recurso que o dono desligou de
+  // propósito. Nesses caminhos o crédito não é consumido, e segue válido até vencer.
   //
   // A resposta de um veredito negado fica num lugar só: dois pontos a devolvem
   // (este e a negativa final, abaixo) e os dois precisam dizer a mesma coisa.
@@ -567,7 +573,12 @@ Deno.serve(async (request) => {
     erro: mensagemDoLimite(veredito, 'interpretacao'),
     motivo: veredito.motivo,
   }, 402);
-  if (!veredito.permitido && veredito.motivo === 'desligado') {
+  // Contornar o teto do dia só faz sentido para quem não tem mais cota: quem
+  // ainda tem consultas no plano só precisa esperar amanhã, de graça. Queimar
+  // um crédito comprado nesse caso seria cobrar por algo que o tempo resolvia.
+  const tetoDoDiaContornavel = veredito.motivo === 'limite_dia' && restantes <= 0;
+  const vereditoContornavel = veredito.motivo === 'vencido' || tetoDoDiaContornavel;
+  if (!veredito.permitido && (!vereditoContornavel || !veredito.recursoLigado)) {
     return recusaDoVeredito();
   }
 
@@ -746,7 +757,17 @@ Deno.serve(async (request) => {
     // porque o `try` tem três saídas de falha que não passam por ele (recusa,
     // resposta cortada, fora do formato) — e uma saída nova também ficaria coberta.
     if (idReivindicado !== null && !leituraEntregue) {
-      await devolverCredito(supabaseAdmin, idReivindicado);
+      // Se a devolução lançar, o throw dentro do `finally` substitui o 502 ou o 422 já
+      // montado por um 500 cru, sem CORS — e o app mostraria erro de rede no lugar da
+      // mensagem. O id vai no log porque um crédito preso se conserta à mão por ele.
+      try {
+        await devolverCredito(supabaseAdmin, idReivindicado);
+      } catch (erroDevolucao) {
+        console.error(
+          'excecao ao devolver credito avulso', idReivindicado,
+          erroDevolucao instanceof Error ? erroDevolucao.message : erroDevolucao,
+        );
+      }
     }
   }
 });

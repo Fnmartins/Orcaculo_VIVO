@@ -26,6 +26,19 @@ export interface Veredito {
   /** Nulo quer dizer sem limite: super-admin, ou plano com limite_dia = 0. */
   limiteDia: number | null;
   /**
+   * O dono deixou este recurso ligado para este plano? Independe de vencimento e do
+   * contador: responde só "o recurso existe para este plano", e não "esta pessoa pode usar".
+   *
+   * `motivo` não serve para isso: `decidirUso` devolve 'vencido' ANTES de olhar se o
+   * recurso está ligado — de propósito, para quem venceu ler a mensagem certa. O efeito
+   * colateral é que 'desligado' nunca aparece para quem venceu, e quem decide por crédito
+   * avulso precisa do fato, não do motivo.
+   *
+   * Configuração ausente conta como ligado, pela mesma tolerância de `decidirUso`: falha
+   * nossa de leitura não pode desligar recurso que já estava no ar.
+   */
+  recursoLigado: boolean;
+  /**
    * Quando o acesso venceu, para a mensagem dizer a data. **Nula mesmo com
    * `motivo: 'vencido'`**: validade ausente ou ilegível barra sem ter data para
    * mostrar, e é o caso comum de quem cancelou. Quem consome tem de tratar o nulo.
@@ -63,15 +76,19 @@ export function decidirUso(
   acesso: AcessoDoPlano,
 ): Veredito {
   const usado = Number.isFinite(usadoHoje) && usadoHoje > 0 ? Math.floor(usadoHoje) : 0;
+  // Calculado UMA vez e antes de qualquer retorno, inclusive o de vencido: o fato vai em
+  // todo veredito, e não só no que por acaso chega a olhar a configuração. Config nula
+  // conta como ligado pela tolerância explicada abaixo.
+  const recursoLigado = config ? ligado(tipo, config) : true;
   if (semLimite) {
-    return { permitido: true, usadoHoje: usado, limiteDia: null };
+    return { permitido: true, usadoHoje: usado, limiteDia: null, recursoLigado };
   }
   // Vencido vem ANTES de desligado: quem venceu e lê "não disponível no seu plano"
   // vai procurar um plano que ela já tinha.
   if (!acesso.liberado) {
     return {
       permitido: false, motivo: 'vencido', usadoHoje: usado,
-      limiteDia: null, venceuEm: acesso.venceuEm,
+      limiteDia: null, recursoLigado, venceuEm: acesso.venceuEm,
     };
   }
   // Configuração ausente continua deixando passar — tabela nova ou leitura com erro
@@ -79,19 +96,19 @@ export function decidirUso(
   // vencimento não é falha nossa: é um fato sobre a pessoa. Por isso esta tolerância
   // fica depois da checagem de validade, e não junto dela.
   if (!config) {
-    return { permitido: true, usadoHoje: usado, limiteDia: null };
+    return { permitido: true, usadoHoje: usado, limiteDia: null, recursoLigado };
   }
-  if (!ligado(tipo, config)) {
-    return { permitido: false, motivo: 'desligado', usadoHoje: usado, limiteDia: null };
+  if (!recursoLigado) {
+    return { permitido: false, motivo: 'desligado', usadoHoje: usado, limiteDia: null, recursoLigado };
   }
   const limite = Number.isFinite(config.limite_dia) ? Math.floor(config.limite_dia) : 0;
   if (limite <= 0) {
-    return { permitido: true, usadoHoje: usado, limiteDia: null };
+    return { permitido: true, usadoHoje: usado, limiteDia: null, recursoLigado };
   }
   if (usado >= limite) {
-    return { permitido: false, motivo: 'limite_dia', usadoHoje: usado, limiteDia: limite };
+    return { permitido: false, motivo: 'limite_dia', usadoHoje: usado, limiteDia: limite, recursoLigado };
   }
-  return { permitido: true, usadoHoje: usado, limiteDia: limite };
+  return { permitido: true, usadoHoje: usado, limiteDia: limite, recursoLigado };
 }
 
 /** Quanto ainda cabe hoje. Nulo quando não há limite diário. */

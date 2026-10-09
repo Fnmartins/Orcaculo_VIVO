@@ -335,8 +335,11 @@ describe('o quarto oraculo: vocacao', () => {
     // O mapa fica ANTES: reabrir um mapa não custa nada e não entra no limite do dia, e
     // mudar isso é regressão. A ordem é o que reverte em silêncio numa edição futura.
     // O veredito deixou de barrar sozinho em `vencido` e `limite_dia` (o crédito avulso
-    // passa por eles); o que sobrou como portão próprio é a guarda do `desligado`.
-    const veredito = lf.indexOf("if (!veredito.permitido && veredito.motivo === 'desligado')");
+    // passa por eles); o que sobrou como portão próprio é a guarda que lista o que o
+    // crédito contorna e olha `recursoLigado`.
+    const veredito = lf.indexOf(
+      'if (!veredito.permitido && (!vereditoContornavel || !veredito.recursoLigado)) {',
+    );
     const cota = lf.indexOf('if (!cobranca.permitido) {');
     const lerMapa = lf.indexOf("if (oraculo === 'mapa') {");
     const lerVocacao = lf.indexOf("if (oraculo === 'vocacao') {");
@@ -819,16 +822,43 @@ describe('o credito avulso entra na interpretacao sem furar o cache', () => {
     // Sem isto a venda avulsa só serviria a assinante com cota gasta — o oposto do
     // público que ela existe para atender: quem cancelou ou nunca assinou chega com o
     // veredito em `vencido`.
-    expect(interp).toContain("motivo === 'desligado'");
+    //
     // O que prende o defeito é a AUSÊNCIA do portão antigo: um `if (!veredito.permitido)`
     // que devolve sempre barraria o comprador antes de a cobrança ser decidida.
     expect(lf).not.toMatch(/if \(!veredito\.permitido\) \{\n\s*return/);
-    // `desligado` segue barrando, e antes da decisão de cobrança: ali o dono desligou o
-    // recurso de propósito, e o crédito não deve contorná-lo.
+    expect(lf).toMatch(/const vereditoContornavel = veredito\.motivo === 'vencido' \|\| tetoDoDiaContornavel;/);
     expect(lf).toMatch(
-      /if \(!veredito\.permitido && veredito\.motivo === 'desligado'\) \{\n\s*return recusaDoVeredito\(\);/,
+      /if \(!veredito\.permitido && \(!vereditoContornavel \|\| !veredito\.recursoLigado\)\) \{\n\s*return recusaDoVeredito\(\);/,
     );
-    expect(lf.indexOf("veredito.motivo === 'desligado'")).toBeLessThan(lf.indexOf('decidirCobranca('));
+    // E antes da decisão de cobrança: depois dela o crédito já teria sido contado.
+    expect(lf.indexOf('!veredito.recursoLigado')).toBeGreaterThan(-1);
+    expect(lf.indexOf('!veredito.recursoLigado')).toBeLessThan(lf.indexOf('decidirCobranca('));
+  });
+
+  it('o portão lista o que o crédito contorna, em vez de listar o que ele não contorna', () => {
+    // Falhar fechado: um motivo novo em `decidirUso` nasce barrado. A forma antiga —
+    // barrar só `desligado` — faria o quarto motivo nascer contornável sem ninguém tocar
+    // aqui. O teste prende a forma, não só o resultado de hoje, porque a união atual é
+    // fechada e as duas formas dão o mesmo resultado enquanto ela for.
+    expect(lf).not.toContain("motivo === 'desligado'");
+    expect(lf).toMatch(/veredito\.motivo === 'vencido'/);
+  });
+
+  it('recurso desligado barra quem venceu: a guarda olha o fato, não o motivo', () => {
+    // `decidirUso` devolve 'vencido' ANTES de olhar se o recurso está ligado, então para
+    // o público do crédito avulso o motivo nunca é 'desligado'. Só `recursoLigado`
+    // enxerga isso (ver `limites.test.ts`, que prende o lado puro).
+    expect(lf).toMatch(/!veredito\.recursoLigado\)\) \{/);
+  });
+
+  it('o teto do dia só é contornado por quem não tem mais cota no plano', () => {
+    // Quem ainda tem consultas só precisa esperar amanhã, de graça. Sem a condição, um
+    // assinante com cota sobrando que bate o teto queimaria um crédito comprado por algo
+    // que o tempo resolvia.
+    expect(lf).toMatch(
+      /const tetoDoDiaContornavel = veredito\.motivo === 'limite_dia' && restantes <= 0;/,
+    );
+    expect(lf).toMatch(/veredito\.motivo === 'vencido' \|\| tetoDoDiaContornavel/);
   });
 
   it('negativa sem credito ainda responde com a mensagem do veredito', () => {
@@ -855,5 +885,15 @@ describe('o credito avulso entra na interpretacao sem furar o cache', () => {
     // veredito tem um único chamador (o teste da cota cobrada confere o mesmo).
     expect(lf.match(/recusaDoVeredito\(\)/g)?.length).toBe(2);
     expect(lf.match(/const recusaDoVeredito = /g)?.length).toBe(1);
+  });
+
+  it('a devolução do crédito não derruba a resposta já montada', () => {
+    // O `devolverCredito` roda dentro do `finally`. Se lançasse, o throw substituiria o 502
+    // ou o 422 já montado por um 500 cru, sem CORS, e o app mostraria erro de rede no lugar
+    // da mensagem. O `catch` tem nome próprio de propósito: o teste do `finally` acima
+    // procura o ÚLTIMO `} catch (erro) {` do arquivo, e este não pode ser confundido com o
+    // da geração.
+    const final = lf.slice(lf.indexOf('} finally {'));
+    expect(final).toMatch(/try \{\n\s*await devolverCredito\(supabaseAdmin, idReivindicado\);\n\s*\} catch \(erroDevolucao\) \{\n\s*console\.error\(/);
   });
 });
