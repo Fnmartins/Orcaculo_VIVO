@@ -1,5 +1,5 @@
 import {
-  creditoDisponivel, devolverCredito, reivindicarCredito,
+  creditoDisponivel, creditoJaGastoNesta, devolverCredito, reivindicarCredito,
 } from '../../supabase/functions/_shared/avulso';
 
 /**
@@ -17,7 +17,7 @@ import {
 interface Resposta { data: unknown; error: { message: string } | null }
 interface Chamada { metodo: string; args: unknown[] }
 
-type Metodo = 'select' | 'update' | 'eq' | 'is' | 'gt' | 'order' | 'limit';
+type Metodo = 'select' | 'update' | 'eq' | 'is' | 'not' | 'gt' | 'order' | 'limit';
 type Encadeavel = { [M in Metodo]: (...args: unknown[]) => Encadeavel } & {
   maybeSingle: () => Promise<Resposta>;
   then: PromiseLike<Resposta>['then'];
@@ -41,6 +41,7 @@ function clienteFalso(resposta: Resposta) {
     update: elo('update'),
     eq: elo('eq'),
     is: elo('is'),
+    not: elo('not'),
     gt: elo('gt'),
     order: elo('order'),
     limit: elo('limit'),
@@ -159,5 +160,39 @@ describe('devolverCredito', () => {
     const { cliente } = clienteFalso(falha('timeout'));
     await expect(devolverCredito(cliente, 42)).resolves.toBeUndefined();
     expect(log).toHaveBeenCalledWith('falha ao devolver credito avulso', 'timeout');
+  });
+});
+
+describe('creditoJaGastoNesta', () => {
+  it('diz que sim quando existe compra consumida com esta chave', async () => {
+    const { cliente } = clienteFalso(ok([{ id: 7 }]));
+    await expect(creditoJaGastoNesta(cliente, 'u1', 'vocacao', 'ch1')).resolves.toBe(true);
+  });
+
+  it('diz que não quando não há nenhuma', async () => {
+    const { cliente } = clienteFalso(ok([]));
+    await expect(creditoJaGastoNesta(cliente, 'u1', 'vocacao', 'ch1')).resolves.toBe(false);
+  });
+
+  it('falha de leitura responde NÃO, e não sim', async () => {
+    // Falhar para "sim" entregaria leitura guardada a quem o portão barraria.
+    // Falhar para "não" só mantém a recusa que a pessoa já teria tido.
+    const { cliente } = clienteFalso(falha());
+    await expect(creditoJaGastoNesta(cliente, 'u1', 'vocacao', 'ch1')).resolves.toBe(false);
+    expect(log).toHaveBeenCalledWith('falha ao conferir credito ja gasto', 'conexao caiu');
+  });
+
+  it('casa pessoa, oráculo E chave, e exige consumo', async () => {
+    const f = clienteFalso(ok([]));
+    await creditoJaGastoNesta(f.cliente, 'u1', 'vocacao', 'ch1');
+
+    expect(f.tabelas).toEqual(['compras_avulsas']);
+    // Os três, e nesta ordem: sem a chave, qualquer compra gasta da pessoa abriria
+    // qualquer leitura guardada; sem o oráculo, uma compra de mapa abriria vocação.
+    expect(f.todas('eq')).toEqual([
+      ['usuario_id', 'u1'], ['oraculo', 'vocacao'], ['consumido_chave', 'ch1'],
+    ]);
+    // Sem isto, um crédito ainda NÃO gasto daria direito a leitura de graça.
+    expect(f.todas('not')).toEqual([['consumido_em', 'is', null]]);
   });
 });

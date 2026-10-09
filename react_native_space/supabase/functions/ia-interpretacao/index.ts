@@ -10,7 +10,9 @@
 import Anthropic from 'npm:@anthropic-ai/sdk@^0.70';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { decidirCobranca } from '../_shared/avulso-regras.ts';
-import { creditoDisponivel, devolverCredito, reivindicarCredito } from '../_shared/avulso.ts';
+import {
+  creditoDisponivel, creditoJaGastoNesta, devolverCredito, reivindicarCredito,
+} from '../_shared/avulso.ts';
 import { exigirEscrita } from '../_shared/escritas.ts';
 // As regras de voz vivem em _shared desde que a ia-pergunta nasceu: duas
 // cópias de regra de segurança acabam divergindo, e a que some é sempre a que
@@ -408,6 +410,35 @@ async function chaveDoMapa(dados: string): Promise<string> {
     .join('');
 }
 
+/**
+ * A leitura já escrita, se existir, com o contador de reuso somado.
+ *
+ * Uma função, e não o bloco repetido: eram dois pontos iguais e a conferência de
+ * quem já pagou traria o terceiro. Três cópias de "conta o reuso e devolve" é onde
+ * uma delas para de contar sem ninguém notar.
+ *
+ * O cliente tem o mesmo tipo que `creditoDisponivel` recebe. `ReturnType<typeof
+ * createClient>` não serve: resolve o esquema para `unknown`, as tabelas viram
+ * `never` e `supabaseAdmin` nem casa com o parâmetro.
+ */
+async function lerGuardada(
+  cliente: Parameters<typeof creditoDisponivel>[0],
+  chave: string,
+): Promise<Record<string, unknown> | null> {
+  const { data, error } = await cliente
+    .from('interpretacoes_mapa').select('conteudo, usos').eq('chave', chave).maybeSingle();
+  if (error) {
+    console.error('falha ao ler interpretacao guardada', error.message);
+    return null;
+  }
+  if (!data?.conteudo) return null;
+  const usos = typeof data.usos === 'number' ? data.usos : 1;
+  const { error: erroContar } = await cliente
+    .from('interpretacoes_mapa').update({ usos: usos + 1 }).eq('chave', chave);
+  if (erroContar) console.error('falha ao contar reuso', erroContar.message);
+  return data.conteudo as Record<string, unknown>;
+}
+
 function validarResultado(
   bruto: string,
   oraculo: Oraculo,
@@ -517,16 +548,16 @@ Deno.serve(async (request) => {
   let chave = '';
   if (oraculo === 'mapa') {
     chave = await chaveDoMapa(dados);
-    const { data: guardada, error: erroCache } = await supabaseAdmin
-      .from('interpretacoes_mapa').select('conteudo, usos').eq('chave', chave).maybeSingle();
-    if (erroCache) console.error('falha ao ler interpretacao guardada', erroCache.message);
-    else if (guardada?.conteudo) {
-      const usos = typeof guardada.usos === 'number' ? guardada.usos : 1;
-      const { error: erroContar } = await supabaseAdmin
-        .from('interpretacoes_mapa').update({ usos: usos + 1 }).eq('chave', chave);
-      if (erroContar) console.error('falha ao contar reuso', erroContar.message);
-      return resposta({ ...(guardada.conteudo as Record<string, unknown>), oraculo, doCache: true });
-    }
+    const guardada = await lerGuardada(supabaseAdmin, chave);
+    if (guardada) return resposta({ ...guardada, oraculo, doCache: true });
+  }
+
+  // A chave da vocação sai daqui para cima porque o direito de quem já pagou é
+  // conferido ANTES do portão. O prefixo entra no TEXTO que vira hash, e não na
+  // função: assim as chaves de mapa já guardadas continuam valendo, e uma vocação
+  // nunca cai na linha de um mapa.
+  if (oraculo === 'vocacao') {
+    chave = await chaveDoMapa(`vocacao:${dados}`);
   }
 
   const { data: perfil, error: erroPerfil } = await supabaseAdmin
@@ -552,6 +583,20 @@ Deno.serve(async (request) => {
     supabaseAdmin, usuarioId, plano, semLimite, 'interpretacao',
     perfil?.plano_valido_ate as string | null,
   );
+
+  // Quem já gastou um crédito NESTA leitura alcança ela sempre, mesmo barrado pelo
+  // portão. Sem isto, o comprador de vocação cuja resposta se perdeu depois de a
+  // leitura ser guardada leva 402 antes de chegar ao cache: o crédito foi gasto, a
+  // leitura está no banco, e ele não alcança o que pagou.
+  //
+  // Só serve o guardado, e nunca gera: autorizar geração aqui abriria chamada paga
+  // ilimitada enquanto a gravação falhasse. Se não houver leitura guardada, este
+  // caminho não faz nada e a requisição segue para o portão normal.
+  if (oraculo === 'vocacao'
+      && await creditoJaGastoNesta(supabaseAdmin, usuarioId, oraculo, chave)) {
+    const guardada = await lerGuardada(supabaseAdmin, chave);
+    if (guardada) return resposta({ ...guardada, oraculo, doCache: true });
+  }
 
   // O veredito não conhece crédito avulso, e barrar aqui mataria o produto: quem
   // cancelou ou nunca assinou é exatamente quem compra avulso. Então o crédito
@@ -625,26 +670,18 @@ Deno.serve(async (request) => {
   // guardada iria de graça a quem está com o plano vencido ou com a cota gasta — e esta
   // leitura é para quem paga. O acerto continua sem custar chamada, sem descontar consulta
   // e sem entrar no limite do dia: só deixa de passar por cima de quem não tem acesso.
+  //
+  // A única exceção é quem já gastou um crédito nesta leitura exata: esse alcança o
+  // guardado antes do portão, mais acima, e por isso nunca chega aqui.
   if (oraculo === 'vocacao') {
-    // O prefixo entra no TEXTO que vira hash, e não na função: assim as chaves de
-    // mapa já guardadas continuam valendo, e uma vocação nunca cai na linha de um
-    // mapa. Trocar `chaveDoMapa` invalidaria o cache de todo mundo de uma vez.
-    chave = await chaveDoMapa(`vocacao:${dados}`);
-    const { data: guardada, error: erroCache } = await supabaseAdmin
-      .from('interpretacoes_mapa').select('conteudo, usos').eq('chave', chave).maybeSingle();
-    if (erroCache) console.error('falha ao ler interpretacao guardada', erroCache.message);
-    else if (guardada?.conteudo) {
-      const usos = typeof guardada.usos === 'number' ? guardada.usos : 1;
-      const { error: erroContar } = await supabaseAdmin
-        .from('interpretacoes_mapa').update({ usos: usos + 1 }).eq('chave', chave);
-      if (erroContar) console.error('falha ao contar reuso', erroContar.message);
-      return resposta({ ...(guardada.conteudo as Record<string, unknown>), oraculo, doCache: true });
-    }
+    const guardada = await lerGuardada(supabaseAdmin, chave);
+    if (guardada) return resposta({ ...guardada, oraculo, doCache: true });
   }
 
   // Reivindicar antes de gerar, e não depois: quem perde a corrida para aqui,
-  // sem gastar chamada de IA. Os dois `return` de cache estão acima, então uma
-  // releitura nunca chega a este ponto e nunca come a compra.
+  // sem gastar chamada de IA. Os três `return` de cache (mapa, vocação e quem já
+  // pagou) estão acima, então uma releitura nunca chega a este ponto e nunca come a
+  // compra.
   //
   // `idReivindicado` é o crédito que ESTA execução reivindicou, e só ele autoriza a
   // devolução no `finally`: a devolução não confere de quem é o crédito, então

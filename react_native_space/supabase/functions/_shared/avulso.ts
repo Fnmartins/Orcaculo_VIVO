@@ -100,3 +100,41 @@ export async function devolverCredito(cliente: Cliente, compraId: number): Promi
     .eq('id', compraId);
   if (error) console.error('falha ao devolver credito avulso', error.message);
 }
+
+/**
+ * Esta pessoa já gastou um crédito NESTA leitura exata?
+ *
+ * Existe por causa de um furo estreito: o crédito é reivindicado antes de gerar, e
+ * se a resposta se perder depois de a leitura ser guardada, o comprador de vocação
+ * leva 402 no portão antes de alcançar o que pagou — porque na vocação o cache é
+ * lido depois do portão, de propósito.
+ *
+ * Não abre nada para mais ninguém. O direito é da COMPRA, casado com a chave que
+ * ela gastou, e a chave sai dos dados de nascimento da própria pessoa.
+ *
+ * **Falha de leitura responde `false`.** Responder `true` entregaria leitura
+ * guardada a quem o portão barraria; responder `false` só mantém a recusa que a
+ * pessoa já teria tido de qualquer jeito.
+ */
+export async function creditoJaGastoNesta(
+  cliente: Cliente,
+  usuarioId: string,
+  oraculo: string,
+  chave: string,
+): Promise<boolean> {
+  const { data, error } = await cliente
+    .from('compras_avulsas')
+    .select('id')
+    .eq('usuario_id', usuarioId)
+    .eq('oraculo', oraculo)
+    .eq('consumido_chave', chave)
+    // Gasto, e não apenas comprado: um crédito ainda disponível daria direito a
+    // leitura de graça e seguiria valendo, o que é cobrar zero por duas.
+    .not('consumido_em', 'is', null)
+    .limit(1);
+  if (error) {
+    console.error('falha ao conferir credito ja gasto', error.message);
+    return false;
+  }
+  return Array.isArray(data) && data.length > 0;
+}

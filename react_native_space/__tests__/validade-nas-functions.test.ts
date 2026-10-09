@@ -342,7 +342,13 @@ describe('o quarto oraculo: vocacao', () => {
     );
     const cota = lf.indexOf('if (!cobranca.permitido) {');
     const lerMapa = lf.indexOf("if (oraculo === 'mapa') {");
-    const lerVocacao = lf.indexOf("if (oraculo === 'vocacao') {");
+    //
+    // Há dois `if (oraculo === 'vocacao') {` no arquivo. O primeiro só calcula a chave, e
+    // fica ACIMA do portão de propósito: o direito de quem já pagou precisa dela antes. O
+    // que lê o cache é o segundo, e é dele que a ordem abaixo fala.
+    const lerVocacao = lf.indexOf(
+      "if (oraculo === 'vocacao') {\n    const guardada = await lerGuardada(",
+    );
     expect(veredito).toBeGreaterThan(-1);
     expect(lerMapa).toBeGreaterThan(-1);
     expect(lerVocacao).toBeGreaterThan(-1);
@@ -358,7 +364,10 @@ describe('o quarto oraculo: vocacao', () => {
     // Passar pelo veredito e pela cota do período são os portões. O acerto devolve a
     // leitura guardada sem custar chamada, sem baixar `consultas_restantes` e sem somar
     // em `uso_ia`.
-    const bloco = /\n  if \(oraculo === 'vocacao'\) \{[\s\S]*?\n  \}\n/.exec(lf);
+    //
+    // O bloco é o que LÊ o cache, e não o que calcula a chave (que não devolve nada).
+    const bloco = /\n  if \(oraculo === 'vocacao'\) \{\n    const guardada = await lerGuardada\([\s\S]*?\n  \}\n/
+      .exec(lf);
     expect(bloco).not.toBeNull();
     expect(bloco![0]).toMatch(/doCache: true/);
     for (const proibido of ['restantes', 'registrarUso', 'exigirEscrita', 'anthropic']) {
@@ -743,13 +752,15 @@ describe('o credito avulso entra na interpretacao sem furar o cache', () => {
     expect(interp.indexOf('reivindicarCredito(')).toBeGreaterThan(interp.indexOf('doCache: true'));
   });
 
-  it('os DOIS retornos de cache ficam acima da reivindicação, e não só o do mapa', () => {
+  it('os TRES retornos de cache ficam acima da reivindicação, e não só o do mapa', () => {
     // `indexOf('doCache: true')` acha o do MAPA, que é o primeiro. Uma reivindicação
     // posta entre o cache do mapa e o da vocação passaria no teste acima — e ainda
     // assim comeria a compra de quem reabre uma vocação já guardada, que é o caso que
-    // a spec manda prender primeiro. O 2 também é de propósito: um terceiro retorno de
-    // cache pede que alguém olhe esta ordem de novo.
-    expect(lf.match(/doCache: true/g)?.length).toBe(2);
+    // a spec manda prender primeiro. O número também é de propósito: um retorno de
+    // cache a mais pede que alguém olhe esta ordem de novo. Eram dois; o terceiro é o
+    // de quem já gastou um crédito nesta leitura, e fica acima da reivindicação pelo
+    // mesmo motivo — reler o que se pagou nunca come outra compra.
+    expect(lf.match(/doCache: true/g)?.length).toBe(3);
     expect(interp.indexOf('reivindicarCredito(')).toBeGreaterThan(interp.lastIndexOf('doCache: true'));
   });
 
@@ -895,5 +906,77 @@ describe('o credito avulso entra na interpretacao sem furar o cache', () => {
     // da geração.
     const final = lf.slice(lf.indexOf('} finally {'));
     expect(final).toMatch(/try \{\n\s*await devolverCredito\(supabaseAdmin, idReivindicado\);\n\s*\} catch \(erroDevolucao\) \{\n\s*console\.error\(/);
+  });
+
+  // O caminho de quem já gastou um crédito NESTA leitura: do `if` que confere o direito
+  // até o `}` que o fecha. Os testes abaixo olham só este trecho.
+  const caminhoDoPago = /\n  if \(oraculo === 'vocacao'\n\s*&& await creditoJaGastoNesta\(supabaseAdmin, usuarioId, oraculo, chave\)\) \{\n[\s\S]*?\n  \}\n/
+    .exec(lf);
+
+  it('o direito de quem ja pagou e conferido ANTES do portao', () => {
+    // Depois do portao nao serve para nada: o 402 ja teria voltado.
+    const direito = interp.indexOf('creditoJaGastoNesta(');
+    const portao = interp.indexOf('!vereditoContornavel');
+    expect(direito).toBeGreaterThan(-1);
+    expect(portao).toBeGreaterThan(-1);
+    expect(direito).toBeLessThan(portao);
+  });
+
+  it('o caminho de quem ja pagou nunca gera, so devolve o guardado', () => {
+    // Autorizar geracao ali abriria chamada paga ilimitada enquanto a gravacao
+    // falhasse: a leitura nao teria onde ficar guardada e cada tentativa pagaria a
+    // Anthropic de novo. Entre a conferencia do direito e o seu return nao entra IA.
+    //
+    // O trecho e o do proprio `if`, e nao a fatia ate a chamada ao modelo: uma fatia
+    // que termina na PRIMEIRA ocorrencia de `anthropic.messages.create` nunca a contem,
+    // e o teste passaria com a geracao escrita dentro do caminho.
+    expect(caminhoDoPago).not.toBeNull();
+    const bloco = caminhoDoPago![0];
+    // Nem a IA, nem nada que decide cobranca ou reivindica credito: o caminho devolve
+    // antes de todos eles, e e por isso que nao precisa de guarda nenhuma a mais.
+    for (const proibido of [
+      'anthropic', 'messages.create', 'cobranca', 'veredito', 'reivindicarCredito',
+      'idReivindicado', 'devolverCredito',
+    ]) {
+      expect({ proibido, aparece: bloco.includes(proibido) }).toEqual({ proibido, aparece: false });
+    }
+  });
+
+  it('o caminho de quem ja pagou e so isto: le o guardado e devolve, ou nao faz nada', () => {
+    // A busca por palavra acima nao enxerga o que nao tem nome proibido. Um `return`
+    // trocado por deixar seguir mandaria a pessoa ao portao COM a leitura na mao, e uma
+    // bandeira que "autoriza" a geracao so apareceria la embaixo, longe daqui. Por isso o
+    // trecho inteiro e comparado, como `chaveDoMapa` e: acrescentar qualquer coisa a este
+    // caminho obriga a mexer neste teste, e a pensar em quanto isso custa.
+    expect(caminhoDoPago).not.toBeNull();
+    expect(caminhoDoPago![0]).toBe([
+      '',
+      "  if (oraculo === 'vocacao'",
+      '      && await creditoJaGastoNesta(supabaseAdmin, usuarioId, oraculo, chave)) {',
+      '    const guardada = await lerGuardada(supabaseAdmin, chave);',
+      '    if (guardada) return resposta({ ...guardada, oraculo, doCache: true });',
+      '  }',
+      '',
+    ].join('\n'));
+  });
+
+  it('o direito e conferido com a chave JA calculada, e nao com a vazia', () => {
+    // `chave` nasce como texto vazio. Conferir antes de calcula-la perguntaria ao banco
+    // por `consumido_chave = ''`, nao acharia nada e deixaria o caminho morto — sem erro
+    // nenhum, e o comprador de volta ao 402 que este caminho existe para evitar.
+    const calculo = lf.indexOf('chave = await chaveDoMapa(`vocacao:${dados}`);');
+    expect(calculo).toBeGreaterThan(-1);
+    expect(calculo).toBeLessThan(lf.indexOf('creditoJaGastoNesta('));
+  });
+
+  it('a leitura do guardado sai de um ponto so, e os tres retornos de cache a usam', () => {
+    // Eram dois blocos iguais e o caminho de quem ja pagou traria o terceiro. Tres copias
+    // de "conta o reuso e devolve" sao onde uma delas para de contar sem ninguem notar.
+    expect(lf.match(/\.from\('interpretacoes_mapa'\)\s*\.select\(/g)?.length).toBe(1);
+    expect(lf.match(/await lerGuardada\(supabaseAdmin, chave\)/g)?.length).toBe(3);
+    // E o reuso continua sendo contado la dentro.
+    const inicio = lf.indexOf('async function lerGuardada');
+    expect(inicio).toBeGreaterThan(-1);
+    expect(lf.slice(inicio, lf.indexOf('\n}\n', inicio))).toContain('update({ usos: usos + 1 })');
   });
 });
