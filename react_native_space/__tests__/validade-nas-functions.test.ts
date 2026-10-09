@@ -887,9 +887,39 @@ describe('o credito avulso entra na interpretacao sem furar o cache', () => {
     expect(lf).toMatch(
       /if \(!ganhou\) \{\n\s*return resposta\(\{[^}]*\}, 409\);\n\s*\}\n\s*idReivindicado = busca\.id;/,
     );
-    // E `leituraEntregue` só vira verdadeiro na última linha antes da resposta de sucesso.
-    expect(lf.match(/leituraEntregue = true;/g)?.length).toBe(1);
+    // E `leituraEntregue` vira verdadeiro na última linha antes da resposta de sucesso,
+    // para os produtos que não guardam leitura (tarô e búzios não têm chave de cache).
     expect(lf).toMatch(/leituraEntregue = true;\n\s*return resposta\(\{\n\s*\.\.\.interpretacao,/);
+    // Dois pontos, e não mais: o outro é a gravação da leitura, conferido no teste abaixo.
+    expect(lf.match(/leituraEntregue = true;/g)?.length).toBe(2);
+  });
+
+  it('a leitura conta como entregue quando a GRAVAÇÃO dá certo, e não só na última linha', () => {
+    // A leitura é gravada em `interpretacoes_mapa` e só DEPOIS vêm o desconto do plano e
+    // `registrarUso`. Com a bandeira subindo apenas na última linha, uma exceção nesse
+    // trecho caía no `finally` e devolvia um crédito cuja leitura já estava no banco: na
+    // tentativa seguinte o cache a entrega de graça (os três retornos de cache ficam acima
+    // da reivindicação) e o crédito continua na mão. Um pagamento, a leitura entregue, e um
+    // crédito inteiro sobrando.
+    //
+    // A gravação é o instante em que a pessoa passa a ALCANÇAR o que pagou, e é por isso
+    // que a bandeira sobe ali, antes das duas escritas que podem lançar.
+    const gravacao = lf.indexOf("from('interpretacoes_mapa').insert(");
+    expect(gravacao).toBeGreaterThan(-1);
+    const marcada = lf.indexOf('leituraEntregue = true;', gravacao);
+    expect(marcada).toBeGreaterThan(gravacao);
+    expect(marcada).toBeLessThan(lf.indexOf("exigirEscrita('perfis.consultas_restantes'"));
+    expect(marcada).toBeLessThan(lf.indexOf('await registrarUso('));
+  });
+
+  it('a gravação que FALHA não conta como entrega: sem cache, o crédito tem de voltar', () => {
+    // O outro lado, e é o que importa: a gravação hoje falha e segue em frente apenas
+    // logando. Marcar a entrega ali também faria a pessoa pagar, não ter leitura guardada
+    // nenhuma para a próxima tentativa, e ainda perder o crédito. Por isso a bandeira sobe
+    // no `else`, e o ramo do erro só loga.
+    expect(lf).toMatch(
+      /if \(erroGuardar\) \{\n(?:\s*\/\/[^\n]*\n)*\s*console\.error\('falha ao guardar interpretacao', erroGuardar\.message\);\n\s*\} else \{\n(?:\s*\/\/[^\n]*\n)*\s*leituraEntregue = true;\n\s*\}/,
+    );
   });
 
   it('o credito avulso passa por vencido e por limite diario', () => {

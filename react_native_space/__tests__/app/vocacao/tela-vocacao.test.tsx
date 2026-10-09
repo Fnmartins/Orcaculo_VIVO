@@ -121,6 +121,9 @@ const TROMSO: CidadeFalsa = {
   lat: 69.65, lon: 18.96, fuso: 'Europe/Oslo', offsetPadrao: 60,
 };
 
+/** Um plano pago que vale hoje. Data relativa: uma fixa vence e o teste passa a mentir. */
+const VALIDADE_NO_FUTURO = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
 function renderComPlano(opcoes: {
   temAcesso: boolean;
   semHora?: boolean;
@@ -136,11 +139,22 @@ function renderComPlano(opcoes: {
    * o que o semáforo de verdade acusa como "acesso vencido" se ninguém o avisar do crédito.
    */
   compradorSemPlano?: boolean;
+  /**
+   * `plano_valido_ate` no futuro: o assinante de verdade. Sem isto, `temAcesso: true` é só
+   * um NOME de plano sem validade nenhuma — o perfil de quem cancelou, e de quem o servidor
+   * cobra do crédito avulso. A tela decide por `acessoDoPlano`, a mesma função do servidor,
+   * e é daqui que ela lê a data. Sem sessão de propósito, como o resto do arquivo: o
+   * semáforo não renderiza nada nem vai ao banco.
+   */
+  planoValido?: boolean;
+  /** Super-admin: sem validade nenhuma e liberado de qualquer forma, pelo `semLimite`. */
+  superAdmin?: boolean;
   cidade?: CidadeFalsa;
 }) {
   const {
     temAcesso, semHora = false, horaNula = false, perfilVazio = false,
-    semPerfil = false, acessoVencido = false, compradorSemPlano = false, cidade = SAO_PAULO,
+    semPerfil = false, acessoVencido = false, compradorSemPlano = false,
+    planoValido = false, superAdmin = false, cidade = SAO_PAULO,
   } = opcoes;
   mockAcesso = temAcesso;
   // Os quatro campos que `app/mapa-astral/index.tsx` grava. Sem hora, ele grava a hora
@@ -167,6 +181,17 @@ function renderComPlano(opcoes: {
     mockSessao = { user: { id: 'u1' } };
     mockPerfil = {
       ...mockPerfil, plano: 'gratuito', plano_valido_ate: null, is_super_admin: false,
+    };
+  }
+  if (planoValido && mockPerfil) {
+    mockPerfil = {
+      ...mockPerfil, plano: 'iniciante', plano_valido_ate: VALIDADE_NO_FUTURO,
+      is_super_admin: false,
+    };
+  }
+  if (superAdmin && mockPerfil) {
+    mockPerfil = {
+      ...mockPerfil, plano: 'gratuito', plano_valido_ate: null, is_super_admin: true,
     };
   }
   return render(<TelaVocacao />);
@@ -550,21 +575,31 @@ describe('compra avulsa na vocação', () => {
     expect(frase).toBeLessThan(botao);
   });
 
-  it('com cota no plano, a frase do crédito não aparece: o servidor gasta a cota primeiro', () => {
+  it('com plano VÁLIDO e cota, a frase do crédito não aparece: o servidor gasta a cota primeiro', () => {
     // A frase é uma afirmação sobre dinheiro. Dizer "usa uma leitura avulsa" a quem o
     // servidor cobraria da cota é dizer que gastou o que não gastou.
+    //
+    // E são as duas coisas: a cota, e a VALIDADE. Até 09/10 este fixture dizia "com cota no
+    // plano" dando um nome de plano sem validade nenhuma — o perfil de quem cancelou, de
+    // quem o servidor cobra do crédito. O fixture encenava a confusão que custou a venda.
     mockCreditos = { vocacao: 1 };
     mockPodeConsultar = true;
-    renderComPlano({ temAcesso: true });
+    renderComPlano({ temAcesso: true, planoValido: true });
     expect(screen.queryByText(/Ler agora usa uma das suas leituras avulsas/)).toBeNull();
   });
 
-  it('sem plano mas com cota sobrando, a frase também não aparece', () => {
+  it('sem plano e com o contador do perfil em 1, a frase APARECE: é o crédito que paga', () => {
+    // O comprador típico é `gratuito` com `consultas_restantes = 1`, porque o perfil nasce
+    // com 1 e nada o gasta sem `fonte === 'plano'` — então `podeFazerConsulta()` é
+    // verdadeiro para sempre. Era este teste que fixava o silêncio como correto: a frase
+    // calava justamente para quem ia ter o crédito gasto.
+    //
+    // Este teste tem de ficar VERMELHO se a frase voltar a calar para quem paga com crédito.
     mockCreditos = { vocacao: 1 };
     mockPodeConsultar = true;
     renderComPlano({ temAcesso: false });
     expect(screen.getByText(/Ler minha vocação/i)).toBeTruthy();
-    expect(screen.queryByText(/Ler agora usa uma das suas leituras avulsas/)).toBeNull();
+    expect(screen.getByText(/Ler agora usa uma das suas leituras avulsas/)).toBeTruthy();
   });
 
   it('plano sem cota e com crédito: o servidor cobra do crédito, e a frase aparece', () => {
@@ -658,9 +693,50 @@ describe('compra avulsa na vocação', () => {
     await waitFor(() => expect(mockComprar).toHaveBeenCalledTimes(2));
   });
 
-  it('com plano, a compra avulsa não é oferecida', () => {
-    renderComPlano({ temAcesso: true });
+  it('com plano válido e cota, a compra avulsa não é oferecida', () => {
+    mockPodeConsultar = true;
+    renderComPlano({ temAcesso: true, planoValido: true });
     expect(screen.queryByText('Comprar só esta leitura')).toBeNull();
+  });
+});
+
+/**
+ * Os quatro perfis que a oferta tem de separar, iguais aos do mapa astral (a condição é a
+ * mesma nas duas telas, de propósito). `podeFazerConsulta` sozinho acertava dois: não olha
+ * `plano_valido_ate`, e o perfil novo nasce com `consultas_restantes = 1` que nada gasta
+ * para quem é `gratuito` — então dizia "ainda tem consulta" para sempre a quem nunca
+ * assinou, e a porta de entrada do produto não aparecia para metade do público.
+ */
+describe('a quem a oferta da vocação aparece', () => {
+  const OFERTA = 'Comprar só esta leitura';
+
+  it('quem NUNCA assinou vê a oferta, mesmo com o contador do perfil em 1', () => {
+    mockPodeConsultar = true;
+    renderComPlano({ temAcesso: false });
+    expect(screen.getByText(OFERTA)).toBeTruthy();
+  });
+
+  it('assinante com cota NÃO vê a oferta', () => {
+    mockPodeConsultar = true;
+    renderComPlano({ temAcesso: true, planoValido: true });
+    expect(screen.queryByText(OFERTA)).toBeNull();
+  });
+
+  it('assinante com a cota zerada vê a oferta: é dele que o servidor cobraria o crédito', () => {
+    // Era o perfil que esta tela escondia e o mapa já mostrava: `temAcesso('mapa_completo')`
+    // diz que o recurso existe no plano, não que a leitura sai hoje. Com a cota em zero o
+    // servidor responde 402, e a segunda saída é a resposta honesta.
+    mockPodeConsultar = false;
+    renderComPlano({ temAcesso: true, planoValido: true });
+    expect(screen.getByText(OFERTA)).toBeTruthy();
+  });
+
+  it('super-admin NÃO vê a oferta, nem sem validade nenhuma', () => {
+    // O terceiro argumento de `acessoDoPlano` é o que o libera. Sem ele, o super-admin (que
+    // não tem `plano_valido_ate`) leria uma oferta de compra do próprio produto.
+    mockPodeConsultar = true;
+    renderComPlano({ temAcesso: true, superAdmin: true });
+    expect(screen.queryByText(OFERTA)).toBeNull();
   });
 });
 
@@ -727,9 +803,10 @@ describe('quem já gastou um crédito de vocação', () => {
     expect(screen.queryByText(/Ler agora usa uma das suas leituras avulsas/)).toBeNull();
   });
 
-  it('com plano, não oferece a compra', () => {
+  it('com plano válido e cota, não oferece a compra', () => {
     mockGastou = { vocacao: true };
-    renderComPlano({ temAcesso: true });
+    mockPodeConsultar = true;
+    renderComPlano({ temAcesso: true, planoValido: true });
     expect(screen.getByText(/Ler minha vocação/i)).toBeTruthy();
     expect(screen.queryByText('Comprar só esta leitura')).toBeNull();
   });
@@ -855,10 +932,25 @@ describe('o semáforo quando não se sabe do crédito', () => {
     expect(screen.queryByLabelText('Acesso vencido')).toBeNull();
   });
 
-  it('quem gastou e não tem crédito novo lê o cadeado, que aqui é verdadeiro', () => {
-    // Sabemos que o crédito é zero (a leitura respondeu): o cadeado não mente.
+  it('quem gastou e não tem crédito novo também fica sem cadeado: ele não sabe que a pessoa pagou', () => {
+    // Este é o comprador: pagou, gerou e voltou. O crédito é zero porque ele já o gastou, e
+    // o cadeado dizia "Seu acesso terminou. Atualize seu plano" logo acima do botão que
+    // funciona — a leitura que ele pagou mora no servidor e volta pelo cache. A rodada que
+    // consertou isso cobriu `credito > 0` e não cobriu `gastou`.
+    //
+    // Calado, e não uma faixa positiva: `gastou` diz que a pessoa pagou, não que a leitura
+    // está alcançável agora. Afirmar que está seria chutar, e o próprio componente diz que
+    // semáforo apagado é melhor que semáforo chutando.
     mockGastou = { vocacao: true };
     renderComPlano({ temAcesso: false, compradorSemPlano: true });
-    expect(screen.getByLabelText('Acesso vencido')).toBeTruthy();
+    expect(screen.queryByLabelText('Acesso vencido')).toBeNull();
+    expect(screen.queryByText(/acesso terminou/)).toBeNull();
+    // E nenhuma promessa de crédito, que seria a outra afirmação falsa.
+    expect(screen.queryByText(/leitura avulsa|leituras avulsas/)).toBeNull();
+    // O botão que ele pagou segue à mão.
+    expect(screen.getByText(/Ler minha vocação/i)).toBeTruthy();
+    // O contrapeso está acima, em "sem crédito, o cadeado do semáforo segue acusando o
+    // acesso vencido": o silêncio é de quem pagou, não de todo perfil sem plano. Sem ele,
+    // passar `'desconhecido'` sempre deixaria a suíte verde.
   });
 });

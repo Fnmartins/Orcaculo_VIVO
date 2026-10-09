@@ -46,8 +46,8 @@ jest.mock('../../../components/SemaforoUso', () => ({
 jest.mock('../../../components/BotaoOuvir', () => ({ BotaoOuvir: () => null }));
 jest.mock('../../../services/compartilhar', () => ({ compartilharMapaAstral: jest.fn() }));
 
-// `podeFazerConsulta` é a única verdade sobre "ainda tem consulta" que a tela usa:
-// os testes a mexem diretamente, em vez de reconstruir plano, cota e super-admin.
+// `podeFazerConsulta` responde "a cota do plano ainda cobre": os testes a mexem
+// diretamente, em vez de reconstruir plano, cota e super-admin.
 let mockPodeConsultar = false;
 jest.mock('../../../hooks/usePlano', () => ({
   usePlano: () => ({
@@ -55,6 +55,18 @@ jest.mock('../../../hooks/usePlano', () => ({
     podeFazerConsulta: () => mockPodeConsultar,
   }),
 }));
+
+// A VALIDADE do plano, que `podeFazerConsulta` não conhece. A tela decide a oferta com
+// `acessoDoPlano`, a mesma função do servidor, e ela lê `plano_valido_ate` daqui. Sem perfil
+// por padrão: é quem nunca assinou, o público que esta venda existe para atender, e era
+// justamente quem nunca via o botão.
+let mockPerfil: { plano_valido_ate?: string | null; is_super_admin?: boolean } | null = null;
+jest.mock('../../../contexts/AuthContext', () => ({
+  useAuth: () => ({ perfil: mockPerfil, sessao: null, carregando: false }),
+}));
+
+/** Um plano pago que vale hoje. Data relativa: uma fixa vence e o teste passa a mentir. */
+const VALIDADE_NO_FUTURO = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
 // Créditos por produto, como o hook real os separa: um teste pode dar crédito de
 // vocação a quem não tem nenhum de mapa e conferir que a tela não confunde os dois.
@@ -117,6 +129,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockParams = { ...PARAMS_SAO_PAULO };
   mockPodeConsultar = false;
+  mockPerfil = null;
   mockCreditos = {};
   mockFalhou = false;
   mockLendo = false;
@@ -151,10 +164,14 @@ describe('compra avulsa no resultado do mapa astral', () => {
     expect(screen.getByText(/depois de gerada, fica no seu histórico enquanto sua conta existir/)).toBeTruthy();
   });
 
-  it('com consulta para gastar, não oferece a compra', () => {
-    // Quem ainda tem leitura no plano (ou é ilimitado, ou é super-admin) não precisa
-    // pagar à parte. A decisão é de `podeFazerConsulta`, que o app já usa.
+  it('com plano válido e consulta para gastar, não oferece a compra', () => {
+    // Quem ainda tem leitura no plano (ou é ilimitado, ou é super-admin) não precisa pagar à
+    // parte. As DUAS coisas: a cota, por `podeFazerConsulta`, e a validade, por
+    // `acessoDoPlano` — a mesma função do servidor. Só `podeFazerConsulta` não bastava, e
+    // este fixture mostra por quê: até 09/10 ele dizia "com consulta para gastar" sem
+    // validade nenhuma, que é o perfil de quem o servidor cobra do crédito avulso.
     mockPodeConsultar = true;
+    mockPerfil = { plano_valido_ate: VALIDADE_NO_FUTURO };
     render(<TelaMapaAstralResultado />);
     expect(screen.queryByText(OFERTA)).toBeNull();
     expect(screen.queryByText(/leitura avulsa|leituras avulsas/)).toBeNull();
@@ -312,6 +329,44 @@ describe('compra avulsa no resultado do mapa astral', () => {
       'Não foi possível abrir o pagamento', 'O pagamento não abriu. Tente de novo.',
     ));
     expect(abrirURL).not.toHaveBeenCalled();
+  });
+
+  // Os quatro perfis que a oferta tem de separar. `podeFazerConsulta` sozinho acertava
+  // dois: ele não olha a validade, e o perfil novo nasce com `consultas_restantes = 1` que
+  // nada gasta para quem é `gratuito` — então ele dizia "ainda tem consulta" para sempre a
+  // quem nunca assinou, e o botão de compra nunca era renderizado para metade do público.
+  describe('os quatro perfis', () => {
+    it('quem NUNCA assinou vê a oferta, mesmo com o contador do perfil em 1', () => {
+      // O caso que custava a venda: `gratuito`, sem validade, e `podeFazerConsulta()`
+      // verdadeiro porque o contador nasce em 1 e nada o gasta sem `fonte === 'plano'`.
+      mockPodeConsultar = true;
+      mockPerfil = { plano_valido_ate: null };
+      render(<TelaMapaAstralResultado />);
+      expect(screen.getByText(OFERTA)).toBeTruthy();
+    });
+
+    it('assinante com cota NÃO vê a oferta', () => {
+      mockPodeConsultar = true;
+      mockPerfil = { plano_valido_ate: VALIDADE_NO_FUTURO };
+      render(<TelaMapaAstralResultado />);
+      expect(screen.queryByText(OFERTA)).toBeNull();
+    });
+
+    it('assinante com a cota zerada vê a oferta: é dele que o servidor cobraria o crédito', () => {
+      mockPodeConsultar = false;
+      mockPerfil = { plano_valido_ate: VALIDADE_NO_FUTURO };
+      render(<TelaMapaAstralResultado />);
+      expect(screen.getByText(OFERTA)).toBeTruthy();
+    });
+
+    it('super-admin NÃO vê a oferta, nem sem validade nenhuma', () => {
+      // O terceiro argumento de `acessoDoPlano` é o que o libera. Sem ele, o super-admin
+      // (que não tem `plano_valido_ate`) leria uma oferta de compra do próprio produto.
+      mockPodeConsultar = true;
+      mockPerfil = { plano_valido_ate: null, is_super_admin: true };
+      render(<TelaMapaAstralResultado />);
+      expect(screen.queryByText(OFERTA)).toBeNull();
+    });
   });
 
   it('depois que a leitura aparece, não há mais o que comprar', async () => {

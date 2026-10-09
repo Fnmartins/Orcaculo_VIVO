@@ -40,8 +40,10 @@ import {
 } from '../../data/textos-mapa';
 import { rotuloDoOffset } from '../../utils/fuso';
 import { cidadePorId, type Cidade } from '../../data/cidades';
+import { useAuth } from '../../contexts/AuthContext';
 import { usePlano } from '../../hooks/usePlano';
 import { useCreditoAvulso } from '../../hooks/useCreditoAvulso';
+import { acessoDoPlano } from '../../supabase/functions/_shared/limites';
 import { compartilharMapaAstral } from '../../services/compartilhar';
 import { imprimirPagina, podeImprimir } from '../../utils/impressao';
 import { mostrarAlerta } from '../../utils/alerta';
@@ -121,20 +123,27 @@ export default function TelaMapaAstralResultado() {
     cidade: string; cidadeId: string; cidadeUf: string; cidadePais: string;
     lat: string; lon: string; fuso: string; offsetPadrao: string;
   }>();
+  const { perfil } = useAuth();
   const { temAcesso, podeFazerConsulta } = usePlano();
   const { credito, falhou, lendo } = useCreditoAvulso('mapa');
-  // Quem decide oferecer é `podeFazerConsulta`, que o app já usa, e não uma
-  // conta nova nesta tela: seriam duas verdades sobre acesso, e a que liberasse
-  // indevido seria a que ninguém notaria. É o mesmo argumento do comentário de
-  // `components/SemaforoUso.tsx:41-42`. Ela já cobre super-admin, plano
-  // ilimitado, cota em zero e quem cancelou (o webhook zera a cota no mesmo
-  // update). Sem crédito na mão e sem consulta para gastar é exatamente quando
-  // a compra avulsa é a resposta.
-  //
+  // A MESMA regra que o servidor usa: `acessoDoPlano` mora em `_shared/limites.ts`, é a
+  // função que a `ia-interpretacao` chama, e `components/SemaforoUso.tsx` já a chama assim
+  // dentro desta tela. Não é uma segunda verdade sobre acesso: é a verdade compartilhada.
+  const acesso = acessoDoPlano(perfil?.plano_valido_ate, new Date(), perfil?.is_super_admin === true);
+
+  // Quem o servidor cobraria do crédito avulso. `podeFazerConsulta` sozinho não responde
+  // isso por dois motivos: ele não olha `plano_valido_ate`, e perfil novo nasce com
+  // `consultas_restantes = 1` que nada gasta para quem é `gratuito` — o desconto exige
+  // `fonte === 'plano'`, que exige o veredito permitido, que exige a validade. O contador
+  // fica em 1 para sempre, e sozinho ele escondia esta oferta de quem mais precisa dela:
+  // quem nunca assinou, que é metade do público que esta venda existe para atender. Até
+  // 09/10 o botão só aparecia para ex-assinante que cancelou, e o produto não vendia.
+  const planoNaoCobre = !acesso.liberado || !podeFazerConsulta();
+
   // Nunca antes de saber (`lendo`) nem quando a leitura do crédito falhou: "zero" por não ter
   // chegado a resposta, ou por queda de rede, pode ser quem já pagou, e convidá-lo a comprar
   // de novo é cobrar duas vezes.
-  const ofertarAvulso = credito === 0 && !falhou && !lendo && !podeFazerConsulta();
+  const ofertarAvulso = credito === 0 && !falhou && !lendo && planoNaoCobre;
 
   // O semáforo não chuta: sem saber do crédito (ainda lendo, ou a leitura falhou), não diz
   // nada, em vez de acusar acesso vencido a quem pode ter acabado de pagar.

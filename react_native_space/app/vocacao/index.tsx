@@ -25,6 +25,7 @@ import { TEXTO_CORPO } from '../../data/textos-mapa';
 import type { Cidade } from '../../data/cidades';
 import { usePlano } from '../../hooks/usePlano';
 import { useCreditoAvulso } from '../../hooks/useCreditoAvulso';
+import { acessoDoPlano } from '../../supabase/functions/_shared/limites';
 import { gerarLeituraDeVocacao, type InterpretacaoVocacao } from '../../services/ia';
 import { comprarAvulso } from '../../services/avulso';
 import { moedaPadrao } from '../../services/stripe';
@@ -135,6 +136,19 @@ export default function TelaVocacao() {
 
   const temMapaCompleto = temAcesso('mapa_completo');
 
+  // A MESMA regra que o servidor usa: `acessoDoPlano` mora em `_shared/limites.ts`, é a
+  // função que a `ia-interpretacao` chama, e `components/SemaforoUso.tsx` já a chama assim
+  // dentro desta tela. Não é uma segunda verdade sobre acesso: é a verdade compartilhada.
+  const acesso = acessoDoPlano(perfil?.plano_valido_ate, new Date(), perfil?.is_super_admin === true);
+
+  // Quem o servidor cobraria do crédito avulso. `podeFazerConsulta` sozinho não responde
+  // isso por dois motivos: ele não olha `plano_valido_ate`, e perfil novo nasce com
+  // `consultas_restantes = 1` que nada gasta para quem é `gratuito` — o desconto exige
+  // `fonte === 'plano'`, que exige o veredito permitido, que exige a validade. O contador
+  // fica em 1 para sempre, e sozinho ele esconde a oferta de quem mais precisa dela: quem
+  // nunca assinou, que é metade do público que esta venda existe para atender.
+  const planoNaoCobre = !acesso.liberado || !podeFazerConsulta();
+
   // O portão da leitura. Abre para quem tem o plano, para quem tem crédito, para quem JÁ
   // GASTOU um crédito e para quem não conseguimos ler:
   // - Quem tem crédito: volta da Stripe sem plano nenhum. Olhando só `temMapaCompleto`, a
@@ -149,17 +163,27 @@ export default function TelaVocacao() {
   //   portão de verdade e recusa (402) quem não tem nada.
   const leituraAberta = temMapaCompleto || credito > 0 || gastou || falhou;
 
-  // A compra se oferece a quem não tem plano nem crédito, e a quem já gastou um crédito: quem
-  // quer a leitura de outros dados de nascimento precisa poder comprar de novo. Nunca antes
-  // de saber (`lendo`) nem na falha: não se convida a comprar sem saber se já se comprou, e
-  // dois toques nessa janela comprariam de novo. O portão acima NÃO espera a leitura: ele
-  // abre quando a resposta chega, e um piscar de cartão trancado custa menos que uma oferta
-  // que a pessoa já aceitou.
-  const ofertarAvulso = !temMapaCompleto && credito === 0 && !falhou && !lendo;
+  // A compra se oferece a quem o plano não cobre e que não tem crédito, inclusive a quem já
+  // gastou um: quem quer a leitura de outros dados de nascimento precisa poder comprar de
+  // novo. Nunca antes de saber (`lendo`) nem na falha: não se convida a comprar sem saber se
+  // já se comprou, e dois toques nessa janela comprariam de novo. O portão acima NÃO espera a
+  // leitura: ele abre quando a resposta chega, e um piscar de cartão trancado custa menos que
+  // uma oferta que a pessoa já aceitou.
+  //
+  // `planoNaoCobre` no lugar de `!temMapaCompleto`: o nome do plano diz que o recurso existe,
+  // não que a leitura sai hoje. Assinante com a validade vencida, ou com a cota do período
+  // gasta, leva 402 do servidor — e era justamente quem não via a segunda saída. A mesma
+  // condição do mapa, para as duas telas não divergirem de novo.
+  const ofertarAvulso = credito === 0 && !falhou && !lendo && planoNaoCobre;
 
   // O semáforo não chuta: sem saber do crédito (ainda lendo, ou a leitura falhou), não diz
   // nada, em vez de acusar acesso vencido a quem pode ter acabado de pagar.
-  const creditoDoSemaforo = lendo || falhou ? 'desconhecido' : credito;
+  //
+  // `gastou` com crédito zero entra no mesmo silêncio, e é o estado de quem comprou, gerou e
+  // voltou: o cadeado diria "Seu acesso terminou. Atualize seu plano" logo acima do botão que
+  // funciona, na cara de quem pagou. Calado, e não uma faixa positiva: `gastou` diz que a
+  // pessoa pagou, não que a leitura está alcançável agora, e afirmar isso seria chutar.
+  const creditoDoSemaforo = lendo || falhou || (gastou && credito === 0) ? 'desconhecido' : credito;
 
   // Dois toques seguidos abririam dois checkouts, e isso é dinheiro. O botão fica desabilitado
   // enquanto o pagamento abre, como `carregandoIA` faz com o botão da leitura.
@@ -370,11 +394,12 @@ export default function TelaVocacao() {
                     </Text>
                     {erroIA && <Text style={estilos.avisoHonesto}>{erroIA}</Text>}
                     {/* O botão abaixo gasta o crédito, e quem o toca tem de saber disso
-                        antes. Só quando o servidor vai cobrar do crédito: com cota no plano
-                        ele gasta a cota primeiro, e a frase seria falsa. `podeFazerConsulta`
-                        é a aproximação dessa precedência que o app já usa (a mesma do
-                        mapa), e não uma conta nova. */}
-                    {credito > 0 && !podeFazerConsulta() ? (
+                        antes. Só quando o servidor vai cobrar do crédito: com cota válida no
+                        plano ele gasta a cota primeiro, e a frase seria falsa. Quem decide é
+                        `planoNaoCobre`, a mesma condição da oferta — com `podeFazerConsulta`
+                        sozinho a frase calava para quem nunca assinou, que é justamente quem
+                        vai ter o crédito gasto. */}
+                    {credito > 0 && planoNaoCobre ? (
                       <Text style={estilos.avisoHonesto}>
                         Ler agora usa uma das suas leituras avulsas.
                       </Text>

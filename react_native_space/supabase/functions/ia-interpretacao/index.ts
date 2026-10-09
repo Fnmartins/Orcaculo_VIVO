@@ -695,7 +695,9 @@ Deno.serve(async (request) => {
     idReivindicado = busca.id;
   }
 
-  // Fica verdadeiro na última linha antes da resposta de sucesso. O `finally` o
+  // Fica verdadeiro no instante em que a pessoa passa a ALCANÇAR o que pagou: a gravação
+  // da leitura em `interpretacoes_mapa`, porque daí em diante o cache a entrega sozinho.
+  // E de novo na última linha, para os produtos sem leitura guardada. O `finally` o
   // consulta: toda outra saída do `try` — recusa do modelo, resposta cortada, fora do
   // formato, exceção — é uma leitura que não saiu.
   let leituraEntregue = false;
@@ -756,7 +758,20 @@ Deno.serve(async (request) => {
     if ((oraculo === 'mapa' || oraculo === 'vocacao') && chave) {
       const { error: erroGuardar } = await supabaseAdmin
         .from('interpretacoes_mapa').insert({ chave, conteudo: interpretacao });
-      if (erroGuardar) console.error('falha ao guardar interpretacao', erroGuardar.message);
+      if (erroGuardar) {
+        // Segue em frente de propósito (a pessoa já tem a leitura na tela), e a bandeira
+        // fica FALSA de propósito: sem linha guardada não há cache para a próxima
+        // tentativa, então a pessoa não alcança o que pagou e o crédito tem de voltar.
+        console.error('falha ao guardar interpretacao', erroGuardar.message);
+      } else {
+        // A gravação deu certo: a partir deste instante a leitura está no banco e a
+        // próxima tentativa a recebe do cache, de graça, porque os três retornos de cache
+        // ficam ACIMA da reivindicação. Devolver o crédito depois daqui entregaria a
+        // leitura E deixaria o crédito inteiro na mão — um pagamento, duas leituras. Era o
+        // que acontecia enquanto a bandeira só virava na última linha: qualquer exceção no
+        // desconto do plano ou em `registrarUso`, logo abaixo, caía no `finally`.
+        leituraEntregue = true;
+      }
     }
 
     // Só desconta depois que a leitura existe. O avulso já foi reivindicado antes de
