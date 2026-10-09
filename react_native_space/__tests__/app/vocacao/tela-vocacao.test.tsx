@@ -74,8 +74,19 @@ jest.mock('../../../services/ia', () => ({
 // ao ganhar foco já tem teste próprio em `hooks/__tests__/useCreditoAvulso.test.tsx`. O
 // mock responde só pela vocação, como o hook real, para a tela não ler o crédito do mapa.
 let mockCreditos: Record<string, number> = {};
+let mockGastou: Record<string, boolean> = {};
+let mockFalhou = false;
 jest.mock('../../../hooks/useCreditoAvulso', () => ({
-  useCreditoAvulso: (oraculo: string) => ({ credito: mockCreditos[oraculo] ?? 0 }),
+  useCreditoAvulso: (oraculo: string) => ({
+    credito: mockCreditos[oraculo] ?? 0,
+    gastou: mockGastou[oraculo] ?? false,
+    falhou: mockFalhou,
+  }),
+}));
+
+let mockMoeda = 'brl';
+jest.mock('../../../services/stripe', () => ({
+  moedaPadrao: () => mockMoeda,
 }));
 
 const mockComprar = jest.fn();
@@ -88,7 +99,8 @@ jest.mock('../../../utils/alerta', () => ({
   mostrarAlerta: (...a: unknown[]) => mockAlerta(...a),
 }));
 
-import { Linking } from 'react-native';
+import { Linking, StyleSheet } from 'react-native';
+import { Cores } from '../../../constants/colors';
 import TelaVocacao from '../../../app/vocacao/index';
 
 const SAO_PAULO: CidadeFalsa = {
@@ -113,11 +125,16 @@ function renderComPlano(opcoes: {
   semPerfil?: boolean;
   /** Sessão aberta, plano pago, mas `plano_valido_ate` no passado. */
   acessoVencido?: boolean;
+  /**
+   * Sessão aberta, plano `gratuito` e sem validade: o perfil que a compra avulsa deixa, e
+   * o que o semáforo de verdade acusa como "acesso vencido" se ninguém o avisar do crédito.
+   */
+  compradorSemPlano?: boolean;
   cidade?: CidadeFalsa;
 }) {
   const {
     temAcesso, semHora = false, horaNula = false, perfilVazio = false,
-    semPerfil = false, acessoVencido = false, cidade = SAO_PAULO,
+    semPerfil = false, acessoVencido = false, compradorSemPlano = false, cidade = SAO_PAULO,
   } = opcoes;
   mockAcesso = temAcesso;
   // Os quatro campos que `app/mapa-astral/index.tsx` grava. Sem hora, ele grava a hora
@@ -138,6 +155,12 @@ function renderComPlano(opcoes: {
     mockSessao = { user: { id: 'u1' } };
     mockPerfil = {
       ...mockPerfil, plano: 'iniciante', plano_valido_ate: '2020-01-01T00:00:00Z', is_super_admin: false,
+    };
+  }
+  if (compradorSemPlano && mockPerfil) {
+    mockSessao = { user: { id: 'u1' } };
+    mockPerfil = {
+      ...mockPerfil, plano: 'gratuito', plano_valido_ate: null, is_super_admin: false,
     };
   }
   return render(<TelaVocacao />);
@@ -171,6 +194,9 @@ beforeEach(() => {
   mockCarregando = false;
   mockSessao = null;
   mockCreditos = {};
+  mockGastou = {};
+  mockFalhou = false;
+  mockMoeda = 'brl';
   mockGerarLeitura.mockResolvedValue(LEITURA);
   mockComprar.mockResolvedValue('https://checkout.stripe.com/c/pay/cs_teste');
   abrirURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
@@ -486,6 +512,47 @@ describe('compra avulsa na vocação', () => {
     expect(screen.getByText('Comprar só esta leitura')).toBeTruthy();
   });
 
+  it('o comprador sem plano não lê "Seu acesso terminou" acima do botão que funciona', () => {
+    // O perfil que a compra deixa é `gratuito`, sem validade, e é o que o cadeado acusa.
+    // Aqui o semáforo é o de verdade, com sessão aberta: a tela entrega o crédito a ele, e
+    // ele diz que há leitura em vez de dizer que o acesso acabou.
+    mockCreditos = { vocacao: 2 };
+    renderComPlano({ temAcesso: false, compradorSemPlano: true });
+    expect(screen.queryByLabelText('Acesso vencido')).toBeNull();
+    expect(screen.queryByText(/acesso terminou/)).toBeNull();
+    expect(screen.getByText('Aprofundamentos: você tem 2 leituras avulsas para usar.')).toBeTruthy();
+    expect(screen.getByText(/Ler minha vocação/i)).toBeTruthy();
+  });
+
+  it('sem crédito, o cadeado do semáforo segue acusando o acesso vencido', () => {
+    // O contrapeso: o desvio é do crédito, não de todo perfil sem plano.
+    renderComPlano({ temAcesso: true, compradorSemPlano: true });
+    expect(screen.getByLabelText('Acesso vencido')).toBeTruthy();
+  });
+
+  it('antes do botão, diz que ler agora usa uma das leituras avulsas', () => {
+    mockCreditos = { vocacao: 1 };
+    renderComPlano({ temAcesso: false });
+    const textos = textosNaOrdem();
+    const frase = textos.findIndex((t) => /Ler agora usa uma das suas leituras avulsas/.test(t));
+    const botao = textos.findIndex((t) => /Ler minha vocação/i.test(t));
+    expect(frase).toBeGreaterThanOrEqual(0);
+    expect(botao).toBeGreaterThanOrEqual(0);
+    // Depois do botão, quem tocou já gastou sem saber.
+    expect(frase).toBeLessThan(botao);
+  });
+
+  it('com plano, a frase do crédito não aparece: o servidor gasta a cota do plano primeiro', () => {
+    mockCreditos = { vocacao: 1 };
+    renderComPlano({ temAcesso: true });
+    expect(screen.queryByText(/Ler agora usa uma das suas leituras avulsas/)).toBeNull();
+  });
+
+  it('sem crédito, a frase do crédito não aparece', () => {
+    renderComPlano({ temAcesso: true });
+    expect(screen.queryByText(/leituras avulsas/)).toBeNull();
+  });
+
   it('sem plano e sem crédito, oferece a compra avulsa DEPOIS dos planos', () => {
     renderComPlano({ temAcesso: false });
     expect(screen.queryByText(/Ler minha vocação/i)).toBeNull();
@@ -496,6 +563,20 @@ describe('compra avulsa na vocação', () => {
     expect(avulso).toBeGreaterThanOrEqual(0);
     // A assinatura segue sendo a oferta principal; a avulsa é a segunda saída.
     expect(planos).toBeLessThan(avulso);
+  });
+
+  it('o botão de comprar é texto puro: sem a borda do botão de assinatura', () => {
+    // A assinatura é a oferta principal e isso tem de se ver. "Ver os planos" é botão de
+    // borda; a compra avulsa, não.
+    renderComPlano({ temAcesso: false });
+    const compra = StyleSheet.flatten(screen.getByLabelText('Comprar só esta leitura').props.style);
+    const planos = StyleSheet.flatten(screen.getByLabelText('Ver os planos').props.style);
+    expect(planos.borderWidth).toBe(1);
+    expect(compra.borderWidth).toBeUndefined();
+    expect(compra.backgroundColor).toBeUndefined();
+    const texto = StyleSheet.flatten(screen.getByText('Comprar só esta leitura').props.style);
+    expect(texto.fontSize).toBe(13);
+    expect(texto.color).toBe(Cores.textoSecundario);
   });
 
   it('diz o prazo do direito e que a leitura gerada fica, antes de a pessoa pagar', () => {
@@ -512,12 +593,31 @@ describe('compra avulsa na vocação', () => {
       expect(abrirURL).toHaveBeenCalledWith('https://checkout.stripe.com/c/pay/cs_teste'),
     );
     // O produto certo: comprar `mapa` aqui entregaria um crédito que esta tela não gasta.
-    expect(mockComprar).toHaveBeenCalledWith('vocacao');
+    expect(mockComprar).toHaveBeenCalledWith('vocacao', 'brl');
     expect(mockAlerta).not.toHaveBeenCalled();
   });
 
-  it('se o pagamento não abre, a pessoa lê o motivo e nenhum endereço é aberto', async () => {
-    mockComprar.mockRejectedValue(new Error('O pagamento não abriu. Tente de novo.'));
+  it('pede o checkout na moeda de quem compra, e não sempre em reais', async () => {
+    mockMoeda = 'eur';
+    renderComPlano({ temAcesso: false });
+    fireEvent.press(screen.getByText('Comprar só esta leitura'));
+
+    await waitFor(() => expect(mockComprar).toHaveBeenCalledWith('vocacao', 'eur'));
+  });
+
+  it('dois toques seguidos abrem um checkout só', () => {
+    // Cada checkout aberto pode virar uma compra. O segundo toque, com o primeiro ainda
+    // abrindo, seria dinheiro cobrado por um toque duplo.
+    mockComprar.mockReturnValue(new Promise(() => {}));
+    renderComPlano({ temAcesso: false });
+    fireEvent.press(screen.getByText('Comprar só esta leitura'));
+    fireEvent.press(screen.getByText('Abrindo o pagamento…'));
+
+    expect(mockComprar).toHaveBeenCalledTimes(1);
+  });
+
+  it('se o pagamento não abre, a pessoa lê o motivo, nenhum endereço é aberto e o botão volta', async () => {
+    mockComprar.mockRejectedValueOnce(new Error('O pagamento não abriu. Tente de novo.'));
     renderComPlano({ temAcesso: false });
     fireEvent.press(screen.getByText('Comprar só esta leitura'));
 
@@ -525,10 +625,130 @@ describe('compra avulsa na vocação', () => {
       'Não foi possível abrir o pagamento', 'O pagamento não abriu. Tente de novo.',
     ));
     expect(abrirURL).not.toHaveBeenCalled();
+
+    // Dá para tentar de novo.
+    await waitFor(() => expect(screen.getByText('Comprar só esta leitura')).toBeTruthy());
+    fireEvent.press(screen.getByText('Comprar só esta leitura'));
+    await waitFor(() => expect(mockComprar).toHaveBeenCalledTimes(2));
   });
 
   it('com plano, a compra avulsa não é oferecida', () => {
     renderComPlano({ temAcesso: true });
     expect(screen.queryByText('Comprar só esta leitura')).toBeNull();
+  });
+});
+
+/**
+ * Quem já gastou um crédito: a leitura que ele pagou mora no servidor e "fica para
+ * sempre" (promessa dos Termos). Na tela ela é estado local, e sair da tela a apaga. Com o
+ * portão fechado, a pessoa leria a promessa e, logo abaixo, uma oferta de pagar de novo.
+ */
+describe('quem já gastou um crédito de vocação', () => {
+  it('sem plano e sem crédito, o botão da leitura segue aberto', () => {
+    mockGastou = { vocacao: true };
+    renderComPlano({ temAcesso: false });
+    expect(screen.getByText(/Ler minha vocação/i)).toBeTruthy();
+    // O cartão trancado, que manda assinar para ler, não faz sentido para quem já pagou.
+    expect(screen.queryByText('Ver os planos')).toBeNull();
+  });
+
+  it('tocar na leitura pede a leitura', async () => {
+    mockGastou = { vocacao: true };
+    renderComPlano({ temAcesso: false });
+    fireEvent.press(screen.getByText(/Ler minha vocação/i));
+
+    await waitFor(() => expect(screen.getByText('Onde você rende')).toBeTruthy());
+    expect(mockGerarLeitura).toHaveBeenCalledTimes(1);
+  });
+
+  it('ainda pode comprar outra: os dados de nascimento podem ser outros', () => {
+    // A tela mostra as duas coisas: "leia o que você já tem" e "compre outra".
+    mockGastou = { vocacao: true };
+    renderComPlano({ temAcesso: false });
+    expect(screen.getByText(/Ler minha vocação/i)).toBeTruthy();
+    expect(screen.getByText('Comprar só esta leitura')).toBeTruthy();
+  });
+
+  it('a oferta de comprar vem DEPOIS do botão da leitura', () => {
+    mockGastou = { vocacao: true };
+    renderComPlano({ temAcesso: false });
+    const textos = textosNaOrdem();
+    const leitura = textos.findIndex((t) => /Ler minha vocação/i.test(t));
+    const oferta = textos.indexOf('Comprar só esta leitura');
+    expect(leitura).toBeGreaterThanOrEqual(0);
+    expect(oferta).toBeGreaterThan(leitura);
+  });
+
+  it('o botão de comprar da tela aberta também compra a vocação', async () => {
+    mockGastou = { vocacao: true };
+    renderComPlano({ temAcesso: false });
+    fireEvent.press(screen.getByText('Comprar só esta leitura'));
+    await waitFor(() => expect(mockComprar).toHaveBeenCalledWith('vocacao', 'brl'));
+  });
+
+  it('com um crédito novo na mão, não oferece comprar de novo', () => {
+    mockGastou = { vocacao: true };
+    mockCreditos = { vocacao: 1 };
+    renderComPlano({ temAcesso: false });
+    expect(screen.getByText(/Ler minha vocação/i)).toBeTruthy();
+    expect(screen.queryByText('Comprar só esta leitura')).toBeNull();
+  });
+
+  it('sem crédito novo, não diz que ler gasta uma leitura avulsa', () => {
+    // Quem só gastou o que tinha não tem mais o que gastar: a frase seria falsa.
+    mockGastou = { vocacao: true };
+    renderComPlano({ temAcesso: false });
+    expect(screen.queryByText(/Ler agora usa uma das suas leituras avulsas/)).toBeNull();
+  });
+
+  it('com plano, não oferece a compra', () => {
+    mockGastou = { vocacao: true };
+    renderComPlano({ temAcesso: true });
+    expect(screen.getByText(/Ler minha vocação/i)).toBeTruthy();
+    expect(screen.queryByText('Comprar só esta leitura')).toBeNull();
+  });
+
+  it('ter gastado um crédito de MAPA não abre a leitura de vocação', () => {
+    mockGastou = { mapa: true };
+    renderComPlano({ temAcesso: false });
+    expect(screen.queryByText(/Ler minha vocação/i)).toBeNull();
+    expect(screen.getByText('Ver os planos')).toBeTruthy();
+  });
+});
+
+/**
+ * Quando não dá para ler o que a pessoa tem. "Zero" por queda de rede pode ser quem já
+ * pagou: esconder o botão dele é pior que mostrá-lo a quem não pagou, porque o servidor é
+ * o portão de verdade e recusa quem não tem nada. E convidá-lo a comprar de novo é cobrar
+ * duas vezes.
+ */
+describe('quando a leitura do crédito falha', () => {
+  it('o botão da leitura abre, em vez de trancar quem talvez tenha pago', () => {
+    mockFalhou = true;
+    renderComPlano({ temAcesso: false });
+    expect(screen.getByText(/Ler minha vocação/i)).toBeTruthy();
+    expect(screen.queryByText('Ver os planos')).toBeNull();
+  });
+
+  it('não convida a comprar', () => {
+    mockFalhou = true;
+    renderComPlano({ temAcesso: false });
+    expect(screen.queryByText('Comprar só esta leitura')).toBeNull();
+    expect(screen.queryByText(/O direito de gerar vale 90 dias/)).toBeNull();
+  });
+
+  it('nem quando também já gastou um crédito', () => {
+    mockFalhou = true;
+    mockGastou = { vocacao: true };
+    renderComPlano({ temAcesso: false });
+    expect(screen.queryByText('Comprar só esta leitura')).toBeNull();
+  });
+
+  it('tocar na leitura chega ao servidor, que decide', async () => {
+    mockFalhou = true;
+    renderComPlano({ temAcesso: false });
+    fireEvent.press(screen.getByText(/Ler minha vocação/i));
+    await waitFor(() => expect(screen.getByText('Onde você rende')).toBeTruthy());
+    expect(mockGerarLeitura).toHaveBeenCalledTimes(1);
   });
 });

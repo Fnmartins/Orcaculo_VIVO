@@ -116,3 +116,69 @@ describe('o cadeado leva a algum lugar', () => {
     expect(mockPush).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * Quem comprou uma leitura avulsa é `gratuito` e sem validade, que é exatamente o perfil
+ * que o cadeado acusa. Sem o desvio, a tela diria "Seu acesso terminou" logo acima do
+ * botão que funciona.
+ */
+describe('o crédito avulso no lugar do cadeado', () => {
+  it('com um crédito, diz que há uma leitura avulsa e não mostra o cadeado', () => {
+    perfil().plano_valido_ate = null;
+    render(<SemaforoUso tipo="interpretacao" rotulo="Aprofundamentos" creditoAvulso={1} />);
+    expect(screen.getByText('Aprofundamentos: você tem uma leitura avulsa para usar.')).toBeTruthy();
+    expect(screen.queryByLabelText('Acesso vencido')).toBeNull();
+    expect(screen.queryByText(/acesso terminou/)).toBeNull();
+  });
+
+  it('com vários créditos, diz quantos no plural', () => {
+    perfil().plano_valido_ate = null;
+    render(<SemaforoUso tipo="interpretacao" rotulo="Aprofundamentos" creditoAvulso={3} />);
+    expect(screen.getByText('Aprofundamentos: você tem 3 leituras avulsas para usar.')).toBeTruthy();
+    expect(screen.queryByLabelText('Acesso vencido')).toBeNull();
+  });
+
+  it('a faixa do crédito não leva a lugar nenhum: não é o cadeado', () => {
+    perfil().plano_valido_ate = null;
+    render(<SemaforoUso tipo="interpretacao" rotulo="Aprofundamentos" creditoAvulso={1} />);
+    expect(screen.queryByRole('button')).toBeNull();
+  });
+
+  it('com o acesso vencido (plano que terminou), o crédito também vale no lugar do cadeado', () => {
+    perfil().plano = 'iniciante';
+    perfil().plano_valido_ate = '2020-01-01T00:00:00Z';
+    render(<SemaforoUso tipo="interpretacao" rotulo="Aprofundamentos" creditoAvulso={2} />);
+    expect(screen.getByText(/você tem 2 leituras avulsas/)).toBeTruthy();
+    expect(screen.queryByLabelText('Acesso vencido')).toBeNull();
+  });
+
+  it.each([[0], [undefined]])('com crédito %s, o cadeado continua', (credito) => {
+    perfil().plano_valido_ate = null;
+    render(<SemaforoUso tipo="interpretacao" rotulo="Aprofundamentos" creditoAvulso={credito} />);
+    expect(screen.getByLabelText('Acesso vencido')).toBeTruthy();
+    expect(screen.queryByText(/leitura avulsa|leituras avulsas/)).toBeNull();
+  });
+
+  it('com o crédito, ainda não vai ao banco ler o contador do dia', () => {
+    perfil().plano_valido_ate = null;
+    render(<SemaforoUso tipo="interpretacao" rotulo="Aprofundamentos" creditoAvulso={1} />);
+    expect(mockLerUso).not.toHaveBeenCalled();
+  });
+
+  it('recurso desligado para o plano: o aviso verdadeiro fica, o crédito não o encobre', async () => {
+    // Aqui o servidor barra mesmo quem tem crédito (`recursoLigado` vence o crédito),
+    // então dizer "você tem uma leitura" ao lado prometeria o que ele vai recusar.
+    perfil().plano_valido_ate = '2099-01-01T00:00:00Z';
+    mockLerUso.mockResolvedValueOnce({ ligado: false, usadoHoje: 0, limiteDia: null });
+    render(<SemaforoUso tipo="interpretacao" rotulo="Aprofundamentos" creditoAvulso={2} />);
+    expect(await screen.findByText('Aprofundamentos não está no seu plano.')).toBeTruthy();
+    expect(screen.queryByText(/leitura avulsa|leituras avulsas/)).toBeNull();
+  });
+
+  it('com acesso e contador, o crédito não troca o número do dia', async () => {
+    perfil().plano_valido_ate = '2099-01-01T00:00:00Z';
+    mockLerUso.mockResolvedValueOnce({ ligado: true, usadoHoje: 1, limiteDia: 5 });
+    render(<SemaforoUso tipo="interpretacao" rotulo="Aprofundamentos" creditoAvulso={2} />);
+    expect(await screen.findByText('Aprofundamentos: 4 de 5 ainda hoje.')).toBeTruthy();
+  });
+});

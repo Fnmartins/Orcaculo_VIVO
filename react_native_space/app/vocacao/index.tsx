@@ -27,6 +27,7 @@ import { usePlano } from '../../hooks/usePlano';
 import { useCreditoAvulso } from '../../hooks/useCreditoAvulso';
 import { gerarLeituraDeVocacao, type InterpretacaoVocacao } from '../../services/ia';
 import { comprarAvulso } from '../../services/avulso';
+import { moedaPadrao } from '../../services/stripe';
 import { mostrarAlerta } from '../../utils/alerta';
 import { Hapticos } from '../../utils/haptics';
 import { voltarOuIr } from '../../utils/navegacao';
@@ -56,13 +57,14 @@ const SECOES: { chave: 'ondeRende' | 'ambiente' | 'drena' | 'passo'; rotulo: str
 export default function TelaVocacao() {
   const { perfil, carregando } = useAuth();
   const { temAcesso } = usePlano();
-  const { credito } = useCreditoAvulso('vocacao');
+  const { credito, gastou, falhou } = useCreditoAvulso('vocacao');
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
   const [interpretacao, setInterpretacao] = useState<InterpretacaoVocacao | null>(null);
   const [carregandoIA, setCarregandoIA] = useState(false);
   const [erroIA, setErroIA] = useState<string | null>(null);
+  const [comprando, setComprando] = useState(false);
 
   // O mapa sai dos dados que o perfil já guarda. Nada de formulário aqui: ele existe
   // em `app/mapa-astral/index.tsx` e já grava no perfil. Duas telas pedindo a mesma
@@ -132,6 +134,61 @@ export default function TelaVocacao() {
   };
 
   const temMapaCompleto = temAcesso('mapa_completo');
+
+  // O portão da leitura. Abre para quem tem o plano, para quem tem crédito, para quem JÁ
+  // GASTOU um crédito e para quem não conseguimos ler:
+  // - Quem tem crédito: volta da Stripe sem plano nenhum. Olhando só `temMapaCompleto`, a
+  //   tela seguiria trancada e ainda ofereceria uma segunda compra de um crédito que ela não
+  //   deixa gastar.
+  // - Quem gastou: a leitura que pagou mora no servidor e fica para sempre (promessa dos
+  //   Termos). A leitura na tela é estado local, e sair da tela a apaga: com o portão
+  //   fechado, quem já pagou seria convidado a pagar de novo para ver o que já comprou.
+  // - Quem falhou: a leitura do crédito caiu, e não sabemos se a pessoa pagou. Esconder o
+  //   botão de quem pagou é pior que mostrá-lo a quem não pagou, porque o servidor é o
+  //   portão de verdade e recusa (402) quem não tem nada.
+  const leituraAberta = temMapaCompleto || credito > 0 || gastou || falhou;
+
+  // A compra se oferece a quem não tem plano nem crédito, e a quem já gastou um crédito: quem
+  // quer a leitura de outros dados de nascimento precisa poder comprar de novo. Nunca na
+  // falha: não se convida a comprar sem saber se já se comprou.
+  const ofertarAvulso = !temMapaCompleto && credito === 0 && !falhou;
+
+  // Dois toques seguidos abririam dois checkouts, e isso é dinheiro. O botão fica desabilitado
+  // enquanto o pagamento abre, como `carregandoIA` faz com o botão da leitura.
+  const comprar = async () => {
+    if (comprando) return;
+    setComprando(true);
+    Hapticos.impactoLeve();
+    try {
+      await Linking.openURL(await comprarAvulso('vocacao', moedaPadrao()));
+    } catch (e) {
+      mostrarAlerta('Não foi possível abrir o pagamento',
+        e instanceof Error ? e.message : 'Tente de novo em instantes.');
+    } finally {
+      setComprando(false);
+    }
+  };
+
+  // A segunda saída, para quem não quer assinar. A assinatura segue sendo a oferta principal:
+  // este botão é texto puro, sem borda, e o texto diz o que se leva, não só que se paga.
+  const ofertaAvulso = (
+    <>
+      <Pressable
+        onPress={comprar}
+        disabled={comprando}
+        accessibilityRole="button"
+        accessibilityLabel="Comprar só esta leitura"
+        style={[estilos.botaoAvulso, comprando && { opacity: 0.6 }]}
+      >
+        <Text style={estilos.botaoAvulsoTexto}>
+          {comprando ? 'Abrindo o pagamento…' : 'Comprar só esta leitura'}
+        </Text>
+      </Pressable>
+      <Text style={estilos.emConstrucaoTexto}>
+        O direito de gerar vale 90 dias. A leitura, depois de gerada, fica para sempre.
+      </Text>
+    </>
+  );
 
   // O app define a sessão e só depois busca o perfil. Nesse intervalo `perfil` é
   // nulo, e dizer "faltam seus dados de nascimento" a quem tem os dados guardados
@@ -296,18 +353,22 @@ export default function TelaVocacao() {
                       </View>
                     ))}
                   </View>
-                ) : (temMapaCompleto || credito > 0) ? (
-                  // O crédito avulso abre este portão tanto quanto o plano. Quem compra volta
-                  // da Stripe sem plano nenhum: olhando só `temMapaCompleto`, a tela seguiria
-                  // trancada e ainda ofereceria uma segunda compra de um crédito que ela não
-                  // deixa gastar. Quem recusa uma leitura sem direito a ela é o servidor.
+                ) : leituraAberta ? (
                   <>
-                    <SemaforoUso tipo="interpretacao" rotulo="Aprofundamentos" />
+                    <SemaforoUso tipo="interpretacao" rotulo="Aprofundamentos" creditoAvulso={credito} />
                     <Text style={estilos.secaoSubtitulo}>
                       Acima está o que o seu mapa mostra. Aqui está a leitura: o que isso diz sobre
                       onde você tende a render, o que te sustenta, o que desgasta e um passo concreto.
                     </Text>
                     {erroIA && <Text style={estilos.avisoHonesto}>{erroIA}</Text>}
+                    {/* O botão abaixo gasta o crédito, e quem o toca tem de saber disso
+                        antes. Só sem plano: com plano o servidor gasta a cota do plano
+                        primeiro, e a frase seria falsa. */}
+                    {credito > 0 && !temMapaCompleto ? (
+                      <Text style={estilos.avisoHonesto}>
+                        Ler agora usa uma das suas leituras avulsas.
+                      </Text>
+                    ) : null}
                     <Pressable
                       onPress={lerVocacao}
                       disabled={carregandoIA}
@@ -319,6 +380,9 @@ export default function TelaVocacao() {
                         {carregandoIA ? 'Lendo a sua vocação…' : 'Ler minha vocação ✨'}
                       </Text>
                     </Pressable>
+                    {/* Quem já gastou um crédito reabre a leitura que pagou, e continua
+                        podendo comprar outra: os dados de nascimento podem ser outros. */}
+                    {ofertarAvulso ? ofertaAvulso : null}
                   </>
                 ) : (
                   <View style={estilos.emConstrucaoCard}>
@@ -337,28 +401,7 @@ export default function TelaVocacao() {
                     >
                       <Text style={estilos.botaoPlanosTexto}>Ver os planos</Text>
                     </Pressable>
-                    {/* A segunda saída, para quem não quer assinar. A assinatura
-                        segue sendo a oferta principal: este botão é secundário na
-                        hierarquia, e o texto diz o que se leva, não só que se paga. */}
-                    <Pressable
-                      onPress={async () => {
-                        Hapticos.impactoLeve();
-                        try {
-                          await Linking.openURL(await comprarAvulso('vocacao'));
-                        } catch (e) {
-                          mostrarAlerta('Não foi possível abrir o pagamento',
-                            e instanceof Error ? e.message : 'Tente de novo em instantes.');
-                        }
-                      }}
-                      accessibilityRole="button"
-                      accessibilityLabel="Comprar só esta leitura"
-                      style={estilos.botaoAvulso}
-                    >
-                      <Text style={estilos.botaoAvulsoTexto}>Comprar só esta leitura</Text>
-                    </Pressable>
-                    <Text style={estilos.emConstrucaoTexto}>
-                      O direito de gerar vale 90 dias. A leitura, depois de gerada, fica para sempre.
-                    </Text>
+                    {ofertaAvulso}
                   </View>
                 )}
               </Animated.View>
@@ -481,11 +524,14 @@ const estilos = StyleSheet.create({
     borderRadius: RaioBorda.full, paddingVertical: 10, paddingHorizontal: Espacamento.lg,
   },
   botaoPlanosTexto: { fontFamily: Fontes.corpoSemibold, fontSize: 14, color: Cores.acento },
+  // Texto puro, sem borda e sem fundo, de propósito: "Ver os planos" e "Ler minha vocação"
+  // já são botões de borda, e a assinatura é a oferta principal. Um botão igual aos dois
+  // pediria a mesma atenção; este é a saída de quem não quer assinar, e se lê depois.
   botaoAvulso: {
-    marginTop: Espacamento.sm, borderWidth: 1, borderColor: Cores.acento,
-    borderRadius: RaioBorda.full, paddingVertical: 10, paddingHorizontal: Espacamento.lg,
+    marginTop: Espacamento.sm, alignSelf: 'center',
+    paddingVertical: 10, paddingHorizontal: Espacamento.lg,
   },
-  botaoAvulsoTexto: { fontFamily: Fontes.corpoSemibold, fontSize: 14, color: Cores.acento },
+  botaoAvulsoTexto: { fontFamily: Fontes.corpoSemibold, fontSize: 13, color: Cores.textoSecundario },
   equilibrioCaixa: {
     backgroundColor: 'rgba(181,139,70,0.10)', borderRadius: RaioBorda.lg,
     padding: Espacamento.md, gap: Espacamento.sm,

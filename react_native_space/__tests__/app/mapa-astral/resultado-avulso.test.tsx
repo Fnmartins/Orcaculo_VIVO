@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import React from 'react';
-import { Linking } from 'react-native';
+import { Linking, StyleSheet } from 'react-native';
 
 /**
  * A oferta da compra avulsa no mapa astral.
@@ -36,8 +36,13 @@ jest.mock('../../../utils/haptics', () => ({
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
 jest.mock('@expo/vector-icons/MaterialCommunityIcons', () => () => null);
 
-// Os dois filhos que buscam sessão e voz não fazem parte do que se prova aqui.
-jest.mock('../../../components/SemaforoUso', () => ({ SemaforoUso: () => null }));
+// O semáforo guarda o que a tela lhe passa: quem diz "você tem N leituras avulsas" é ele
+// (tem teste próprio), e o que se prova aqui é que a tela lhe entrega o crédito certo.
+const mockSemaforo = jest.fn();
+jest.mock('../../../components/SemaforoUso', () => ({
+  SemaforoUso: (props: unknown) => { mockSemaforo(props); return null; },
+}));
+// O filho que busca voz não faz parte do que se prova aqui.
 jest.mock('../../../components/BotaoOuvir', () => ({ BotaoOuvir: () => null }));
 jest.mock('../../../services/compartilhar', () => ({ compartilharMapaAstral: jest.fn() }));
 
@@ -54,8 +59,16 @@ jest.mock('../../../hooks/usePlano', () => ({
 // Créditos por produto, como o hook real os separa: um teste pode dar crédito de
 // vocação a quem não tem nenhum de mapa e conferir que a tela não confunde os dois.
 let mockCreditos: Record<string, number> = {};
+let mockFalhou = false;
 jest.mock('../../../hooks/useCreditoAvulso', () => ({
-  useCreditoAvulso: (oraculo: string) => ({ credito: mockCreditos[oraculo] ?? 0 }),
+  useCreditoAvulso: (oraculo: string) => ({
+    credito: mockCreditos[oraculo] ?? 0, gastou: false, falhou: mockFalhou,
+  }),
+}));
+
+let mockMoeda = 'brl';
+jest.mock('../../../services/stripe', () => ({
+  moedaPadrao: () => mockMoeda,
 }));
 
 const mockComprar = jest.fn();
@@ -73,6 +86,7 @@ jest.mock('../../../services/ia', () => ({
   gerarInterpretacaoMapa: (...a: unknown[]) => mockInterpretar(...a),
 }));
 
+import { Cores } from '../../../constants/colors';
 import TelaMapaAstralResultado from '../../../app/mapa-astral/resultado';
 
 const PARAMS_SAO_PAULO = {
@@ -103,6 +117,8 @@ beforeEach(() => {
   mockParams = { ...PARAMS_SAO_PAULO };
   mockPodeConsultar = false;
   mockCreditos = {};
+  mockFalhou = false;
+  mockMoeda = 'brl';
   mockComprar.mockResolvedValue('https://checkout.stripe.com/c/pay/cs_teste');
   abrirURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
 });
@@ -142,19 +158,24 @@ describe('compra avulsa no resultado do mapa astral', () => {
     expect(screen.queryByText(/leitura avulsa|leituras avulsas/)).toBeNull();
   });
 
-  it('com um crédito, não oferece de novo e diz que ele existe', () => {
+  it('com um crédito, não oferece de novo, e o semáforo é quem diz que ele existe', () => {
     mockCreditos = { mapa: 1 };
     render(<TelaMapaAstralResultado />);
-    expect(screen.getByText('Você tem uma leitura avulsa deste mapa para usar.')).toBeTruthy();
     expect(screen.queryByText(OFERTA)).toBeNull();
+    // O semáforo recebe o crédito e o diz ("você tem uma leitura avulsa"). A tela não o
+    // repete: duas frases iguais na mesma tela seriam ruído.
+    expect(mockSemaforo).toHaveBeenLastCalledWith(
+      expect.objectContaining({ tipo: 'interpretacao', creditoAvulso: 1 }),
+    );
+    expect(screen.queryByText(/leitura avulsa|leituras avulsas/)).toBeNull();
     // O botão da leitura segue ali: é com ele que o crédito se gasta.
     expect(screen.getByText(/Ler a minha combinação/)).toBeTruthy();
   });
 
-  it('com vários créditos, diz quantos no plural', () => {
+  it('com vários créditos, o semáforo recebe a contagem inteira', () => {
     mockCreditos = { mapa: 3 };
     render(<TelaMapaAstralResultado />);
-    expect(screen.getByText('Você tem 3 leituras avulsas deste mapa para usar.')).toBeTruthy();
+    expect(mockSemaforo).toHaveBeenLastCalledWith(expect.objectContaining({ creditoAvulso: 3 }));
     expect(screen.queryByText(OFERTA)).toBeNull();
   });
 
@@ -163,8 +184,35 @@ describe('compra avulsa no resultado do mapa astral', () => {
     // a oferta de quem não tem como ler o mapa, e diria que há leitura onde não há.
     mockCreditos = { vocacao: 2 };
     render(<TelaMapaAstralResultado />);
-    expect(screen.queryByText(/leitura avulsa|leituras avulsas/)).toBeNull();
+    expect(mockSemaforo).toHaveBeenLastCalledWith(expect.objectContaining({ creditoAvulso: 0 }));
     expect(screen.getByText(OFERTA)).toBeTruthy();
+  });
+
+  it('se a leitura do crédito falhou, não convida a comprar: pode ser quem já pagou', () => {
+    // "Zero" por queda de rede não é "não comprou". O `UNIQUE` é por sessão do Stripe, e
+    // nada mais impede a segunda compra.
+    mockFalhou = true;
+    render(<TelaMapaAstralResultado />);
+    expect(screen.queryByText(OFERTA)).toBeNull();
+    expect(screen.queryByText(/O direito de gerar vale 90 dias/)).toBeNull();
+    // A leitura continua à mão: o servidor é quem decide se ela sai.
+    expect(screen.getByText(/Ler a minha combinação/)).toBeTruthy();
+  });
+
+  it('o botão de comprar é texto puro: sem a borda dos botões de assinatura', () => {
+    // A assinatura é a oferta principal e isso tem de se ver. "Ler a minha combinação" é
+    // botão de borda; a compra avulsa, não.
+    render(<TelaMapaAstralResultado />);
+    const compra = StyleSheet.flatten(screen.getByLabelText(OFERTA).props.style);
+    const leitura = StyleSheet.flatten(
+      screen.getByLabelText('Ler a combinação do meu mapa com IA').props.style,
+    );
+    expect(leitura.borderWidth).toBe(1);
+    expect(compra.borderWidth).toBeUndefined();
+    expect(compra.backgroundColor).toBeUndefined();
+    const texto = StyleSheet.flatten(screen.getByText(OFERTA).props.style);
+    expect(texto.fontSize).toBe(13);
+    expect(texto.color).toBe(Cores.textoSecundario);
   });
 
   it('tocar em comprar pede o checkout do mapa e abre o endereço que voltou', async () => {
@@ -175,8 +223,38 @@ describe('compra avulsa no resultado do mapa astral', () => {
       expect(abrirURL).toHaveBeenCalledWith('https://checkout.stripe.com/c/pay/cs_teste'),
     );
     // O produto certo: comprar `vocacao` aqui entregaria um crédito que esta tela não gasta.
-    expect(mockComprar).toHaveBeenCalledWith('mapa');
+    expect(mockComprar).toHaveBeenCalledWith('mapa', 'brl');
     expect(mockAlerta).not.toHaveBeenCalled();
+  });
+
+  it('pede o checkout na moeda de quem compra, e não sempre em reais', async () => {
+    mockMoeda = 'usd';
+    render(<TelaMapaAstralResultado />);
+    fireEvent.press(screen.getByText(OFERTA));
+
+    await waitFor(() => expect(mockComprar).toHaveBeenCalledWith('mapa', 'usd'));
+  });
+
+  it('dois toques seguidos abrem um checkout só', async () => {
+    // Cada checkout aberto pode virar uma compra. O segundo toque, com o primeiro ainda
+    // abrindo, seria dinheiro cobrado por um toque duplo.
+    mockComprar.mockReturnValue(new Promise(() => {}));
+    render(<TelaMapaAstralResultado />);
+    fireEvent.press(screen.getByText(OFERTA));
+    fireEvent.press(screen.getByText('Abrindo o pagamento…'));
+
+    expect(mockComprar).toHaveBeenCalledTimes(1);
+  });
+
+  it('depois de uma falha o botão volta, e dá para tentar de novo', async () => {
+    mockComprar.mockRejectedValueOnce(new Error('O pagamento não abriu. Tente de novo.'));
+    render(<TelaMapaAstralResultado />);
+    fireEvent.press(screen.getByText(OFERTA));
+    await waitFor(() => expect(mockAlerta).toHaveBeenCalledTimes(1));
+
+    await waitFor(() => expect(screen.getByText(OFERTA)).toBeTruthy());
+    fireEvent.press(screen.getByText(OFERTA));
+    await waitFor(() => expect(mockComprar).toHaveBeenCalledTimes(2));
   });
 
   it('se o pagamento não abre, a pessoa lê o motivo e nenhum endereço é aberto', async () => {

@@ -48,6 +48,7 @@ import { mostrarAlerta } from '../../utils/alerta';
 import { GLIFO_CORPO, RodaZodiacal, idxSigno } from '../../components/RodaMapa';
 import { gerarInterpretacaoMapa, type InterpretacaoMapa } from '../../services/ia';
 import { comprarAvulso } from '../../services/avulso';
+import { moedaPadrao } from '../../services/stripe';
 import { SemaforoUso } from '../../components/SemaforoUso';
 
 const { width: W } = Dimensions.get('window');
@@ -121,7 +122,7 @@ export default function TelaMapaAstralResultado() {
     lat: string; lon: string; fuso: string; offsetPadrao: string;
   }>();
   const { temAcesso, podeFazerConsulta } = usePlano();
-  const { credito } = useCreditoAvulso('mapa');
+  const { credito, falhou } = useCreditoAvulso('mapa');
   // Quem decide oferecer é `podeFazerConsulta`, que o app já usa, e não uma
   // conta nova nesta tela: seriam duas verdades sobre acesso, e a que liberasse
   // indevido seria a que ninguém notaria. É o mesmo argumento do comentário de
@@ -129,13 +130,17 @@ export default function TelaMapaAstralResultado() {
   // ilimitado, cota em zero e quem cancelou (o webhook zera a cota no mesmo
   // update). Sem crédito na mão e sem consulta para gastar é exatamente quando
   // a compra avulsa é a resposta.
-  const ofertarAvulso = credito === 0 && !podeFazerConsulta();
+  //
+  // Nunca quando a leitura do crédito falhou: "zero" por queda de rede pode ser quem já
+  // pagou, e convidá-lo a comprar de novo é cobrar duas vezes.
+  const ofertarAvulso = credito === 0 && !falhou && !podeFazerConsulta();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
   const [interpretacao, setInterpretacao] = useState<InterpretacaoMapa | null>(null);
   const [carregandoIA, setCarregandoIA] = useState(false);
   const [erroIA, setErroIA] = useState<string | null>(null);
+  const [comprando, setComprando] = useState(false);
 
   // O mapa de verdade: posições do céu naquele instante, naquele lugar. Até
   // 26/09 esta tela mostrava só o signo solar, porque o resto era inventado
@@ -240,6 +245,22 @@ export default function TelaMapaAstralResultado() {
     semHora: mapa.semHora,
     nomeDoPonto,
   });
+
+  // Dois toques seguidos abririam dois checkouts, e isso é dinheiro. O botão fica
+  // desabilitado enquanto o pagamento abre, como `carregandoIA` faz com o da leitura.
+  const comprar = async () => {
+    if (comprando) return;
+    setComprando(true);
+    Hapticos.impactoLeve();
+    try {
+      await Linking.openURL(await comprarAvulso('mapa', moedaPadrao()));
+    } catch (e) {
+      mostrarAlerta('Não foi possível abrir o pagamento',
+        e instanceof Error ? e.message : 'Tente de novo em instantes.');
+    } finally {
+      setComprando(false);
+    }
+  };
 
   const aprofundar = async () => {
     if (carregandoIA || interpretacao || !mapa) return;
@@ -676,19 +697,12 @@ export default function TelaMapaAstralResultado() {
               </View>
             ) : (
               <>
-                <SemaforoUso tipo="interpretacao" rotulo="Aprofundamentos" />
+                <SemaforoUso tipo="interpretacao" rotulo="Aprofundamentos" creditoAvulso={credito} />
                 <Text style={estilos.secaoSubtitulo}>
                   Acima está o que cada peça do mapa significa. Isto aqui é a leitura da sua
                   combinação — o que Sol, Lua e Ascendente fazem juntos em você.
                 </Text>
                 {erroIA && <Text style={estilos.avisoHonesto}>{erroIA}</Text>}
-                {credito > 0 ? (
-                  <Text style={estilos.secaoSubtitulo}>
-                    {credito === 1
-                      ? 'Você tem uma leitura avulsa deste mapa para usar.'
-                      : `Você tem ${credito} leituras avulsas deste mapa para usar.`}
-                  </Text>
-                ) : null}
                 <Pressable
                   onPress={aprofundar}
                   disabled={carregandoIA}
@@ -703,26 +717,21 @@ export default function TelaMapaAstralResultado() {
                 {ofertarAvulso ? (
                   <>
                     {/* A segunda saída. A assinatura segue sendo a oferta principal:
-                        este botão vem depois e é secundário na hierarquia. Fica AQUI,
+                        este botão vem depois, é texto puro e é secundário. Fica AQUI,
                         e não nos dois cards de "Ver os planos" desta tela: aqueles
                         trancam os outros oito planetas e as doze casas, que o crédito
                         não libera. Ele paga esta leitura, e é ao lado dela que se
                         oferece. */}
                     <Pressable
-                      onPress={async () => {
-                        Hapticos.impactoLeve();
-                        try {
-                          await Linking.openURL(await comprarAvulso('mapa'));
-                        } catch (e) {
-                          mostrarAlerta('Não foi possível abrir o pagamento',
-                            e instanceof Error ? e.message : 'Tente de novo em instantes.');
-                        }
-                      }}
+                      onPress={comprar}
+                      disabled={comprando}
                       accessibilityRole="button"
                       accessibilityLabel="Comprar só esta leitura"
-                      style={estilos.botaoAvulso}
+                      style={[estilos.botaoAvulso, comprando && { opacity: 0.6 }]}
                     >
-                      <Text style={estilos.botaoAvulsoTexto}>Comprar só esta leitura</Text>
+                      <Text style={estilos.botaoAvulsoTexto}>
+                        {comprando ? 'Abrindo o pagamento…' : 'Comprar só esta leitura'}
+                      </Text>
                     </Pressable>
                     <Text style={estilos.notaRodape}>
                       O direito de gerar vale 90 dias. A leitura, depois de gerada, fica para sempre.
@@ -1157,11 +1166,13 @@ const estilos = StyleSheet.create({
     borderRadius: RaioBorda.full, paddingVertical: 10, paddingHorizontal: Espacamento.lg,
   },
   botaoPlanosTexto: { fontFamily: Fontes.corpoSemibold, fontSize: 14, color: Cores.acento },
+  // Texto puro, sem borda e sem fundo, de propósito: "Ler a minha combinação" e "Ver os
+  // planos" já são botões de borda, e a assinatura é a oferta principal. Um botão igual
+  // pediria a mesma atenção; este é a saída de quem não quer assinar, e se lê depois.
   botaoAvulso: {
-    marginTop: Espacamento.sm, borderWidth: 1, borderColor: Cores.acento,
-    borderRadius: RaioBorda.full, paddingVertical: 10, paddingHorizontal: Espacamento.lg,
+    marginTop: Espacamento.sm, paddingVertical: 10, paddingHorizontal: Espacamento.lg,
   },
-  botaoAvulsoTexto: { fontFamily: Fontes.corpoSemibold, fontSize: 14, color: Cores.acento },
+  botaoAvulsoTexto: { fontFamily: Fontes.corpoSemibold, fontSize: 13, color: Cores.textoSecundario },
   equilibrioCaixa: {
     backgroundColor: 'rgba(181,139,70,0.10)', borderRadius: RaioBorda.lg,
     padding: Espacamento.md, gap: Espacamento.sm,

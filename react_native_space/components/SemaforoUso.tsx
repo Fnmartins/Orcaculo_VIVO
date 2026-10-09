@@ -30,9 +30,14 @@ interface Props {
   tipo: TipoUso;
   /** Rótulo curto do que está sendo contado. */
   rotulo: string;
+  /**
+   * Quantas leituras avulsas a pessoa comprou e ainda não gastou, deste produto. Só
+   * informa: quem decide se a leitura sai é o servidor.
+   */
+  creditoAvulso?: number;
 }
 
-export function SemaforoUso({ tipo, rotulo }: Props) {
+export function SemaforoUso({ tipo, rotulo, creditoAvulso }: Props) {
   const { perfil, sessao } = useAuth();
   const [uso, setUso] = useState<UsoDoDia | null>(null);
   const usuarioId = sessao?.user?.id ?? null;
@@ -63,6 +68,25 @@ export function SemaforoUso({ tipo, rotulo }: Props) {
   // `acessoDoPlano` também barra, e a pessoa leria "seu acesso terminou" sem ter
   // perdido nada. O super-admin não precisa de checagem aqui: `acessoDoPlano` já o libera.
   if (usuarioId && perfil != null && !acesso.liberado) {
+    // O cadeado fala do PLANO: a validade dele acabou ou nunca existiu. Quem comprou uma
+    // leitura avulsa tem um direito que não depende de plano nenhum, e a compra deixa
+    // exatamente este perfil: `gratuito`, sem validade. Sem este desvio a tela diria "Seu
+    // acesso terminou" logo acima do botão que funciona, na cara de quem acabou de pagar.
+    //
+    // Só aqui, e não no `!uso.ligado` mais abaixo: lá o servidor barra mesmo quem tem
+    // crédito (recurso desligado vence o crédito, de propósito), e o aviso é verdadeiro.
+    if ((creditoAvulso ?? 0) > 0) {
+      return (
+        <View style={estilos.faixa}>
+          <View style={[estilos.ponto, { backgroundColor: VERDE }]} />
+          <Text style={estilos.texto}>
+            {creditoAvulso === 1
+              ? `${rotulo}: você tem uma leitura avulsa para usar.`
+              : `${rotulo}: você tem ${creditoAvulso} leituras avulsas para usar.`}
+          </Text>
+        </View>
+      );
+    }
     return (
       // Tocável, e não só texto: até 01/10 este aviso pedia "atualize seu plano" e não
       // oferecia caminho nenhum — o app mandava agir e escondia a porta. O card da home
@@ -88,6 +112,10 @@ export function SemaforoUso({ tipo, rotulo }: Props) {
 
   if (!usuarioId || semLimite || !uso) return null;
 
+  // `creditoAvulso` NÃO entra aqui, de propósito. Recurso desligado para o plano vence o
+  // crédito no servidor (`recursoLigado`): o dono desligou, e a leitura não sai nem para
+  // quem pagou. Aqui o aviso é verdadeiro, e um "você tem uma leitura" ao lado dele
+  // prometeria o que o servidor vai recusar.
   if (!uso.ligado) {
     return (
       <View style={estilos.faixa}>

@@ -15,6 +15,21 @@ jest.mock('../supabase', () => ({
   },
 }));
 
+/**
+ * A tabela falsa: `disponiveis` responde a corrente `select → is → gt` e `consumidas`, a
+ * `select → not`. `creditosDaPessoa` faz as duas perguntas, e cada teste decide o que
+ * cada uma responde.
+ */
+type Resposta = { data: unknown[] | null; error: { message: string } | null };
+function tabela(disponiveis: Resposta, consumidas: Resposta = { data: [], error: null }) {
+  mockFrom.mockReturnValue({
+    select: () => ({
+      is: () => ({ gt: () => Promise.resolve(disponiveis) }),
+      not: () => Promise.resolve(consumidas),
+    }),
+  });
+}
+
 describe('creditosDaPessoa', () => {
   // A falha vai para o log por desenho; o spy impede que ela suje a saída do Jest e
   // deixa o teste afirmar que ela de fato foi registrada.
@@ -22,44 +37,81 @@ describe('creditosDaPessoa', () => {
   beforeEach(() => { aviso = jest.spyOn(console, 'warn').mockImplementation(() => undefined); });
   afterEach(() => { aviso.mockRestore(); });
 
-  it('devolve vazio quando a leitura falha, em vez de explodir', async () => {
-    // Isto decora um card. Falhar aqui não pode derrubar a tela da leitura, que
-    // é o que a pessoa veio ver.
-    mockFrom.mockReturnValue({
-      select: () => ({ is: () => ({ gt: () => Promise.resolve({ data: null, error: { message: 'x' } }) }) }),
+  it('devolve vazio quando a leitura falha, em vez de explodir, e diz que falhou', async () => {
+    // Isto decora um card e, na vocação, abre a leitura. Falhar aqui não pode derrubar a
+    // tela, que é o que a pessoa veio ver. E "falhou" não é "zero": quem leu zero por
+    // queda de rede pode já ter pagado, e a tela não deve convidá-lo a pagar de novo.
+    tabela({ data: null, error: { message: 'x' } });
+    await expect(creditosDaPessoa()).resolves.toEqual({
+      porOraculo: {}, consumidasPorOraculo: {}, falhou: true,
     });
-    await expect(creditosDaPessoa()).resolves.toEqual({});
     expect(aviso).toHaveBeenCalledWith('falha ao ler creditos avulsos', 'x');
   });
 
-  it('conta quantos creditos ha de cada produto', async () => {
-    mockFrom.mockReturnValue({
-      select: () => ({ is: () => ({ gt: () => Promise.resolve({
-        data: [{ oraculo: 'mapa' }, { oraculo: 'mapa' }, { oraculo: 'vocacao' }], error: null,
-      }) }) }),
+  it('a falha da leitura das gastas também é falha, e não "nenhuma gasta"', async () => {
+    tabela({ data: [{ oraculo: 'mapa' }], error: null }, { data: null, error: { message: 'y' } });
+    await expect(creditosDaPessoa()).resolves.toEqual({
+      porOraculo: { mapa: 1 }, consumidasPorOraculo: {}, falhou: true,
     });
-    await expect(creditosDaPessoa()).resolves.toEqual({ mapa: 2, vocacao: 1 });
+    expect(aviso).toHaveBeenCalledWith('falha ao ler creditos avulsos', 'y');
   });
 
-  it('só conta o que não foi gasto e ainda não venceu', async () => {
+  it('conta quantos creditos ha de cada produto', async () => {
+    tabela({
+      data: [{ oraculo: 'mapa' }, { oraculo: 'mapa' }, { oraculo: 'vocacao' }], error: null,
+    });
+    await expect(creditosDaPessoa()).resolves.toEqual({
+      porOraculo: { mapa: 2, vocacao: 1 }, consumidasPorOraculo: {}, falhou: false,
+    });
+    expect(aviso).not.toHaveBeenCalled();
+  });
+
+  it('conta as compras já gastas por produto, separadas dos créditos', async () => {
+    tabela(
+      { data: [{ oraculo: 'mapa' }], error: null },
+      { data: [{ oraculo: 'vocacao' }, { oraculo: 'vocacao' }, { oraculo: 'mapa' }], error: null },
+    );
+    await expect(creditosDaPessoa()).resolves.toEqual({
+      porOraculo: { mapa: 1 }, consumidasPorOraculo: { vocacao: 2, mapa: 1 }, falhou: false,
+    });
+  });
+
+  it('só conta como crédito o que não foi gasto e ainda não venceu', async () => {
     // Sem estes dois filtros a tela mostraria "você tem uma leitura" para um
     // crédito que o servidor já recusa, e a pessoa tocaria para ler um erro.
     const is = jest.fn();
     const gt = jest.fn().mockResolvedValue({ data: [], error: null });
     is.mockReturnValue({ gt });
-    const select = jest.fn().mockReturnValue({ is });
+    const select = jest.fn().mockReturnValue({
+      is, not: () => Promise.resolve({ data: [], error: null }),
+    });
     mockFrom.mockReturnValue({ select });
 
     const antes = Date.now();
     await creditosDaPessoa();
 
-    expect(mockFrom).toHaveBeenLastCalledWith('compras_avulsas');
+    expect(mockFrom).toHaveBeenCalledWith('compras_avulsas');
     expect(select).toHaveBeenCalledWith('oraculo');
     expect(is).toHaveBeenCalledWith('consumido_em', null);
     // "Ainda não venceu" é comparar com AGORA, não com uma data fixa.
     const [coluna, quando] = gt.mock.calls[0] as [string, string];
     expect(coluna).toBe('expira_em');
     expect(Math.abs(Date.parse(quando) - antes)).toBeLessThan(5000);
+  });
+
+  it('as gastas são só as que têm `consumido_em`, SEM filtro de validade', async () => {
+    // O prazo de 90 dias é do direito de gerar. A leitura que o crédito já pagou não
+    // expira, e quem a gastou há seis meses ainda tem direito de reabri-la.
+    const not = jest.fn().mockResolvedValue({ data: [], error: null });
+    const gt = jest.fn().mockResolvedValue({ data: [], error: null });
+    const select = jest.fn().mockReturnValue({ is: () => ({ gt }), not });
+    mockFrom.mockReturnValue({ select });
+
+    await creditosDaPessoa();
+
+    expect(not).toHaveBeenCalledWith('consumido_em', 'is', null);
+    // O único `gt` da leitura é o dos créditos disponíveis.
+    expect(gt).toHaveBeenCalledTimes(1);
   });
 });
 
