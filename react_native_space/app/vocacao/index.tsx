@@ -6,6 +6,7 @@ import {
   ScrollView,
   Animated,
   Pressable,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -23,7 +24,10 @@ import { montarVocacao } from '../../data/vocacao';
 import { TEXTO_CORPO } from '../../data/textos-mapa';
 import type { Cidade } from '../../data/cidades';
 import { usePlano } from '../../hooks/usePlano';
+import { useCreditoAvulso } from '../../hooks/useCreditoAvulso';
 import { gerarLeituraDeVocacao, type InterpretacaoVocacao } from '../../services/ia';
+import { comprarAvulso } from '../../services/avulso';
+import { mostrarAlerta } from '../../utils/alerta';
 import { Hapticos } from '../../utils/haptics';
 import { voltarOuIr } from '../../utils/navegacao';
 
@@ -52,6 +56,7 @@ const SECOES: { chave: 'ondeRende' | 'ambiente' | 'drena' | 'passo'; rotulo: str
 export default function TelaVocacao() {
   const { perfil, carregando } = useAuth();
   const { temAcesso } = usePlano();
+  const { credito } = useCreditoAvulso('vocacao');
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -279,7 +284,8 @@ export default function TelaVocacao() {
                   </View>
                 )}
 
-                {/* 4. A leitura: no plano, o botão; sem plano, a chamada para os planos. */}
+                {/* 4. A leitura: com plano ou com crédito avulso, o botão; sem nenhum dos
+                    dois, a chamada para os planos e a compra avulsa. */}
                 {interpretacao ? (
                   <View style={estilos.equilibrioCaixa}>
                     <Text style={estilos.iaTituloResultado}>{interpretacao.titulo}</Text>
@@ -290,7 +296,11 @@ export default function TelaVocacao() {
                       </View>
                     ))}
                   </View>
-                ) : temMapaCompleto ? (
+                ) : (temMapaCompleto || credito > 0) ? (
+                  // O crédito avulso abre este portão tanto quanto o plano. Quem compra volta
+                  // da Stripe sem plano nenhum: olhando só `temMapaCompleto`, a tela seguiria
+                  // trancada e ainda ofereceria uma segunda compra de um crédito que ela não
+                  // deixa gastar. Quem recusa uma leitura sem direito a ela é o servidor.
                   <>
                     <SemaforoUso tipo="interpretacao" rotulo="Aprofundamentos" />
                     <Text style={estilos.secaoSubtitulo}>
@@ -327,6 +337,28 @@ export default function TelaVocacao() {
                     >
                       <Text style={estilos.botaoPlanosTexto}>Ver os planos</Text>
                     </Pressable>
+                    {/* A segunda saída, para quem não quer assinar. A assinatura
+                        segue sendo a oferta principal: este botão é secundário na
+                        hierarquia, e o texto diz o que se leva, não só que se paga. */}
+                    <Pressable
+                      onPress={async () => {
+                        Hapticos.impactoLeve();
+                        try {
+                          await Linking.openURL(await comprarAvulso('vocacao'));
+                        } catch (e) {
+                          mostrarAlerta('Não foi possível abrir o pagamento',
+                            e instanceof Error ? e.message : 'Tente de novo em instantes.');
+                        }
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel="Comprar só esta leitura"
+                      style={estilos.botaoAvulso}
+                    >
+                      <Text style={estilos.botaoAvulsoTexto}>Comprar só esta leitura</Text>
+                    </Pressable>
+                    <Text style={estilos.emConstrucaoTexto}>
+                      O direito de gerar vale 90 dias. A leitura, depois de gerada, fica para sempre.
+                    </Text>
                   </View>
                 )}
               </Animated.View>
@@ -449,6 +481,11 @@ const estilos = StyleSheet.create({
     borderRadius: RaioBorda.full, paddingVertical: 10, paddingHorizontal: Espacamento.lg,
   },
   botaoPlanosTexto: { fontFamily: Fontes.corpoSemibold, fontSize: 14, color: Cores.acento },
+  botaoAvulso: {
+    marginTop: Espacamento.sm, borderWidth: 1, borderColor: Cores.acento,
+    borderRadius: RaioBorda.full, paddingVertical: 10, paddingHorizontal: Espacamento.lg,
+  },
+  botaoAvulsoTexto: { fontFamily: Fontes.corpoSemibold, fontSize: 14, color: Cores.acento },
   equilibrioCaixa: {
     backgroundColor: 'rgba(181,139,70,0.10)', borderRadius: RaioBorda.lg,
     padding: Espacamento.md, gap: Espacamento.sm,

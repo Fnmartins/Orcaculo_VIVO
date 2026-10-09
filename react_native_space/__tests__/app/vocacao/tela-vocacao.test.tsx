@@ -69,6 +69,26 @@ jest.mock('../../../services/ia', () => ({
   gerarLeituraDeVocacao: (...a: unknown[]) => mockGerarLeitura(...a),
 }));
 
+// O hook do crédito é mockado inteiro, e não o `expo-router` ganhando um `useFocusEffect`:
+// o que esta tela precisa saber é "quantos créditos de vocação a pessoa tem", e a releitura
+// ao ganhar foco já tem teste próprio em `hooks/__tests__/useCreditoAvulso.test.tsx`. O
+// mock responde só pela vocação, como o hook real, para a tela não ler o crédito do mapa.
+let mockCreditos: Record<string, number> = {};
+jest.mock('../../../hooks/useCreditoAvulso', () => ({
+  useCreditoAvulso: (oraculo: string) => ({ credito: mockCreditos[oraculo] ?? 0 }),
+}));
+
+const mockComprar = jest.fn();
+jest.mock('../../../services/avulso', () => ({
+  comprarAvulso: (...a: unknown[]) => mockComprar(...a),
+}));
+
+const mockAlerta = jest.fn();
+jest.mock('../../../utils/alerta', () => ({
+  mostrarAlerta: (...a: unknown[]) => mockAlerta(...a),
+}));
+
+import { Linking } from 'react-native';
 import TelaVocacao from '../../../app/vocacao/index';
 
 const SAO_PAULO: CidadeFalsa = {
@@ -145,12 +165,17 @@ const LEITURA = {
   passo: 'Texto do passo.',
 };
 
+let abrirURL: jest.SpyInstance;
 beforeEach(() => {
   jest.clearAllMocks();
   mockCarregando = false;
   mockSessao = null;
+  mockCreditos = {};
   mockGerarLeitura.mockResolvedValue(LEITURA);
+  mockComprar.mockResolvedValue('https://checkout.stripe.com/c/pay/cs_teste');
+  abrirURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
 });
+afterEach(() => { abrirURL.mockRestore(); });
 
 describe('tela de vocação', () => {
   it('sem plano, mostra o meio do céu e não mostra a leitura', () => {
@@ -422,5 +447,88 @@ describe('o que a parte grátis promete, ela mostra', () => {
 
     const enviado = mockGerarLeitura.mock.calls[0][0] as { pecas: string[] };
     expect(enviado.pecas.filter((p) => /Lua/.test(p))).toEqual([]);
+  });
+});
+
+/**
+ * A compra avulsa: quem paga uma leitura, sem plano, tem de poder gastá-la aqui.
+ *
+ * O portão da leitura olhava só o plano (`temAcesso('mapa_completo')`), e quem compra
+ * volta da Stripe sem plano nenhum. Sem estes testes, o produto cobraria e a tela
+ * continuaria mostrando o cadeado.
+ */
+describe('compra avulsa na vocação', () => {
+  it('sem plano e COM crédito, o botão da leitura aparece no lugar do cadeado', () => {
+    mockCreditos = { vocacao: 1 };
+    renderComPlano({ temAcesso: false });
+    expect(screen.getByText(/Ler minha vocação/i)).toBeTruthy();
+    // Nem a chamada para os planos nem uma segunda compra: o direito já está pago.
+    expect(screen.queryByText('Ver os planos')).toBeNull();
+    expect(screen.queryByText('Comprar só esta leitura')).toBeNull();
+  });
+
+  it('sem plano e com crédito, tocar na leitura pede a leitura e mostra as seções', async () => {
+    mockCreditos = { vocacao: 1 };
+    renderComPlano({ temAcesso: false });
+    fireEvent.press(screen.getByText(/Ler minha vocação/i));
+
+    await waitFor(() => expect(screen.getByText('Onde você rende')).toBeTruthy());
+    expect(mockGerarLeitura).toHaveBeenCalledTimes(1);
+  });
+
+  it('crédito de mapa não abre a leitura de vocação', () => {
+    // Cada crédito paga uma leitura de UM produto. Se o portão contasse o de mapa, a
+    // pessoa tocaria em "Ler minha vocação" e o servidor recusaria, depois de a tela
+    // dizer que ela podia.
+    mockCreditos = { mapa: 1 };
+    renderComPlano({ temAcesso: false });
+    expect(screen.queryByText(/Ler minha vocação/i)).toBeNull();
+    expect(screen.getByText('Comprar só esta leitura')).toBeTruthy();
+  });
+
+  it('sem plano e sem crédito, oferece a compra avulsa DEPOIS dos planos', () => {
+    renderComPlano({ temAcesso: false });
+    expect(screen.queryByText(/Ler minha vocação/i)).toBeNull();
+    const textos = textosNaOrdem();
+    const planos = textos.indexOf('Ver os planos');
+    const avulso = textos.indexOf('Comprar só esta leitura');
+    expect(planos).toBeGreaterThanOrEqual(0);
+    expect(avulso).toBeGreaterThanOrEqual(0);
+    // A assinatura segue sendo a oferta principal; a avulsa é a segunda saída.
+    expect(planos).toBeLessThan(avulso);
+  });
+
+  it('diz o prazo do direito e que a leitura gerada fica, antes de a pessoa pagar', () => {
+    renderComPlano({ temAcesso: false });
+    expect(screen.getByText(/O direito de gerar vale 90 dias/)).toBeTruthy();
+    expect(screen.getByText(/depois de gerada, fica para sempre/)).toBeTruthy();
+  });
+
+  it('tocar em comprar pede o checkout da vocação e abre o endereço que voltou', async () => {
+    renderComPlano({ temAcesso: false });
+    fireEvent.press(screen.getByText('Comprar só esta leitura'));
+
+    await waitFor(() =>
+      expect(abrirURL).toHaveBeenCalledWith('https://checkout.stripe.com/c/pay/cs_teste'),
+    );
+    // O produto certo: comprar `mapa` aqui entregaria um crédito que esta tela não gasta.
+    expect(mockComprar).toHaveBeenCalledWith('vocacao');
+    expect(mockAlerta).not.toHaveBeenCalled();
+  });
+
+  it('se o pagamento não abre, a pessoa lê o motivo e nenhum endereço é aberto', async () => {
+    mockComprar.mockRejectedValue(new Error('O pagamento não abriu. Tente de novo.'));
+    renderComPlano({ temAcesso: false });
+    fireEvent.press(screen.getByText('Comprar só esta leitura'));
+
+    await waitFor(() => expect(mockAlerta).toHaveBeenCalledWith(
+      'Não foi possível abrir o pagamento', 'O pagamento não abriu. Tente de novo.',
+    ));
+    expect(abrirURL).not.toHaveBeenCalled();
+  });
+
+  it('com plano, a compra avulsa não é oferecida', () => {
+    renderComPlano({ temAcesso: true });
+    expect(screen.queryByText('Comprar só esta leitura')).toBeNull();
   });
 });

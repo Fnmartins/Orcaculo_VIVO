@@ -7,6 +7,7 @@ import {
   Animated,
   Pressable,
   Dimensions,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -40,10 +41,13 @@ import {
 import { rotuloDoOffset } from '../../utils/fuso';
 import { cidadePorId, type Cidade } from '../../data/cidades';
 import { usePlano } from '../../hooks/usePlano';
+import { useCreditoAvulso } from '../../hooks/useCreditoAvulso';
 import { compartilharMapaAstral } from '../../services/compartilhar';
 import { imprimirPagina, podeImprimir } from '../../utils/impressao';
+import { mostrarAlerta } from '../../utils/alerta';
 import { GLIFO_CORPO, RodaZodiacal, idxSigno } from '../../components/RodaMapa';
 import { gerarInterpretacaoMapa, type InterpretacaoMapa } from '../../services/ia';
+import { comprarAvulso } from '../../services/avulso';
 import { SemaforoUso } from '../../components/SemaforoUso';
 
 const { width: W } = Dimensions.get('window');
@@ -116,7 +120,16 @@ export default function TelaMapaAstralResultado() {
     cidade: string; cidadeId: string; cidadeUf: string; cidadePais: string;
     lat: string; lon: string; fuso: string; offsetPadrao: string;
   }>();
-  const { temAcesso } = usePlano();
+  const { temAcesso, podeFazerConsulta } = usePlano();
+  const { credito } = useCreditoAvulso('mapa');
+  // Quem decide oferecer é `podeFazerConsulta`, que o app já usa, e não uma
+  // conta nova nesta tela: seriam duas verdades sobre acesso, e a que liberasse
+  // indevido seria a que ninguém notaria. É o mesmo argumento do comentário de
+  // `components/SemaforoUso.tsx:41-42`. Ela já cobre super-admin, plano
+  // ilimitado, cota em zero e quem cancelou (o webhook zera a cota no mesmo
+  // update). Sem crédito na mão e sem consulta para gastar é exatamente quando
+  // a compra avulsa é a resposta.
+  const ofertarAvulso = credito === 0 && !podeFazerConsulta();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -669,6 +682,13 @@ export default function TelaMapaAstralResultado() {
                   combinação — o que Sol, Lua e Ascendente fazem juntos em você.
                 </Text>
                 {erroIA && <Text style={estilos.avisoHonesto}>{erroIA}</Text>}
+                {credito > 0 ? (
+                  <Text style={estilos.secaoSubtitulo}>
+                    {credito === 1
+                      ? 'Você tem uma leitura avulsa deste mapa para usar.'
+                      : `Você tem ${credito} leituras avulsas deste mapa para usar.`}
+                  </Text>
+                ) : null}
                 <Pressable
                   onPress={aprofundar}
                   disabled={carregandoIA}
@@ -680,6 +700,35 @@ export default function TelaMapaAstralResultado() {
                     {carregandoIA ? 'Lendo o seu mapa…' : 'Ler a minha combinação ✨'}
                   </Text>
                 </Pressable>
+                {ofertarAvulso ? (
+                  <>
+                    {/* A segunda saída. A assinatura segue sendo a oferta principal:
+                        este botão vem depois e é secundário na hierarquia. Fica AQUI,
+                        e não nos dois cards de "Ver os planos" desta tela: aqueles
+                        trancam os outros oito planetas e as doze casas, que o crédito
+                        não libera. Ele paga esta leitura, e é ao lado dela que se
+                        oferece. */}
+                    <Pressable
+                      onPress={async () => {
+                        Hapticos.impactoLeve();
+                        try {
+                          await Linking.openURL(await comprarAvulso('mapa'));
+                        } catch (e) {
+                          mostrarAlerta('Não foi possível abrir o pagamento',
+                            e instanceof Error ? e.message : 'Tente de novo em instantes.');
+                        }
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel="Comprar só esta leitura"
+                      style={estilos.botaoAvulso}
+                    >
+                      <Text style={estilos.botaoAvulsoTexto}>Comprar só esta leitura</Text>
+                    </Pressable>
+                    <Text style={estilos.notaRodape}>
+                      O direito de gerar vale 90 dias. A leitura, depois de gerada, fica para sempre.
+                    </Text>
+                  </>
+                ) : null}
               </>
             )}
           </Animated.View>
@@ -1108,6 +1157,11 @@ const estilos = StyleSheet.create({
     borderRadius: RaioBorda.full, paddingVertical: 10, paddingHorizontal: Espacamento.lg,
   },
   botaoPlanosTexto: { fontFamily: Fontes.corpoSemibold, fontSize: 14, color: Cores.acento },
+  botaoAvulso: {
+    marginTop: Espacamento.sm, borderWidth: 1, borderColor: Cores.acento,
+    borderRadius: RaioBorda.full, paddingVertical: 10, paddingHorizontal: Espacamento.lg,
+  },
+  botaoAvulsoTexto: { fontFamily: Fontes.corpoSemibold, fontSize: 14, color: Cores.acento },
   equilibrioCaixa: {
     backgroundColor: 'rgba(181,139,70,0.10)', borderRadius: RaioBorda.lg,
     padding: Espacamento.md, gap: Espacamento.sm,
