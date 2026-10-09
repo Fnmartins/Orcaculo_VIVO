@@ -398,7 +398,11 @@ Abra `supabase/functions/criar-checkout-stripe/index.ts` inteiro. Copie dele o c
       allow_promotion_codes: true,
     });
 
-    return resposta({ url: session.url });
+    // `checkoutUrl`, e não `url`: é o nome que `criar-checkout-stripe:146` já usa
+    // e que `services/stripe.ts:34,37` lê. Duas functions que fazem a mesma coisa
+    // com nomes diferentes fazem quem copiar o serviço existente falhar sem erro
+    // de compilação — o campo vem `undefined` e ninguém vê.
+    return resposta({ checkoutUrl: session.url });
 ```
 
 O import de `ehMoedaValida` vem de `'../_shared/planos.ts'`, igual ao molde. `ehPlanoValido` e `lerConfigPlano` **não** são usados aqui — não os importe.
@@ -526,7 +530,42 @@ git commit -m "feat(avulso): o webhook separa assinatura de compra avulsa"
 - Testar: `__tests__/validade-nas-functions.test.ts`
 
 **Interfaces:**
-- Consome: `decidirCobranca` (Task 2), `creditoDisponivel` e `gastarCredito` (Task 3).
+- Consome: `decidirCobranca` (Task 2); de `_shared/avulso.ts` (Task 3), `creditoDisponivel(cliente, usuarioId, oraculo): Promise<BuscaDeCredito>` onde `BuscaDeCredito = { estado: 'tem'; id: number } | { estado: 'nao_tem' } | { estado: 'erro' }`, `reivindicarCredito(cliente, compraId, chave): Promise<boolean>` e `devolverCredito(cliente, compraId): Promise<void>`.
+
+> **Emenda de 08/10/2026.** A revisão do lote 1-3 derrubou o contrato que esta tarefa
+> consumiria. `gastarCredito` **não existe mais**. Gastar o crédito DEPOIS de gerar era
+> verificar-depois-agir: dois cliques simultâneos liam o mesmo crédito disponível, os dois
+> geravam, e a guarda só impedia o segundo `update` — duas leituras por uma compra, e a
+> Anthropic paga duas vezes. Agora o crédito é **reivindicado antes de gerar**, e devolvido se
+> a geração falhar.
+
+> **Segunda emenda de 08/10/2026.** A revisão desta tarefa achou que a proteção que o
+> plano descrevia não existia para o público do avulso. O plano dizia que `desligado`
+> continuaria barrando, mas `decidirUso` (`_shared/limites.ts:71-76`) devolve `vencido`
+> **antes** de avaliar `ligado(tipo, config)`: para quem cancelou ou nunca assinou — ou
+> seja, exatamente quem compra avulso — o motivo é sempre `vencido`, que o crédito
+> contorna. O interruptor do dono era contornável por quem pagasse.
+>
+> Daí quatro mudanças que o texto abaixo não previa:
+>
+> 1. `Veredito` ganhou `recursoLigado: boolean`, calculado uma vez no topo de
+>    `decidirUso` e presente em todos os retornos. A **ordem** de `decidirUso` ficou
+>    intacta: `vencido` vem antes de `desligado` de propósito, tem teste, e existe para
+>    quem venceu ler a mensagem certa. O campo novo é informação a mais, não reordenação.
+> 2. O crédito só contorna o teto do dia quando a cota do plano **também** acabou
+>    (`tetoDoDiaContornavel`). Sem isso, um assinante com cota sobrando queimava o
+>    crédito comprado num limite que passa à meia-noite de graça.
+> 3. O portão **lista o que o crédito contorna**, em vez de listar o que ele não
+>    contorna. Um quinto motivo que alguém acrescente a `decidirUso` nasce barrado.
+> 4. A devolução no `finally` ficou em `try/catch`: um throw ali substituiria o 502 ou
+>    422 já montado por um 500 cru, sem CORS, e o app mostraria falha de rede.
+>
+> **Guarda operacional que nasce daqui:** `recursoLigado` vale para o plano da pessoa, e
+> o crédito é por produto. Hoje `configuracao_ia` tem `interpretacao_ligada = true` para
+> `gratuito` (`supabase/perguntas.sql:92-96`), então o produto funciona. Mas desligar
+> `interpretacao` no plano `gratuito` pelo Painel barraria **todo** comprador avulso, e a
+> mensagem que ele leria não explicaria por que o que ele comprou não funciona. Não
+> desligue esse interruptor enquanto a venda avulsa estiver no ar.
 
 - [ ] **Passo 1: Escrever o teste de fonte que falha**
 
@@ -540,16 +579,28 @@ describe('o credito avulso entra na interpretacao sem furar o cache', () => {
     expect(interp.indexOf('creditoDisponivel(')).toBeLessThan(interp.indexOf('decidirCobranca('));
   });
 
-  it('o credito só é gasto DEPOIS de a leitura existir', () => {
-    // Gastar antes faria quem recebesse 502 perder o que pagou.
-    expect(interp.indexOf('gastarCredito('))
-      .toBeGreaterThan(interp.indexOf('anthropic.messages.create'));
+  it('o credito é reivindicado ANTES de gerar, e nao depois', () => {
+    // Depois seria verificar-depois-agir: dois cliques simultâneos gerariam os
+    // dois, e só o segundo `update` falharia — duas leituras por uma compra.
+    expect(interp.indexOf('reivindicarCredito('))
+      .toBeLessThan(interp.indexOf('anthropic.messages.create'));
   });
 
-  it('o retorno do cache não passa por gastarCredito', () => {
-    // Os dois `return` de cache estão acima da chamada à Anthropic. Se
-    // `gastarCredito` aparecesse antes deles, uma releitura comeria a compra.
-    expect(interp.indexOf('gastarCredito(')).toBeGreaterThan(interp.indexOf('doCache: true'));
+  it('o retorno do cache não passa por reivindicarCredito', () => {
+    // Os dois `return` de cache estão acima do ponto de reivindicação. Se a
+    // reivindicação subisse para antes deles, uma releitura comeria a compra.
+    expect(interp.indexOf('reivindicarCredito(')).toBeGreaterThan(interp.indexOf('doCache: true'));
+  });
+
+  it('a geração que falha devolve o crédito', () => {
+    // Sem isto, um 502 da Anthropic faria a pessoa perder o que pagou.
+    expect(interp).toContain('devolverCredito(');
+  });
+
+  it('falha ao LER o crédito não vira "sem acesso"', () => {
+    // `erro` e `nao_tem` são estados diferentes: tratar os dois igual mandaria
+    // quem já comprou comprar de novo, e nada impede a segunda compra.
+    expect(interp).toContain("estado === 'erro'");
   });
 });
 ```
@@ -560,7 +611,7 @@ describe('o credito avulso entra na interpretacao sem furar o cache', () => {
 npx jest __tests__/validade-nas-functions.test.ts
 ```
 
-Esperado: FAIL nos três.
+Esperado: FAIL nos cinco.
 
 - [ ] **Passo 3: Ler o crédito e decidir**
 
@@ -570,42 +621,76 @@ Depois do bloco que lê `perfil` e calcula `restantes` e `semLimite`, e **antes*
   // O crédito avulso é lido só para os dois produtos vendáveis: tarô e búzios
   // não estão à venda avulsa, e uma consulta a mais por leitura deles seria
   // custo sem uso.
-  const idDoCredito = (oraculo === 'mapa' || oraculo === 'vocacao')
+  const busca = (oraculo === 'mapa' || oraculo === 'vocacao')
     ? await creditoDisponivel(supabaseAdmin, usuarioId, oraculo)
-    : null;
+    : { estado: 'nao_tem' as const };
 
   const cobranca = decidirCobranca({
     semLimite,
     restantesDoPlano: restantes,
-    temCreditoAvulso: idDoCredito !== null,
+    temCreditoAvulso: busca.estado === 'tem',
   });
 ```
 
-- [ ] **Passo 4: Deixar `cobranca.permitido` ser quem barra**
+- [ ] **Passo 4: Deixar `cobranca.permitido` ser quem barra, e separar erro de ausência**
 
-Leia o código existente que barra por cota e por validade **antes de mexer**: a ordem entre a conferência de validade e a de cota é garantida por um teste já existente nesta mesma suíte (`vencimentoAntesDaCota`), e invertê-la quebra esse teste. Mantenha a ordem; troque apenas o critério de cota por `cobranca.permitido`, para que quem tem crédito avulso passe mesmo com a cota em zero.
+Leia o código existente que barra por cota e por validade **antes de mexer**: a ordem entre a conferência de validade e a de cota é garantida por um teste já existente nesta mesma suíte (`vencimentoAntesDaCota`), e invertê-la quebra esse teste. Mantenha a ordem; troque apenas o critério de cota por `cobranca.permitido`.
 
-- [ ] **Passo 5: Gastar, junto com o desconto que já existe**
-
-No bloco que hoje desconta `consultas_restantes`, que já roda **depois** de a leitura existir:
+E, antes de devolver "sem acesso", trate o erro de leitura:
 
 ```ts
-    // Desconta de onde a decisão mandou. O caminho do cache nem chega aqui: os
-    // dois `return` de releitura estão acima da chamada à Anthropic, e é isso
-    // que impede uma reabertura de comer a compra.
+  // Falha ao LER o crédito não pode virar "compre": a pessoa pode já ter
+  // comprado, e o `UNIQUE` é por sessão do Stripe, não por pessoa — nada
+  // impediria a segunda compra. Só importa para quem seria barrado; quem tem
+  // cota do plano passa de qualquer jeito.
+  if (!cobranca.permitido && busca.estado === 'erro') {
+    return resposta({ erro: 'Não foi possível conferir seu acesso agora. Tente de novo.' }, 503);
+  }
+```
+
+- [ ] **Passo 5: Reivindicar ANTES de gerar**
+
+Imediatamente antes do `try` que chama a Anthropic — e portanto **depois** dos dois `return` de cache:
+
+```ts
+  // Reivindicar antes de gerar, e não depois: quem perde a corrida para aqui,
+  // sem gastar chamada de IA. Os dois `return` de cache estão acima, então uma
+  // releitura nunca chega a este ponto e nunca come a compra.
+  if (cobranca.fonte === 'avulso' && busca.estado === 'tem') {
+    const ganhou = await reivindicarCredito(supabaseAdmin, busca.id, chave);
+    if (!ganhou) {
+      return resposta({ erro: 'Esta leitura já está sendo gerada. Aguarde um instante.' }, 409);
+    }
+  }
+```
+
+- [ ] **Passo 6: Descontar do plano, e devolver o crédito se a geração falhar**
+
+No bloco que hoje desconta `consultas_restantes`, depois de a leitura existir — o avulso **já foi** cobrado no passo anterior:
+
+```ts
+    // O avulso já foi reivindicado antes de gerar; aqui só resta o plano.
     if (cobranca.fonte === 'plano') {
       exigirEscrita('perfis.consultas_restantes', await supabaseAdmin
         .from('perfis').update({ consultas_restantes: restantes - 1 }).eq('id', usuarioId));
-    } else if (cobranca.fonte === 'avulso' && idDoCredito !== null) {
-      await gastarCredito(supabaseAdmin, idDoCredito, chave);
     }
 ```
 
-- [ ] **Passo 6: Acrescentar os imports**
+E no `catch` que hoje devolve 502:
+
+```ts
+    // A leitura não saiu, e o crédito já estava reivindicado. Sem devolver, a
+    // pessoa perderia o que pagou por uma falha nossa.
+    if (cobranca.fonte === 'avulso' && busca.estado === 'tem') {
+      await devolverCredito(supabaseAdmin, busca.id);
+    }
+```
+
+- [ ] **Passo 7: Acrescentar os imports**
 
 ```ts
 import { decidirCobranca } from '../_shared/avulso-regras.ts';
-import { creditoDisponivel, gastarCredito } from '../_shared/avulso.ts';
+import { creditoDisponivel, devolverCredito, reivindicarCredito } from '../_shared/avulso.ts';
 ```
 
 - [ ] **Passo 7: Rodar tudo**
@@ -630,10 +715,31 @@ git commit -m "feat(avulso): gastar credito avulso quando a cota do plano acabou
 **Arquivos:**
 - Criar: `services/avulso.ts`
 - Criar: `services/__tests__/avulso.test.ts`
-- Modificar: `app/mapa-astral/resultado.tsx` e `app/vocacao/index.tsx`, no bloco trancado onde hoje está o botão "Ver os planos"
+- Criar: `hooks/useCreditoAvulso.ts`
+- Modificar: `app/vocacao/index.tsx`, no bloco da leitura (hoje linhas 282-331)
+- Modificar: `app/mapa-astral/resultado.tsx`, no bloco "O que isso forma junto" (hoje linhas 612-685)
 
 **Interfaces:**
 - Consome: a function `criar-checkout-avulso` (Task 4) e a tabela `compras_avulsas` (Task 1).
+- Produz: `creditosDaPessoa(): Promise<Record<string, number>>` e `comprarAvulso(oraculo: 'mapa' | 'vocacao', moeda?: string): Promise<string>` em `services/avulso.ts`; `useCreditoAvulso(oraculo): { credito: number }` em `hooks/useCreditoAvulso.ts`.
+
+> **Emenda de 08/10/2026.** O texto original mandava pôr o botão de compra "ao
+> lado do 'Ver os planos' que já existe no bloco trancado". Li as duas telas e
+> isso erra em dois pontos, os dois conferidos no código, não deduzidos:
+>
+> 1. **O crédito de vocação seria ingastável.** `app/vocacao/index.tsx:293` só
+>    renderiza o botão da leitura quando `temMapaCompleto`, que é
+>    `temAcesso('mapa_completo')` — consulta à tabela `ACESSO` de
+>    `hooks/usePlano.ts:17-22`, onde `gratuito` tem apenas `consulta_basica`.
+>    Quem compra volta da Stripe sem plano, o portão continua fechado, e a tela
+>    oferece uma segunda compra que também não dá para gastar. É a mesma forma
+>    do defeito que a revisão pegou no servidor, onde `conferirUso` barrava
+>    justamente o público do avulso. O portão passa a aceitar o crédito.
+> 2. **No mapa, aquele lugar vende o produto errado.** Os dois "Ver os planos"
+>    do mapa (`resultado.tsx:724` e `:747`) trancam os outros oito planetas e as
+>    doze casas — conteúdo de PLANO, que o crédito não libera. O crédito paga
+>    exatamente uma chamada de `ia-interpretacao`. A oferta vai no bloco da
+>    leitura, que é o que ela entrega.
 
 - [ ] **Passo 1: Escrever o teste que falha**
 
@@ -711,7 +817,9 @@ export async function comprarAvulso(
     body: { oraculo, moeda },
   });
   if (error) throw await erroDaFuncao(error);
-  const url = (data as { url?: string } | null)?.url;
+  // `checkoutUrl` é o nome que as duas functions de checkout devolvem, e o que
+  // `services/stripe.ts` já lê. Ler `url` aqui daria `undefined` em silêncio.
+  const url = (data as { checkoutUrl?: string } | null)?.checkoutUrl;
   if (!url) throw new Error('O pagamento não abriu. Tente de novo.');
   return url;
 }
@@ -725,47 +833,187 @@ npx jest services/__tests__/avulso.test.ts
 
 Esperado: PASS, 2 testes.
 
-- [ ] **Passo 5: Pôr a segunda saída nas duas telas**
+- [ ] **Passo 5: O hook que relê ao voltar da Stripe**
 
-Ao lado do botão "Ver os planos" que já existe no bloco trancado de cada tela:
+Um hook, e não um `useEffect` em cada tela, porque as duas telas querem a mesma
+coisa e `hooks/` já é o lugar disso nesta base (`usePlano`, `useAdmin`).
 
-```tsx
-            {/* A segunda saída, para quem não quer assinar. A assinatura segue
-                sendo a oferta principal: este botão é secundário na hierarquia,
-                e o texto diz o que se leva, não só que se paga. */}
-            <Pressable
-              onPress={async () => {
-                Hapticos.impactoLeve();
-                try {
-                  const url = await comprarAvulso('mapa');
-                  await Linking.openURL(url);
-                } catch (e) {
-                  mostrarAlerta('Não foi possível abrir o pagamento',
-                    e instanceof Error ? e.message : 'Tente de novo em instantes.');
-                }
-              }}
-              accessibilityRole="button"
-              accessibilityLabel="Comprar só esta leitura"
-              style={estilos.botaoAvulso}
-            >
-              <Text style={estilos.botaoAvulsoTexto}>Comprar só esta leitura</Text>
-            </Pressable>
+```ts
+// hooks/useCreditoAvulso.ts
+import { useCallback, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { creditosDaPessoa } from '../services/avulso';
+
+/**
+ * Quantos créditos avulsos não gastos a pessoa tem DESTE produto.
+ *
+ * Relê a cada vez que a tela ganha foco, e não só na montagem: a compra
+ * acontece FORA do app, no navegador da Stripe. Quem paga e volta encontraria a
+ * tela exatamente como a deixou — trancada, com o crédito recém-comprado
+ * invisível, e sem nenhuma pista de que o pagamento funcionou.
+ *
+ * `useFocusEffect` é o que `app/lei-atracao/index.tsx` já usa para o mesmo fim.
+ */
+export function useCreditoAvulso(oraculo: 'mapa' | 'vocacao') {
+  const [credito, setCredito] = useState(0);
+
+  useFocusEffect(
+    useCallback(() => {
+      let vivo = true;
+      creditosDaPessoa().then((porOraculo) => {
+        if (vivo) setCredito(porOraculo[oraculo] ?? 0);
+      });
+      return () => { vivo = false; };
+    }, [oraculo]),
+  );
+
+  return { credito };
+}
 ```
 
-Em `app/vocacao/index.tsx`, troque `comprarAvulso('mapa')` por `comprarAvulso('vocacao')`. Importe `Linking` de `react-native` e `mostrarAlerta` de `utils/alerta` se a tela ainda não os tiver. Os estilos `botaoAvulso` e `botaoAvulsoTexto` seguem o `botaoPlanos` que já existe em cada arquivo, com fundo transparente e borda — é o que o deixa secundário.
+- [ ] **Passo 6: Abrir o portão da vocação, e oferecer no card**
 
-- [ ] **Passo 6: Rodar tudo**
+Em `app/vocacao/index.tsx`, acrescente aos imports:
+
+```tsx
+import { Linking } from 'react-native';
+import { useCreditoAvulso } from '../../hooks/useCreditoAvulso';
+import { comprarAvulso } from '../../services/avulso';
+import { mostrarAlerta } from '../../utils/alerta';
+```
+
+`Linking` entra na linha de import que já existe de `react-native`, não numa
+nova. Junto de `const { temAcesso } = usePlano();` (linha 54):
+
+```tsx
+  const { credito } = useCreditoAvulso('vocacao');
+```
+
+O portão da linha 293 passa a aceitar o crédito. **Esta é a linha sem a qual o
+produto cobra e não entrega:**
+
+```tsx
+                ) : (temMapaCompleto || credito > 0) ? (
+```
+
+E dentro do `emConstrucaoCard` (hoje linhas 313-331), depois do botão "Ver os
+planos", que fica onde está:
+
+```tsx
+                    {/* A segunda saída, para quem não quer assinar. A assinatura
+                        segue sendo a oferta principal: este botão é secundário na
+                        hierarquia, e o texto diz o que se leva, não só que se paga. */}
+                    <Pressable
+                      onPress={async () => {
+                        Hapticos.impactoLeve();
+                        try {
+                          await Linking.openURL(await comprarAvulso('vocacao'));
+                        } catch (e) {
+                          mostrarAlerta('Não foi possível abrir o pagamento',
+                            e instanceof Error ? e.message : 'Tente de novo em instantes.');
+                        }
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel="Comprar só esta leitura"
+                      style={estilos.botaoAvulso}
+                    >
+                      <Text style={estilos.botaoAvulsoTexto}>Comprar só esta leitura</Text>
+                    </Pressable>
+                    <Text style={estilos.emConstrucaoTexto}>
+                      O direito de gerar vale 90 dias. A leitura, depois de gerada, fica para sempre.
+                    </Text>
+```
+
+Este card só aparece quando `!temMapaCompleto && credito === 0`, então aqui a
+oferta não precisa de condição nenhuma: quem já tem crédito nunca vê este card,
+vê o botão da leitura.
+
+- [ ] **Passo 7: Oferecer no mapa, no bloco da leitura**
+
+Em `app/mapa-astral/resultado.tsx`, acrescente aos imports o mesmo conjunto do
+Passo 6, trocando `'vocacao'` por `'mapa'`. Em vez de `const { temAcesso } = usePlano();` (linha 119):
+
+```tsx
+  const { temAcesso, podeFazerConsulta } = usePlano();
+  const { credito } = useCreditoAvulso('mapa');
+  // Quem decide oferecer é `podeFazerConsulta`, que o app já usa, e não uma
+  // conta nova nesta tela: seriam duas verdades sobre acesso, e a que liberasse
+  // indevido seria a que ninguém notaria. É o mesmo argumento do comentário de
+  // `components/SemaforoUso.tsx:41-42`. Ela já cobre super-admin, plano
+  // ilimitado, cota em zero e quem cancelou (o webhook zera a cota no mesmo
+  // update). Sem crédito na mão e sem consulta para gastar é exatamente quando
+  // a compra avulsa é a resposta.
+  const ofertarAvulso = credito === 0 && !podeFazerConsulta();
+```
+
+No bloco "O que isso forma junto", no ramo em que ainda não há leitura — depois
+de `{erroIA && <Text style={estilos.avisoHonesto}>{erroIA}</Text>}` e antes do
+`<Pressable>` de "Ler a minha combinação":
+
+```tsx
+                {credito > 0 ? (
+                  <Text style={estilos.secaoSubtitulo}>
+                    {credito === 1
+                      ? 'Você tem uma leitura avulsa deste mapa para usar.'
+                      : `Você tem ${credito} leituras avulsas deste mapa para usar.`}
+                  </Text>
+                ) : null}
+```
+
+E depois daquele `<Pressable>`:
+
+```tsx
+                {ofertarAvulso ? (
+                  <>
+                    {/* A segunda saída. A assinatura segue sendo a oferta principal:
+                        este botão vem depois e é secundário na hierarquia. Fica AQUI,
+                        e não nos dois cards de "Ver os planos" desta tela: aqueles
+                        trancam os outros oito planetas e as doze casas, que o crédito
+                        não libera. Ele paga esta leitura, e é ao lado dela que se
+                        oferece. */}
+                    <Pressable
+                      onPress={async () => {
+                        Hapticos.impactoLeve();
+                        try {
+                          await Linking.openURL(await comprarAvulso('mapa'));
+                        } catch (e) {
+                          mostrarAlerta('Não foi possível abrir o pagamento',
+                            e instanceof Error ? e.message : 'Tente de novo em instantes.');
+                        }
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel="Comprar só esta leitura"
+                      style={estilos.botaoAvulso}
+                    >
+                      <Text style={estilos.botaoAvulsoTexto}>Comprar só esta leitura</Text>
+                    </Pressable>
+                    <Text style={estilos.notaRodape}>
+                      O direito de gerar vale 90 dias. A leitura, depois de gerada, fica para sempre.
+                    </Text>
+                  </>
+                ) : null}
+```
+
+Nos dois arquivos, `botaoAvulso` e `botaoAvulsoTexto` copiam o `botaoPlanos` e o
+`botaoPlanosTexto` que cada um já tem, trocando o fundo por transparente e
+acrescentando `borderWidth: 1` com `borderColor: Cores.acento` — é o que o deixa
+visivelmente secundário. `app/vocacao/index.tsx` **não** tem o estilo
+`notaRodape`; por isso o Passo 6 usa `emConstrucaoTexto`. Não acrescente
+`notaRodape` lá.
+
+- [ ] **Passo 8: Rodar tudo**
 
 ```bash
-npx tsc --noEmit && npx jest
+npx tsc --noEmit
+npx jest
 ```
 
 Esperado: sem erro de tipo e suíte inteira verde.
 
-- [ ] **Passo 7: Commit**
+- [ ] **Passo 9: Commit**
 
 ```bash
-git add services/avulso.ts services/__tests__/avulso.test.ts app/mapa-astral/resultado.tsx app/vocacao/index.tsx
+git add services/avulso.ts services/__tests__/avulso.test.ts hooks/useCreditoAvulso.ts app/mapa-astral/resultado.tsx app/vocacao/index.tsx
 git commit -m "feat(avulso): comprar uma leitura sem assinar"
 ```
 
@@ -775,6 +1023,26 @@ git commit -m "feat(avulso): comprar uma leitura sem assinar"
 
 **Arquivos:**
 - Modificar: `app/legal/termos.tsx`
+- Modificar: `app/legal/privacidade.tsx`
+
+> **Emenda de 08/10/2026.** Ao conferir o arquivo antes de despachar, achei um
+> erro de fato nos dois documentos legais: eles dizem que o pagamento é
+> processado pelo **Mercado Pago**. Não é, e nunca foi nesta base — `grep -rli`
+> por "mercado pago" acha exatamente dois arquivos, `app/legal/termos.tsx` e
+> `app/legal/privacidade.tsx`, e nenhum código. As quatro functions de pagamento
+> são `criar-checkout-stripe`, `criar-portal-stripe`, `stripe-webhook` e
+> `criar-checkout-avulso`.
+>
+> Entra nesta tarefa, e não numa entrega própria, por três motivos: é o mesmo
+> arquivo que esta tarefa já abre, no parágrafo imediatamente acima de onde a
+> seção nova entra; acrescentar uma verdade ao lado de uma falsidade sobre
+> pagamento, na tarefa cujo nome é "os Termos dizem o que foi vendido", seria
+> esquisito; e na Política de Privacidade o nome errado não é cosmético — ali se
+> declara **quem recebe os dados de pagamento da pessoa**, que é obrigação de
+> transparência da LGPD.
+>
+> A correção é troca de nome de fornecedor, não reescrita: três menções, uma em
+> `termos.tsx:45` e duas em `privacidade.tsx:26,39`.
 
 - [ ] **Passo 1: Acrescentar a seção, depois de "Planos, pagamentos e assinaturas"**
 
@@ -790,21 +1058,45 @@ git commit -m "feat(avulso): comprar uma leitura sem assinar"
         },
 ```
 
-- [ ] **Passo 2: Atualizar a data**
+- [ ] **Passo 2: Corrigir quem processa o pagamento**
+
+Em `app/legal/termos.tsx:45`, dentro de "Planos, pagamentos e assinaturas":
+
+```
+'Os pagamentos são processados pela Stripe. Ao contratar um plano ou comprar um item avulso, você concorda também com os termos do meio de pagamento. O acesso ao que foi pago é liberado após a confirmação do pagamento.',
+```
+
+Em `app/legal/privacidade.tsx:26`, em "Dados que coletamos":
+
+```
+'Dados de pagamento: quando você contrata um plano ou compra um item avulso, o pagamento é processado pela Stripe. Não coletamos nem armazenamos os dados do seu cartão — recebemos apenas a confirmação e a situação da transação.',
+```
+
+Em `app/legal/privacidade.tsx:39`, em "Compartilhamento de dados", troque só o
+nome na lista: `Stripe (processamento de pagamentos)` no lugar de
+`Mercado Pago (processamento de pagamentos)`. **Não** mexa no resto desse
+parágrafo nem acrescente fornecedor nenhum à lista — falta ali o provedor de IA,
+e isso é uma lacuna de verdade, mas é decisão jurídica do dono e entrega
+própria, não sua.
+
+- [ ] **Passo 3: Atualizar a data nos dois arquivos**
 
 Troque `atualizadoEm="setembro de 2026"` por `atualizadoEm="outubro de 2026"`.
+Confira se `privacidade.tsx` também tem essa propriedade; se tiver, atualize as
+duas. Se o valor não for exatamente "setembro de 2026", **pare e pergunte** em
+vez de adivinhar o que a data deveria ser.
 
-- [ ] **Passo 3: Rodar**
+- [ ] **Passo 4: Rodar**
 
 ```bash
 npx tsc --noEmit && npx jest
 ```
 
-- [ ] **Passo 4: Commit**
+- [ ] **Passo 5: Commit**
 
 ```bash
-git add app/legal/termos.tsx
-git commit -m "docs(legal): os Termos dizem o que a compra avulsa entrega"
+git add app/legal/termos.tsx app/legal/privacidade.tsx
+git commit -m "docs(legal): o que a compra avulsa entrega, e quem processa o pagamento"
 ```
 
 ---
@@ -825,4 +1117,4 @@ git commit -m "docs(legal): os Termos dizem o que a compra avulsa entrega"
 
 **Sem placeholders.** Todo passo de código traz o código. Os dois lugares que mandam *ler antes de escrever* (Tasks 4 e 6) são instrução, não vaguidão: no primeiro, copiar o bloco de customer de memória duplica cliente na Stripe; no segundo, a ordem entre validade e cota é garantida por teste existente.
 
-**Consistência de tipos.** `decidirCobranca` recebe `EstadoDeCobranca` e devolve `DecisaoDeCobranca` nas Tasks 2 e 6. `creditoDisponivel` devolve `number | null`, `gastarCredito` recebe `number`, e a Task 6 usa `idDoCredito !== null` antes de passar. `comprarAvulso` aceita `'mapa' | 'vocacao'`, a mesma lista fechada de `VENDAVEIS` na Task 4.
+**Consistência de tipos** *(reescrito em 08/10/2026 — o texto original descrevia contratos que as revisões derrubaram).* `decidirCobranca` recebe `EstadoDeCobranca` e devolve `DecisaoDeCobranca` nas Tasks 2 e 6. De `_shared/avulso.ts`, `creditoDisponivel` devolve `BuscaDeCredito` — `{ estado: 'tem'; id: number } | { estado: 'nao_tem' } | { estado: 'erro' }`, e não `number | null`, porque tratar erro de leitura e ausência de crédito como a mesma coisa mandaria quem já comprou comprar de novo; `reivindicarCredito(cliente, compraId, chave)` devolve `boolean` e é chamada **antes** de gerar; `devolverCredito(cliente, compraId)` zera sem condição, e por isso só pode ser chamada onde esta execução reivindicou. `gastarCredito` **não existe**. `Veredito` ganhou `recursoLigado: boolean` obrigatório, consumido pelo portão da Task 6 e presente no literal de `components/SemaforoUso.tsx`. `comprarAvulso` aceita `'mapa' | 'vocacao'`, a mesma lista fechada de `VENDAVEIS` na Task 4, e devolve a URL lida de `checkoutUrl` — o nome que as duas functions de checkout usam.
