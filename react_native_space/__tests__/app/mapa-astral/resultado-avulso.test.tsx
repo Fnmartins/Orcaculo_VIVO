@@ -70,12 +70,18 @@ const VALIDADE_NO_FUTURO = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISO
 
 // Créditos por produto, como o hook real os separa: um teste pode dar crédito de
 // vocação a quem não tem nenhum de mapa e conferir que a tela não confunde os dois.
+// `gastou` também é por produto, e não um booleano solto: ter gastado um crédito de
+// vocação não diz nada sobre o mapa, e o hook real responde só pelo produto que recebe.
 let mockCreditos: Record<string, number> = {};
+let mockGastou: Record<string, boolean> = {};
 let mockFalhou = false;
 let mockLendo = false;
 jest.mock('../../../hooks/useCreditoAvulso', () => ({
   useCreditoAvulso: (oraculo: string) => ({
-    credito: mockCreditos[oraculo] ?? 0, gastou: false, falhou: mockFalhou, lendo: mockLendo,
+    credito: mockCreditos[oraculo] ?? 0,
+    gastou: mockGastou[oraculo] ?? false,
+    falhou: mockFalhou,
+    lendo: mockLendo,
   }),
 }));
 
@@ -131,6 +137,7 @@ beforeEach(() => {
   mockPodeConsultar = false;
   mockPerfil = null;
   mockCreditos = {};
+  mockGastou = {};
   mockFalhou = false;
   mockLendo = false;
   mockMoeda = 'brl';
@@ -260,6 +267,32 @@ describe('compra avulsa no resultado do mapa astral', () => {
     expect(mockSemaforo).toHaveBeenLastCalledWith(
       expect.objectContaining({ creditoAvulso: 'desconhecido' }),
     );
+  });
+
+  it('quem já gastou o crédito e não tem outro: o semáforo também recebe "desconhecido"', () => {
+    // O estado de quem comprou, gerou e voltou. Com o zero cru, `SemaforoUso` renderiza o
+    // cadeado "Seu acesso terminou. Atualize seu plano" logo acima do botão que funciona —
+    // na cara de quem acabou de pagar, e a leitura que ele pagou volta pelo cache do
+    // servidor. É o mesmo defeito que `app/vocacao/index.tsx` já tinha, nesta outra tela.
+    //
+    // Calado, e não uma faixa positiva: `gastou` diz que a pessoa pagou, não que a leitura
+    // está alcançável agora, e afirmar isso seria chutar.
+    //
+    // O contrapeso é o teste "crédito de vocação não vale como crédito de mapa", que exige
+    // `creditoAvulso: 0` com `gastou` falso: passar `'desconhecido'` sempre o deixa vermelho.
+    mockGastou = { mapa: true };
+    render(<TelaMapaAstralResultado />);
+    expect(mockSemaforo).toHaveBeenLastCalledWith(
+      expect.objectContaining({ creditoAvulso: 'desconhecido' }),
+    );
+  });
+
+  it('ter gastado um crédito de VOCAÇÃO não cala o semáforo do mapa', () => {
+    // Cada crédito é de um produto. Se o silêncio valesse por qualquer compra, quem comprou
+    // uma vocação e a gerou deixaria de ler o aviso verdadeiro de acesso vencido no mapa.
+    mockGastou = { vocacao: true };
+    render(<TelaMapaAstralResultado />);
+    expect(mockSemaforo).toHaveBeenLastCalledWith(expect.objectContaining({ creditoAvulso: 0 }));
   });
 
   it('o botão de comprar é texto puro: sem a borda dos botões de assinatura', () => {

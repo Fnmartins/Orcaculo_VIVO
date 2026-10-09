@@ -125,7 +125,7 @@ export default function TelaMapaAstralResultado() {
   }>();
   const { perfil } = useAuth();
   const { temAcesso, podeFazerConsulta } = usePlano();
-  const { credito, falhou, lendo } = useCreditoAvulso('mapa');
+  const { credito, gastou, falhou, lendo } = useCreditoAvulso('mapa');
   // A MESMA regra que o servidor usa: `acessoDoPlano` mora em `_shared/limites.ts`, é a
   // função que a `ia-interpretacao` chama, e `components/SemaforoUso.tsx` já a chama assim
   // dentro desta tela. Não é uma segunda verdade sobre acesso: é a verdade compartilhada.
@@ -147,7 +147,13 @@ export default function TelaMapaAstralResultado() {
 
   // O semáforo não chuta: sem saber do crédito (ainda lendo, ou a leitura falhou), não diz
   // nada, em vez de acusar acesso vencido a quem pode ter acabado de pagar.
-  const creditoDoSemaforo = lendo || falhou ? 'desconhecido' : credito;
+  //
+  // `gastou` com crédito zero entra no mesmo silêncio, e é o estado de quem comprou, gerou e
+  // voltou: o cadeado diria "Seu acesso terminou. Atualize seu plano" logo acima do botão que
+  // funciona, na cara de quem pagou. Calado, e não uma faixa positiva: `gastou` diz que a
+  // pessoa pagou, não que a leitura está alcançável agora, e afirmar isso seria chutar. É a
+  // mesma linha de `app/vocacao/index.tsx`, pelo mesmo motivo.
+  const creditoDoSemaforo = lendo || falhou || (gastou && credito === 0) ? 'desconhecido' : credito;
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
