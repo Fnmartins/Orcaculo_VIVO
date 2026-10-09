@@ -934,9 +934,14 @@ describe('o credito avulso entra na interpretacao sem furar o cache', () => {
     const bloco = caminhoDoPago![0];
     // Nem a IA, nem nada que decide cobranca ou reivindica credito: o caminho devolve
     // antes de todos eles, e e por isso que nao precisa de guarda nenhuma a mais.
+    //
+    // `restantes`, `registrarUso` e `exigirEscrita` são a cota e a medição: este caminho
+    // não desconta nem conta nada. A igualdade do bloco, no teste seguinte, já os exclui
+    // por tabela; estão aqui para a intenção ficar escrita, e não depender de uma
+    // invariante indireta.
     for (const proibido of [
       'anthropic', 'messages.create', 'cobranca', 'veredito', 'reivindicarCredito',
-      'idReivindicado', 'devolverCredito',
+      'idReivindicado', 'devolverCredito', 'restantes', 'registrarUso', 'exigirEscrita',
     ]) {
       expect({ proibido, aparece: bloco.includes(proibido) }).toEqual({ proibido, aparece: false });
     }
@@ -978,5 +983,32 @@ describe('o credito avulso entra na interpretacao sem furar o cache', () => {
     const inicio = lf.indexOf('async function lerGuardada');
     expect(inicio).toBeGreaterThan(-1);
     expect(lf.slice(inicio, lf.indexOf('\n}\n', inicio))).toContain('update({ usos: usos + 1 })');
+  });
+
+  it('os dois helpers que o caminho de quem ja pagou chama so falam com o banco', () => {
+    // O teste do bloco olha o `if`, mas `lerGuardada` e `creditoJaGastoNesta` sao chamadas
+    // de la: tao parte do caminho quanto ele. Uma chamada paga escrita dentro de um dos
+    // dois, com o nome que fosse, devolveria leitura gerada a quem o portao barraria, e
+    // nada reclamaria: as functions rodam no Deno, fora do `tsc`, e a unica rede e este
+    // teste de texto.
+    const avulso = readFileSync(join(RAIZ, '_shared', 'avulso.ts'), 'utf8').replace(/\r\n/g, '\n');
+    const corpoDe = (fonte: string, assinatura: string) => {
+      const inicio = fonte.indexOf(assinatura);
+      expect(inicio).toBeGreaterThan(-1);
+      return fonte.slice(inicio, fonte.indexOf('\n}\n', inicio) + 3);
+    };
+    const helpers = {
+      lerGuardada: corpoDe(lf, 'async function lerGuardada('),
+      creditoJaGastoNesta: corpoDe(avulso, 'export async function creditoJaGastoNesta('),
+    };
+    for (const [nome, corpo] of Object.entries(helpers)) {
+      // Nada que nomeie o modelo ou o SDK...
+      expect({ nome, aparece: /messages|anthropic/i.test(corpo) }).toEqual({ nome, aparece: false });
+      // ... e nenhuma espera que nao seja no cliente do banco. Busca por palavra nao
+      // pega um `await gerarLeitura(...)` com nome inventado; esta regra pega: tudo o que
+      // estes helpers aguardam e uma consulta ao `cliente`.
+      expect({ nome, esperas: corpo.match(/\bawait\s+(?!cliente\b)\S+/g) })
+        .toEqual({ nome, esperas: null });
+    }
   });
 });
