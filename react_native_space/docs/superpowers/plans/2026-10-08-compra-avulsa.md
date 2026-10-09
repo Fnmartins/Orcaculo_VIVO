@@ -13,7 +13,7 @@
 ## Restrições globais
 
 - **Dois produtos, só:** `'mapa'` e `'vocacao'`. Numerologia saiu do escopo — é cálculo local, não chama IA, e já é inteiramente grátis; vendê-la seria tirar algo aberto.
-- **Validade: 90 dias** a partir do pagamento, para o direito de gerar. A leitura gerada permanece para sempre.
+- **Validade: 90 dias** a partir do pagamento, para o direito de gerar. A leitura gerada permanece enquanto a conta existir.
 - **Precedência: cota do plano primeiro, avulso depois.**
 - **Crédito nunca é consumido quando a resposta vem do cache.**
 - **Preço nunca em código.** Mora em `public.precos_avulsos.stripe_price_id`.
@@ -936,7 +936,7 @@ planos", que fica onde está:
                       <Text style={estilos.botaoAvulsoTexto}>Comprar só esta leitura</Text>
                     </Pressable>
                     <Text style={estilos.emConstrucaoTexto}>
-                      O direito de gerar vale 90 dias. A leitura, depois de gerada, fica para sempre.
+                      O direito de gerar vale 90 dias. A leitura, depois de gerada, fica no seu histórico enquanto sua conta existir.
                     </Text>
 ```
 
@@ -1004,7 +1004,7 @@ E depois daquele `<Pressable>`:
                       <Text style={estilos.botaoAvulsoTexto}>Comprar só esta leitura</Text>
                     </Pressable>
                     <Text style={estilos.notaRodape}>
-                      O direito de gerar vale 90 dias. A leitura, depois de gerada, fica para sempre.
+                      O direito de gerar vale 90 dias. A leitura, depois de gerada, fica no seu histórico enquanto sua conta existir.
                     </Text>
                   </>
                 ) : null}
@@ -1185,6 +1185,45 @@ o motivo pelo qual a coluna existe.
 **Interfaces:**
 - Consome: a tabela `compras_avulsas` (Task 1) e `chaveDoMapa`, que já vive em `ia-interpretacao/index.ts`.
 - Produz: `creditoJaGastoNesta(cliente, usuarioId, oraculo, chave): Promise<boolean>` em `_shared/avulso.ts`.
+
+> **Correção de 09/10/2026, depois da execução.** Três coisas no código abaixo estavam
+> erradas, e o implementador achou as três. Ficam registradas em vez de apagadas, porque
+> a primeira é o tipo de erro que eu cobro dos outros:
+>
+> 1. **O teste "nunca gera" era vácuo — não podia falhar.** Ele fatiava
+>    `interp.slice(direito, geracao)` onde `geracao` é o índice da **primeira** ocorrência
+>    de `anthropic.messages.create`; a fatia termina ali, logo nunca contém o que a
+>    asserção proibia. O implementador provou escrevendo a chamada à Anthropic dentro do
+>    caminho novo: a asserção continuava passando. Um teste que não pode falhar é pior que
+>    teste nenhum, porque dá a impressão de rede onde não há.
+>
+>    A forma certa extrai o **bloco do próprio `if`** e proíbe uma lista de palavras
+>    dentro dele, em vez de medir distância até a primeira ocorrência de algo:
+>
+>    ```ts
+>    expect(caminhoDoPago).not.toBeNull();
+>    const bloco = caminhoDoPago![0];
+>    for (const proibido of [
+>      'anthropic', 'messages.create', 'cobranca', 'veredito', 'reivindicarCredito',
+>      'idReivindicado', 'devolverCredito',
+>    ]) {
+>      expect({ proibido, aparece: bloco.includes(proibido) }).toEqual({ proibido, aparece: false });
+>    }
+>    ```
+>
+>    A lista é maior que "Anthropic" de propósito: o caminho devolve antes do portão, da
+>    cobrança e da reivindicação, e é justamente por isso que ele não precisa de guarda
+>    nenhuma lá embaixo. Se um dia alguém puser qualquer um desses nomes ali dentro, a
+>    premissa caiu e o teste tem de avisar.
+>
+> 2. **`clienteFalso` não devolve `chamadas`.** O `const { cliente, chamadas } = ...` do
+>    teste abaixo usa uma API que eu inventei. O falso real foi estendido com `todas()` e
+>    `de()`; use o que existe no arquivo.
+>
+> 3. **`ReturnType<typeof createClient>` não compila** no `lerGuardada` do Passo 4. Com
+>    supabase-js 2.112.4 as tabelas viram `never` e o `tsc` acusa TS2345. Use
+>    `Parameters<typeof creditoDisponivel>[0]`, que é o mesmo tipo que as outras funções
+>    de `_shared/avulso.ts` já recebem.
 
 - [ ] **Passo 1: Escrever os testes que falham**
 
@@ -1500,17 +1539,48 @@ Esperado: FAIL em três dos quatro.
 Em `app/pagamento/sucesso.tsx`, troque `import { router } from 'expo-router'` por
 `import { router, useLocalSearchParams } from 'expo-router'` e, dentro do componente:
 
+> **Correção de 09/10/2026, depois da execução.** O código que eu escrevi aqui tinha um
+> defeito real, achado e provado pelo implementador: `PRODUTO[params.oraculo ?? ''] ?? null`
+> aceita `oraculo=constructor`, `toString`, `__proto__`, `hasOwnProperty` e `valueOf`. A
+> busca sobe na cadeia de protótipos, devolve uma **função**, que não é nula e portanto
+> passa pelo `?? null`. A tela lia "Você já pode gerar undefined." e o botão ficava com
+> rótulo e rota `undefined`. Ele rodou os testes contra o código literal deste plano antes
+> de corrigir: 4 vermelhos.
+>
+> Dois agravantes do meu texto. O comentário dizia "nada aqui confia no valor" logo acima
+> da linha que confiava — comentário que afirma uma proteção inexistente, que é o mesmo
+> defeito que a Task 6 já tinha me ensinado nesta mesma branch. E o `?? null` era **código
+> morto para o caso que dizia proteger**: o implementador mostrou que removê-lo é mutação
+> equivalente, porque `undefined` e `null` se comportam igual em todo uso posterior.
+>
+> Abaixo está o que ficou no código, com a guarda de posse própria. `PRODUTO` também saiu
+> de dentro do componente: é constante, e não tinha por que ser remontada a cada render.
+
 ```tsx
+const PRODUTO: Record<string, { nome: string; rota: string; acao: string }> = {
+  mapa: { nome: 'a leitura do seu mapa', rota: '/mapa-astral', acao: 'Ler o meu mapa' },
+  vocacao: { nome: 'a leitura da sua vocação', rota: '/vocacao', acao: 'Ler a minha vocação' },
+};
+
+// ... dentro do componente:
   const params = useLocalSearchParams<{ compra?: string; oraculo?: string }>();
   // O parâmetro vem da URL, logo vem da pessoa: nada aqui confia no valor. Produto
   // desconhecido cai na versão sem nome, que é verdadeira de qualquer jeito.
   const avulso = params.compra === 'avulso';
-  const PRODUTO: Record<string, { nome: string; rota: string; acao: string }> = {
-    mapa: { nome: 'a leitura do seu mapa', rota: '/mapa-astral', acao: 'Ler o meu mapa' },
-    vocacao: { nome: 'a leitura da sua vocação', rota: '/vocacao', acao: 'Ler a minha vocação' },
-  };
-  const produto = avulso ? PRODUTO[params.oraculo ?? ''] ?? null : null;
+  const chave = params.oraculo ?? '';
+  // Posse própria, e não só `PRODUTO[chave]`: o dicionário herda as chaves de todo
+  // objeto, e `oraculo=constructor` devolveria uma função. Ela não é nula, então um
+  // `?? null` não a pega, e a tela leria "Você já pode gerar undefined" no texto e
+  // no botão.
+  const produto =
+    avulso && Object.prototype.hasOwnProperty.call(PRODUTO, chave) ? PRODUTO[chave] : null;
 ```
+
+> **Segunda correção:** o teste 3 do Passo 1 usa `getByLabelText`, que **não funciona nesta
+> base** — o `Button` põe o mesmo rótulo no `Pressable` e no `Text` de dentro, então a busca
+> acusa "multiple elements" mesmo com a implementação certa. Use
+> `getByRole('button', { name })`, como `__tests__/app/home-cadeado.test.tsx` já faz. E
+> `Button` não aceita `accessibilityLabel`: passe só `label`.
 
 O título e o texto passam a depender disso. Quem assina **continua lendo exatamente o que
 lia** — é o que o primeiro teste tranca:
@@ -1522,8 +1592,8 @@ lia** — é o que o primeiro teste tranca:
           <Text style={estilos.texto}>
             {avulso
               ? produto
-                ? `Você já pode gerar ${produto.nome}. O direito de gerar vale 90 dias, e a leitura, depois de gerada, fica para sempre.`
-                : 'Você já pode gerar a leitura que comprou. O direito de gerar vale 90 dias, e a leitura, depois de gerada, fica para sempre.'
+                ? `Você já pode gerar ${produto.nome}. O direito de gerar vale 90 dias, e a leitura, depois de gerada, fica no seu histórico enquanto sua conta existir.`
+                : 'Você já pode gerar a leitura que comprou. O direito de gerar vale 90 dias, e a leitura, depois de gerada, fica no seu histórico enquanto sua conta existir.'
               : 'Seu plano está sendo liberado. Pode levar alguns segundos para aparecer.'}
           </Text>
           <Button
@@ -1569,7 +1639,19 @@ node scripts/conferir-functions.js
 
 1. `avulso` fixo em `false`.
 2. O título da compra avulsa voltando a "Assinatura confirmada!".
-3. `PRODUTO[params.oraculo ?? '']` sem o `?? null`, para ver se o produto desconhecido acusa.
+3. A guarda de posse própria removida, deixando `PRODUTO[chave]` cru.
+4. `produto` sem exigir `avulso`.
+
+> **Correção de 09/10/2026.** A mutação 3 deste passo era, no texto original,
+> "`PRODUTO[params.oraculo ?? '']` sem o `?? null`" — e **nenhum teste pode pegá-la**,
+> porque é mutação equivalente: `undefined` e `null` se comportam igual em todo uso
+> posterior. Pedir uma mutação que não pode ficar vermelha ensina a aceitar verde como
+> prova. A mutação que importa é a da guarda de posse própria, e ela dá 4 vermelhos.
+>
+> A mutação 4 também foi acrescentada depois: ela deu **0 vermelhos** na primeira versão
+> dos testes, e o implementador reforçou o teste para olhar também o botão até ficar
+> vermelho, em vez de aceitar o verde. É o uso certo da mutação — diagnóstico do teste, e
+> não selo de aprovação.
 
 Relate quantos vermelhos cada uma deixa.
 
@@ -1589,7 +1671,11 @@ git commit -m "fix(avulso): a tela de sucesso diz o que a pessoa comprou"
 3. **Inserir os `price_id`** em `public.precos_avulsos`, com o valor decidido a partir da aba Custo por produto.
 4. **Deployar** `criar-checkout-avulso`, `stripe-webhook` e `ia-interpretacao`.
 5. **Decidir o arrependimento depois da leitura gerada.** O texto dos Termos remete ao contato, que é a saída honesta enquanto não houver política.
-6. **Revogar as credenciais do Mercado Pago, se forem reais.** A Task 8 corrigiu os documentos legais, que diziam que o pagamento era processado por lá. Mas `react_native_space/.env` (fora do git) ainda tem `MERCADOPAGO_ACCESS_TOKEN` e `EXPO_PUBLIC_MERCADOPAGO_PUBLIC_KEY`, e **nenhum código desta base usa nenhuma das duas**. Nem eu nem os implementadores lemos os valores, de propósito. Se o token de acesso for de uma conta real, é credencial viva de um serviço que o app não usa: revogue no painel do Mercado Pago e tire as duas linhas do `.env`. Por causa do prefixo `EXPO_PUBLIC_`, o nome da chave pública aparece em builds antigos em `dist/` — o que vaza é o nome, não o segredo, mas é mais um motivo para limpar.
+6. **Revogar as credenciais do Mercado Pago, se forem reais.** A Task 8 corrigiu os documentos legais, que diziam que o pagamento era processado por lá. Mas `react_native_space/.env` (fora do git) ainda tem `MERCADOPAGO_ACCESS_TOKEN` e `EXPO_PUBLIC_MERCADOPAGO_PUBLIC_KEY`, e **nenhum código desta base usa nenhuma das duas**. Nem eu nem os implementadores lemos os valores, de propósito. Se o token de acesso for de uma conta real, é credencial viva de um serviço que o app não usa: revogue no painel do Mercado Pago e tire as duas linhas do `.env`.
+
+   *Correção de 09/10/2026:* este item dizia antes que o nome da chave pública aparecia em builds antigos em `dist/`, por causa do prefixo `EXPO_PUBLIC_`. **Não aparece** — a revisão da Task 8 procurou e não achou menção nenhuma no `dist/` além do próprio texto legal. Eu havia repetido uma inferência sem conferir.
+8. **Decidir de quando contam os 7 dias de arrependimento na compra avulsa.** A seção "Cancelamento e reembolso" diz "a partir da contratação"; a seção nova diz só "7 (sete) dias". "Contratação", "pagamento" e "geração da leitura" podem ter consequências jurídicas diferentes, e a escolha não é minha. A rodada de correção da Task 8 só fez as duas seções pararem de se contradizer sobre a leitura já gerada, dizendo qual governa o quê — a política continua a sua.
+9. **Dois documentos da raiz ainda ensinam Mercado Pago, e um deles manda provisionar a credencial do item 6.** `.project_instructions.md:95,102,123` descreve o Mercado Pago como *o* sistema de pagamento e cita `services/mercadopago.ts`, arquivo que não existe. `ROTEIRO_EXTERNO.md` tem um BLOCO 3 inteiro mandando criar conta de desenvolvedor, gravar `MERCADOPAGO_ACCESS_TOKEN` nos secrets do Supabase e deployar `mercadopago-webhook`, function que também não existe. É provável que a credencial do item 6 tenha saído dali. Deixei fora desta branch de propósito — reescrever os dois para a Stripe é entrega própria, e está registrada como tarefa separada.
 7. **Decidir se a coluna morta sai.** `supabase_schema.sql:137`, na raiz do repositório, tem `mp_preference_id`, resto da mesma história. Não mexi: é esquema de banco em produção e a decisão de remover coluna é sua.
 
 ## Autorrevisão
