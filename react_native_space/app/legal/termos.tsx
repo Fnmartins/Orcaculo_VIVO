@@ -8,7 +8,7 @@ export default function TelaTermos() {
   return (
     <PaginaLegal
       titulo="Termos de Uso"
-      atualizadoEm="setembro de 2026"
+      atualizadoEm="outubro de 2026"
       intro="Ao criar uma conta ou usar o Arcanus, você concorda com estes Termos de Uso. Leia com atenção — eles explicam o que oferecemos, o que esperamos de você e os limites do serviço."
       secoes={[
         {
@@ -42,8 +42,17 @@ export default function TelaTermos() {
           titulo: 'Planos, pagamentos e assinaturas',
           paragrafos: [
             'O Arcanus oferece um plano gratuito e planos pagos com recursos adicionais. Os preços vigentes são exibidos no aplicativo antes da contratação.',
-            'Os pagamentos são processados pelo Mercado Pago. Ao contratar um plano, você concorda também com os termos do meio de pagamento. O acesso aos recursos pagos é liberado após a confirmação do pagamento.',
+            'Os pagamentos são processados pela Stripe. Ao contratar um plano ou comprar um item avulso, você concorda também com os termos do meio de pagamento. O acesso ao que foi pago é liberado após a confirmação do pagamento.',
             'Assinaturas recorrentes, quando aplicável, são renovadas automaticamente pelo período contratado até que você cancele.',
+          ],
+        },
+        {
+          titulo: 'Compra avulsa',
+          paragrafos: [
+            'Além dos planos, alguns conteúdos podem ser comprados individualmente. A compra avulsa dá direito a gerar UMA leitura do item comprado, na sua conta.',
+            'O direito de gerar essa leitura vale por 90 (noventa) dias a partir da confirmação do pagamento. A leitura já gerada permanece no seu histórico por tempo indeterminado, independentemente desse prazo.',
+            'Se você tiver um plano ativo com consultas disponíveis, elas são usadas antes do crédito avulso — o crédito comprado fica guardado para quando as consultas do plano acabarem.',
+            'O direito de arrependimento de 7 (sete) dias previsto no Código de Defesa do Consumidor se aplica à compra avulsa. Caso a leitura já tenha sido gerada, entre em contato para tratarmos o caso.',
           ],
         },
         {

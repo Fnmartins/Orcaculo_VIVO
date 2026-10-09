@@ -8,7 +8,7 @@ export default function TelaPrivacidade() {
   return (
     <PaginaLegal
       titulo="Política de Privacidade"
-      atualizadoEm="setembro de 2026"
+      atualizadoEm="outubro de 2026"
       intro="Sua privacidade importa. Esta Política explica quais dados o Arcanus coleta, como os usamos e quais são os seus direitos, em conformidade com a Lei Geral de Proteção de Dados (LGPD — Lei nº 13.709/2018)."
       secoes={[
         {
@@ -23,7 +23,7 @@ export default function TelaPrivacidade() {
             'Dados de cadastro: nome e e-mail informados na criação da conta.',
             'Dados de uso: histórico de consultas e leituras, preferências, intenções e progresso dentro do aplicativo.',
             'Conteúdo opcional que você fornece: foto de perfil e imagens enviadas para funcionalidades específicas (por exemplo, análises que dependem de imagem).',
-            'Dados de pagamento: quando você contrata um plano, o pagamento é processado pelo Mercado Pago. Não coletamos nem armazenamos os dados do seu cartão — recebemos apenas a confirmação e a situação da transação.',
+            'Dados de pagamento: quando você contrata um plano ou compra um item avulso, o pagamento é processado pela Stripe. Não coletamos nem armazenamos os dados do seu cartão — recebemos apenas a confirmação e a situação da transação.',
           ],
         },
         {
@@ -36,7 +36,7 @@ export default function TelaPrivacidade() {
         {
           titulo: 'Compartilhamento de dados',
           paragrafos: [
-            'Não vendemos seus dados pessoais. Compartilhamos dados apenas com prestadores necessários ao funcionamento do serviço, como: Supabase (autenticação e banco de dados), Mercado Pago (processamento de pagamentos) e o provedor de envio de e-mails.',
+            'Não vendemos seus dados pessoais. Compartilhamos dados apenas com prestadores necessários ao funcionamento do serviço, como: Supabase (autenticação e banco de dados), Stripe (processamento de pagamentos) e o provedor de envio de e-mails.',
             'Também podemos divulgar dados quando exigido por lei ou por autoridade competente.',
           ],
         },
