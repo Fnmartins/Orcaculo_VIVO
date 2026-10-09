@@ -122,8 +122,15 @@ Deno.serve(async (request) => {
       currency: moedaFinal,
       client_reference_id: usuario.id,
       metadata: { usuario_id: usuario.id, oraculo, tipo: 'avulso' },
-      success_url: `${appBaseUrl}/pagamento/sucesso?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${appBaseUrl}/planos`,
+      // `compra=avulso` existe para a tela de sucesso não dizer "Assinatura
+      // confirmada" a quem comprou uma leitura. A `success_url` da assinatura não
+      // muda, e é isso que mantém o texto dela correto.
+      success_url: `${appBaseUrl}/pagamento/sucesso?session_id={CHECKOUT_SESSION_ID}&compra=avulso&oraculo=${oraculo}`,
+      // Desistir da compra avulsa não pode cair em `/planos`: é a assinatura que a
+      // pessoa acabou de decidir não fazer. Volta ao começo do oráculo, e não à tela
+      // do resultado, que precisa de `cidadeId`, `lat` e `lon` nos parâmetros e
+      // devolve nulo sem eles — e esses dados não atravessam o checkout.
+      cancel_url: `${appBaseUrl}/${oraculo === 'mapa' ? 'mapa-astral' : 'vocacao'}`,
       // Sem cupom, de propósito. Um cupom de 100% pode fazer a sessão chegar com
       // `payment_status` diferente de 'paid' — e a guarda do webhook, que existe
       // para não creditar antes de receber, barraria quem usou o cupom.

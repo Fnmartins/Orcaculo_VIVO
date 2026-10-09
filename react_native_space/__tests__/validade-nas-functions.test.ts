@@ -722,6 +722,39 @@ describe('o checkout avulso vende só o que tem preço', () => {
   });
 });
 
+describe('o checkout avulso devolve a pessoa ao lugar certo', () => {
+  const avulso = funcoes.find((f) => f.nome === 'criar-checkout-avulso')!.fonte;
+  const assinatura = funcoes.find((f) => f.nome === 'criar-checkout-stripe')!.fonte;
+
+  it('a success_url diz à tela de sucesso que foi compra avulsa, e de qual leitura', () => {
+    // A tela de sucesso só deixa de afirmar "Assinatura confirmada!" quando recebe
+    // `compra=avulso`, e só nomeia a leitura e leva até ela com `oraculo`. Sem os dois
+    // na URL, quem comprou uma leitura volta a ler que assinou um plano.
+    expect(avulso).toContain(
+      'success_url: `${appBaseUrl}/pagamento/sucesso?session_id={CHECKOUT_SESSION_ID}&compra=avulso&oraculo=${oraculo}`',
+    );
+  });
+
+  it('desistir da compra volta ao começo do oráculo, e não aos planos', () => {
+    // `/planos` é a assinatura que a pessoa acabou de decidir não fazer. A tela do
+    // resultado também não serve: ela devolve nulo sem `cidadeId`, `lat` e `lon`, e esses
+    // dados não atravessam o checkout.
+    expect(avulso).not.toMatch(/cancel_url:\s*`\$\{appBaseUrl\}\/planos`/);
+    expect(avulso).toContain(
+      "cancel_url: `${appBaseUrl}/${oraculo === 'mapa' ? 'mapa-astral' : 'vocacao'}`",
+    );
+  });
+
+  it('a success_url da assinatura não muda: é ela que mantém correto o texto de quem assina', () => {
+    // A tela de sucesso trata a ausência de `compra` como assinatura. Copiar o parâmetro
+    // novo para cá mudaria o que quem assina lê, e esse texto está certo.
+    expect(assinatura).toContain(
+      'success_url: `${appBaseUrl}/pagamento/sucesso?session_id={CHECKOUT_SESSION_ID}`',
+    );
+    expect(assinatura).not.toContain('compra=avulso');
+  });
+});
+
 describe('o credito avulso entra na interpretacao sem furar o cache', () => {
   const interp = funcoes.find((f) => f.nome === 'ia-interpretacao')!.fonte;
   // Os trechos de várias linhas abaixo usam esta cópia: a árvore de quem usa Windows
